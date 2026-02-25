@@ -1,16 +1,32 @@
 services:
+  session-container:
+    build: ./session-container
+    ports:
+      - "8080:8080"
+    environment:
+      - AZURE_ENDPOINT
+      - AZURE_DEPLOYMENT
+      - WORKSPACE=/workspace
+    volumes:
+      - ./workspace:/workspace
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   backend:
     build: .
     ports:
       - "8000:8000"
     environment:
-      - AZURE_ENDPOINT
-      - AZURE_DEPLOYMENT
       - COSMOS_ENDPOINT
-      - SESSION_TTL_MINUTES=30
-      - WORKING_DIR=/mnt/data
-    volumes:
-      - ./workspace:/mnt/data
+      - POOL_MANAGEMENT_ENDPOINT=http://session-container:8080
+      - FRONTEND_URL
+    depends_on:
+      session-container:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s

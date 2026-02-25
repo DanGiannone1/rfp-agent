@@ -1,78 +1,113 @@
+"""Session manager that proxies requests to ACA dynamic session containers.
+
+Each user gets an isolated container via the ACA session pool. The orchestrator
+never runs the Copilot SDK directly — it sends blocking HTTP requests to the
+session container and polls for status updates, yielding SSE events to the
+frontend.
+"""
+
 import asyncio
 import json
 import logging
 import os
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from agent import AgentSession
+import httpx
+from azure.identity.aio import DefaultAzureCredential
 
 logger = logging.getLogger(__name__)
 
-SESSION_TTL_MINUTES = int(os.getenv("SESSION_TTL_MINUTES", "30"))
-CLEANUP_INTERVAL_SECONDS = 60
+POOL_MANAGEMENT_ENDPOINT = os.getenv("POOL_MANAGEMENT_ENDPOINT", "")
+STATUS_POLL_INTERVAL = 1.5  # seconds between /status polls
 
 
-@dataclass
-class ManagedSession:
-    session_id: str
-    agent: AgentSession
-    working_dir: str
-    created_at: datetime
-    last_activity_at: datetime
-    lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    turn_index: int = 0
-    status: str = "active"
+def _sse_event(data: dict) -> str:
+    return f"data: {json.dumps(data)}\n\n"
+
+
+class _SessionPoolAuth(httpx.Auth):
+    """httpx Auth that attaches a Bearer token for the ACA session pool.
+
+    In local dev (POOL_MANAGEMENT_ENDPOINT pointing at a plain container)
+    no token is needed — we skip auth when the endpoint is a bare http URL.
+    """
+
+    def __init__(self):
+        self._credential: DefaultAzureCredential | None = None
+        self._token: str | None = None
+        self._expires_on: float = 0
+
+    def _needs_token(self) -> bool:
+        return POOL_MANAGEMENT_ENDPOINT.startswith("https://")
+
+    async def _refresh(self):
+        import time
+
+        if not self._needs_token():
+            return
+        if self._token and time.time() < self._expires_on - 60:
+            return
+        if self._credential is None:
+            self._credential = DefaultAzureCredential()
+        tok = await self._credential.get_token(
+            "https://dynamicsessions.io/.default"
+        )
+        self._token = tok.token
+        self._expires_on = tok.expires_on
+
+    async def async_auth_flow(self, request):
+        await self._refresh()
+        if self._token:
+            request.headers["Authorization"] = f"Bearer {self._token}"
+        yield request
+
+    async def close(self):
+        if self._credential:
+            await self._credential.close()
 
 
 class SessionManager:
-    """Manages the lifecycle of multiple concurrent AgentSessions."""
+    """Proxies session lifecycle to ACA dynamic session containers."""
 
     def __init__(self, cosmos_store=None):
-        self._sessions: dict[str, ManagedSession] = {}
         self._cosmos = cosmos_store
-        self._cleanup_task: asyncio.Task | None = None
+        self._auth = _SessionPoolAuth()
+        self._http = httpx.AsyncClient(
+            auth=self._auth,
+            timeout=httpx.Timeout(connect=10, read=600, write=10, pool=10),
+        )
+        self._turn_indices: dict[str, int] = {}
 
     async def start(self):
-        self._cleanup_task = asyncio.create_task(self._cleanup_loop())
-        logger.info("SessionManager started (TTL=%dm)", SESSION_TTL_MINUTES)
+        logger.info("SessionManager started (pool=%s)", POOL_MANAGEMENT_ENDPOINT)
 
     async def stop(self):
-        if self._cleanup_task:
-            self._cleanup_task.cancel()
-            try:
-                await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
-
-        for sid in list(self._sessions):
-            await self._destroy_session(sid)
-        logger.info("SessionManager stopped, all sessions destroyed")
+        await self._http.aclose()
+        await self._auth.close()
+        logger.info("SessionManager stopped")
 
     @property
     def active_count(self) -> int:
-        return len(self._sessions)
+        return len(self._turn_indices)
 
-    async def create_session(self, working_dir: str) -> dict:
+    def _pool_url(self, path: str, session_id: str) -> str:
+        base = POOL_MANAGEMENT_ENDPOINT.rstrip("/")
+        return f"{base}{path}?identifier={session_id}"
+
+    async def create_session(self) -> dict:
         session_id = uuid.uuid4().hex[:16]
         now = datetime.now(timezone.utc)
 
-        agent = AgentSession(working_dir)
-        await agent.__aenter__()
+        # Ping health to allocate (warm up) the container
+        url = self._pool_url("/health", session_id)
+        resp = await self._http.get(url)
+        resp.raise_for_status()
 
-        managed = ManagedSession(
-            session_id=session_id,
-            agent=agent,
-            working_dir=working_dir,
-            created_at=now,
-            last_activity_at=now,
-        )
-        self._sessions[session_id] = managed
+        self._turn_indices[session_id] = 0
 
         metadata = {
             "session_id": session_id,
-            "working_dir": working_dir,
             "status": "active",
             "created_at": now.isoformat(),
             "last_activity_at": now.isoformat(),
@@ -81,77 +116,106 @@ class SessionManager:
         if self._cosmos:
             await self._cosmos.create_session(metadata)
 
-        logger.info("Created session %s (dir=%s)", session_id, working_dir)
+        logger.info("Created session %s", session_id)
         return metadata
 
-    async def send_message(self, session_id: str, prompt: str):
-        managed = self._sessions.get(session_id)
-        if not managed:
-            raise KeyError(session_id)
+    async def validate_session(self, session_id: str):
+        """Ensure session exists and recover turn index from Cosmos if needed.
 
-        if managed.lock.locked():
-            raise RuntimeError("Session is busy (concurrent turn)")
-
-        async with managed.lock:
-            managed.last_activity_at = datetime.now(timezone.utc)
-            managed.turn_index += 1
-            turn = managed.turn_index
-
-            # Persist user message
-            if self._cosmos:
-                await self._cosmos.add_message({
-                    "session_id": session_id,
-                    "role": "user",
-                    "content": prompt,
-                    "tool_activity": [],
-                    "timestamp": managed.last_activity_at.isoformat(),
-                    "turn_index": turn,
-                })
-
-            # Collect assistant content for persistence
-            full_content = ""
-            tool_activity = []
-
-            async for sse_line in managed.agent.send(prompt):
-                # Parse the SSE line to track content
-                text = sse_line.strip()
-                if text.startswith("data: "):
-                    try:
-                        event = json.loads(text[6:])
-                        if event.get("type") == "delta":
-                            full_content += event.get("content", "")
-                        elif event.get("type") == "tool_start":
-                            tool_activity.append({
-                                "tool": event.get("tool", "unknown"),
-                                "status": "running",
-                            })
-                        elif event.get("type") == "tool_end":
-                            for ta in tool_activity:
-                                if ta["tool"] == event.get("tool") and ta["status"] == "running":
-                                    ta["status"] = "done"
-                                    break
-                    except json.JSONDecodeError:
-                        pass
-
-                yield sse_line
-
-            # Persist assistant message
-            if self._cosmos:
-                managed.last_activity_at = datetime.now(timezone.utc)
-                await self._cosmos.add_message({
-                    "session_id": session_id,
-                    "role": "assistant",
-                    "content": full_content,
-                    "tool_activity": tool_activity,
-                    "timestamp": managed.last_activity_at.isoformat(),
-                    "turn_index": turn,
-                })
-                await self._cosmos.update_session_activity(
-                    session_id, managed.last_activity_at
+        Call this eagerly (before constructing StreamingResponse) so that
+        KeyError can be caught by the endpoint handler.
+        """
+        if session_id in self._turn_indices:
+            return
+        if self._cosmos:
+            meta = await self._cosmos.get_session(session_id)
+            if meta and meta.get("status") == "active":
+                messages = await self._cosmos.get_messages(session_id)
+                max_turn = max(
+                    (m.get("turn_index", 0) for m in messages), default=0
                 )
+                self._turn_indices[session_id] = max_turn
+                return
+        raise KeyError(session_id)
+
+    async def send_message(self, session_id: str, prompt: str):
+        """Send a message, poll for status, yield SSE events to the frontend.
+
+        This is an async generator that the FastAPI endpoint wraps in a
+        StreamingResponse. SSE only flows orchestrator → frontend; the
+        session container is called with plain HTTP request/response.
+        """
+        self._turn_indices[session_id] = self._turn_indices.get(session_id, 0) + 1
+        turn = self._turn_indices[session_id]
+        now = datetime.now(timezone.utc)
+
+        # Persist user message
+        if self._cosmos:
+            await self._cosmos.add_message({
+                "session_id": session_id,
+                "role": "user",
+                "content": prompt,
+                "tool_activity": [],
+                "timestamp": now.isoformat(),
+                "turn_index": turn,
+            })
+
+        chat_url = self._pool_url("/chat", session_id)
+        status_url = self._pool_url("/status", session_id)
+
+        # Fire off the blocking /chat request as a background task
+        chat_task = asyncio.create_task(
+            self._http.post(chat_url, json={"prompt": prompt})
+        )
+
+        # Poll /status and yield SSE events until /chat completes
+        last_status = None
+        while not chat_task.done():
+            await asyncio.sleep(STATUS_POLL_INTERVAL)
+            try:
+                status_resp = await self._http.get(
+                    status_url,
+                    timeout=httpx.Timeout(connect=5, read=5, write=5, pool=5),
+                )
+                if status_resp.status_code == 200:
+                    current = status_resp.json().get("status", "idle")
+                    if current != last_status:
+                        last_status = current
+                        yield _sse_event({"type": "status", "status": current})
+            except httpx.HTTPError:
+                pass  # status poll failure is non-fatal
+
+        # Get the result from /chat
+        chat_resp = chat_task.result()
+        if chat_resp.status_code == 409:
+            yield _sse_event({"type": "error", "message": "Session is busy"})
+            yield _sse_event({"type": "done"})
+            return
+
+        chat_resp.raise_for_status()
+        result = chat_resp.json()
+
+        yield _sse_event({
+            "type": "message",
+            "content": result.get("content", ""),
+        })
+        yield _sse_event({"type": "done"})
+
+        # Persist assistant message
+        if self._cosmos:
+            now = datetime.now(timezone.utc)
+            await self._cosmos.add_message({
+                "session_id": session_id,
+                "role": "assistant",
+                "content": result.get("content", ""),
+                "tool_activity": result.get("tool_activity", []),
+                "timestamp": now.isoformat(),
+                "turn_index": turn,
+            })
+            await self._cosmos.update_session_activity(session_id, now)
 
     async def get_session(self, session_id: str) -> dict:
-        """Return session metadata + message history from Cosmos (or in-memory fallback)."""
+        """Return session metadata + message history from Cosmos."""
         if self._cosmos:
             metadata = await self._cosmos.get_session(session_id)
             if not metadata:
@@ -159,59 +223,24 @@ class SessionManager:
             messages = await self._cosmos.get_messages(session_id)
             return {**metadata, "messages": messages}
 
-        # In-memory fallback (no history persistence)
-        managed = self._sessions.get(session_id)
-        if not managed:
+        # In-memory fallback (no history)
+        if session_id not in self._turn_indices:
             raise KeyError(session_id)
         return {
             "session_id": session_id,
-            "working_dir": managed.working_dir,
-            "status": managed.status,
-            "created_at": managed.created_at.isoformat(),
-            "last_activity_at": managed.last_activity_at.isoformat(),
+            "status": "active",
             "messages": [],
         }
 
     async def delete_session(self, session_id: str):
-        if session_id not in self._sessions:
-            # Check Cosmos for closed sessions
-            if self._cosmos:
-                metadata = await self._cosmos.get_session(session_id)
-                if metadata:
-                    await self._cosmos.close_session(session_id)
-                    return
-            raise KeyError(session_id)
-
-        await self._destroy_session(session_id)
+        self._turn_indices.pop(session_id, None)
 
         if self._cosmos:
-            await self._cosmos.close_session(session_id)
+            metadata = await self._cosmos.get_session(session_id)
+            if metadata:
+                await self._cosmos.close_session(session_id)
+                logger.info("Deleted session %s", session_id)
+                return
+            raise KeyError(session_id)
 
         logger.info("Deleted session %s", session_id)
-
-    def has_session(self, session_id: str) -> bool:
-        return session_id in self._sessions
-
-    async def _destroy_session(self, session_id: str):
-        managed = self._sessions.pop(session_id, None)
-        if managed:
-            try:
-                await managed.agent.__aexit__(None, None, None)
-            except Exception:
-                logger.exception("Error destroying session %s", session_id)
-
-    async def _cleanup_loop(self):
-        while True:
-            await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
-            now = datetime.now(timezone.utc)
-            expired = [
-                sid
-                for sid, s in self._sessions.items()
-                if (now - s.last_activity_at).total_seconds()
-                > SESSION_TTL_MINUTES * 60
-            ]
-            for sid in expired:
-                logger.info("Cleaning up expired session %s", sid)
-                await self._destroy_session(sid)
-                if self._cosmos:
-                    await self._cosmos.close_session(sid)

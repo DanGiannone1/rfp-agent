@@ -6,14 +6,11 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from agent import run_analysis
 from session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_WORKING_DIR = os.getenv("WORKING_DIR", "./workspace")
 
 # ---------------------------------------------------------------------------
 # Globals set during lifespan
@@ -53,12 +50,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="RFP Agent", lifespan=lifespan)
 
+# CORS: allow localhost for dev, plus configurable FRONTEND_URL for production
+cors_origins = [
+    "http://localhost:3000",
+    "http://frontend:3000",
+]
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    cors_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://frontend:3000",
-    ],
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -67,13 +70,8 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 # Request / Response models
 # ---------------------------------------------------------------------------
-class AnalyzeRequest(BaseModel):
-    prompt: str
-    working_dir: str = Field(default=None)
-
-
 class CreateSessionRequest(BaseModel):
-    working_dir: str = Field(default=None)
+    pass
 
 
 class SendMessageRequest(BaseModel):
@@ -81,47 +79,30 @@ class SendMessageRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Legacy single-turn endpoint (backward compat)
+# Session endpoints
 # ---------------------------------------------------------------------------
-@app.post("/analyze")
-async def analyze(req: AnalyzeRequest):
-    working_dir = req.working_dir or DEFAULT_WORKING_DIR
+@app.post("/sessions", status_code=201)
+async def create_session(req: CreateSessionRequest = None):
+    metadata = await session_manager.create_session()
+    return metadata
+
+
+@app.post("/sessions/{session_id}/messages")
+async def send_message(session_id: str, req: SendMessageRequest):
+    # Validate eagerly so KeyError is raised before we return a StreamingResponse
+    try:
+        await session_manager.validate_session(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+
     return StreamingResponse(
-        run_analysis(req.prompt, working_dir),
+        session_manager.send_message(session_id, req.prompt),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
     )
-
-
-# ---------------------------------------------------------------------------
-# Session endpoints
-# ---------------------------------------------------------------------------
-@app.post("/sessions", status_code=201)
-async def create_session(req: CreateSessionRequest):
-    working_dir = req.working_dir or DEFAULT_WORKING_DIR
-    metadata = await session_manager.create_session(working_dir)
-    return metadata
-
-
-@app.post("/sessions/{session_id}/messages")
-async def send_message(session_id: str, req: SendMessageRequest):
-    if not session_manager.has_session(session_id):
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    try:
-        return StreamingResponse(
-            session_manager.send_message(session_id, req.prompt),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-            },
-        )
-    except RuntimeError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
 
 
 @app.get("/sessions/{session_id}")

@@ -1,14 +1,13 @@
 [project]
-name = "rfp-agent"
+name = "rfp-session"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "Session container for RFP agent — one instance per user"
 requires-python = ">=3.12"
 dependencies = [
-    "azure-cosmos>=4.9.0",
     "azure-identity>=1.25.2",
     "fastapi>=0.133.0",
-    "httpx>=0.28.0",
+    "github-copilot-sdk>=0.1.25",
     "python-dotenv>=1.2.1",
+    "python-multipart>=0.0.20",
     "uvicorn[standard]>=0.41.0",
 ]

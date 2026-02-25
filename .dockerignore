@@ -1,0 +1,9 @@
+.venv/
+.git/
+.env
+frontend/
+session-container/
+workspace/
+infra/
+__pycache__/
+*.pyc
