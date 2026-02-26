@@ -78,6 +78,30 @@ class SessionManager:
             timeout=httpx.Timeout(connect=10, read=600, write=10, pool=10),
         )
         self._turn_indices: dict[str, int] = {}
+        self._cogservices_credential: DefaultAzureCredential | None = None
+        self._cogservices_token: str | None = None
+        self._cogservices_expires_on: float = 0
+
+    async def _get_cogservices_token(self) -> str | None:
+        """Get a Cognitive Services token to forward to session containers.
+
+        Returns None for local dev (http endpoints) — session containers
+        handle their own auth via AZURE_OPENAI_TOKEN env var.
+        """
+        import time
+
+        if not POOL_MANAGEMENT_ENDPOINT.startswith("https://"):
+            return None
+        if self._cogservices_token and time.time() < self._cogservices_expires_on - 60:
+            return self._cogservices_token
+        if self._cogservices_credential is None:
+            self._cogservices_credential = DefaultAzureCredential()
+        tok = await self._cogservices_credential.get_token(
+            "https://cognitiveservices.azure.com/.default"
+        )
+        self._cogservices_token = tok.token
+        self._cogservices_expires_on = tok.expires_on
+        return self._cogservices_token
 
     async def start(self):
         logger.info("SessionManager started (pool=%s)", POOL_MANAGEMENT_ENDPOINT)
@@ -85,6 +109,8 @@ class SessionManager:
     async def stop(self):
         await self._http.aclose()
         await self._auth.close()
+        if self._cogservices_credential:
+            await self._cogservices_credential.close()
         logger.info("SessionManager stopped")
 
     @property
@@ -163,9 +189,15 @@ class SessionManager:
         chat_url = self._pool_url("/chat", session_id)
         status_url = self._pool_url("/status", session_id)
 
+        # Get a Cognitive Services token to forward to the session container
+        cogservices_token = await self._get_cogservices_token()
+        chat_body = {"prompt": prompt}
+        if cogservices_token:
+            chat_body["token"] = cogservices_token
+
         # Fire off the blocking /chat request as a background task
         chat_task = asyncio.create_task(
-            self._http.post(chat_url, json={"prompt": prompt})
+            self._http.post(chat_url, json=chat_body)
         )
 
         # Poll /status and yield SSE events until /chat completes

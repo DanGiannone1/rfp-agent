@@ -32,12 +32,12 @@ _session: AgentSession | None = None
 _lock = asyncio.Lock()
 
 
-async def _get_session() -> AgentSession:
+async def _get_session(token: str | None = None) -> AgentSession:
     """Lazy-init the AgentSession on first request."""
     global _session
     if _session is None:
         _session = AgentSession(WORKSPACE)
-        await _session.__aenter__()
+        await _session.__aenter__(token=token)
         logger.info("AgentSession initialised (workspace=%s)", WORKSPACE)
     return _session
 
@@ -45,6 +45,7 @@ async def _get_session() -> AgentSession:
 # ── Request models ────────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     prompt: str
+    token: str | None = None
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
@@ -54,10 +55,14 @@ async def chat(req: ChatRequest):
     if _lock.locked():
         raise HTTPException(status_code=409, detail="Session is busy (concurrent turn)")
 
-    async with _lock:
-        session = await _get_session()
-        result = await session.send_and_collect(req.prompt)
-        return result
+    try:
+        async with _lock:
+            session = await _get_session(token=req.token)
+            result = await session.send_and_collect(req.prompt)
+            return result
+    except Exception as exc:
+        logger.exception("Chat failed")
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/status")

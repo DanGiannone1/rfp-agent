@@ -16,6 +16,8 @@ type Action =
   | { type: "USER_SEND"; content: string }
   | { type: "ASSISTANT_START" }
   | { type: "DELTA"; content: string }
+  | { type: "STATUS"; status: string }
+  | { type: "MESSAGE"; content: string }
   | { type: "TOOL_START"; tool: string }
   | { type: "TOOL_END"; tool: string }
   | { type: "DONE" }
@@ -77,6 +79,45 @@ function reducer(state: State, action: Action): State {
       const msgs = [...state.messages];
       const last = { ...msgs[msgs.length - 1] };
       last.content += action.content;
+      msgs[msgs.length - 1] = last;
+      return { ...state, messages: msgs };
+    }
+
+    case "STATUS": {
+      const msgs = [...state.messages];
+      const last = { ...msgs[msgs.length - 1] };
+      if (action.status.startsWith("tool:")) {
+        const tool = action.status.slice(5);
+        // Mark any previously running tools as done
+        const activity = last.toolActivity.map((ta) =>
+          ta.status === "running" ? { ...ta, status: "done" as const } : ta,
+        );
+        // Add the new tool as running (if not already tracked)
+        const alreadyTracked = activity.some(
+          (ta) => ta.tool === tool && ta.status === "running",
+        );
+        if (!alreadyTracked) {
+          activity.push({ tool, status: "running" });
+        }
+        last.toolActivity = activity;
+      } else {
+        // Non-tool status (e.g. "thinking", "idle") — mark all running tools as done
+        last.toolActivity = last.toolActivity.map((ta) =>
+          ta.status === "running" ? { ...ta, status: "done" as const } : ta,
+        );
+      }
+      msgs[msgs.length - 1] = last;
+      return { ...state, messages: msgs };
+    }
+
+    case "MESSAGE": {
+      const msgs = [...state.messages];
+      const last = { ...msgs[msgs.length - 1] };
+      last.content = action.content;
+      // Mark all remaining running tools as done
+      last.toolActivity = last.toolActivity.map((ta) =>
+        ta.status === "running" ? { ...ta, status: "done" as const } : ta,
+      );
       msgs[msgs.length - 1] = last;
       return { ...state, messages: msgs };
     }
@@ -253,6 +294,12 @@ export default function Chat() {
     switch (event.type) {
       case "delta":
         dispatch({ type: "DELTA", content: event.content });
+        break;
+      case "status":
+        dispatch({ type: "STATUS", status: event.status });
+        break;
+      case "message":
+        dispatch({ type: "MESSAGE", content: event.content });
         break;
       case "tool_start":
         dispatch({ type: "TOOL_START", tool: event.tool });

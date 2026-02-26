@@ -129,13 +129,13 @@ az containerapp sessionpool create \
     --registry-identity "$IDENTITY_ID" \
     --target-port 8080 \
     --cooldown-period 600 \
-    --max-concurrent-sessions 50 \
-    --ready-session-instances 2 \
+    --network-status EgressEnabled \
+    --max-sessions 50 \
+    --ready-sessions 2 \
+    --cpu 0.5 --memory 1Gi \
     --env-vars \
         "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
         "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
-    --managed-identity "$IDENTITY_ID" \
-    --managed-identity-lifecycle Main \
     -o none
 
 POOL_ENDPOINT=$(az containerapp sessionpool show \

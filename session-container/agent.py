@@ -62,11 +62,14 @@ class AgentSession:
         """Current activity: 'idle', 'thinking', 'tool:<name>', or 'error'."""
         return self._status
 
-    async def __aenter__(self):
-        credential = DefaultAzureCredential()
-        token = credential.get_token(
-            "https://cognitiveservices.azure.com/.default"
-        ).token
+    async def __aenter__(self, token: str | None = None):
+        if not token:
+            token = os.getenv("AZURE_OPENAI_TOKEN")
+        if not token:
+            credential = DefaultAzureCredential()
+            token = credential.get_token(
+                "https://cognitiveservices.azure.com/.default"
+            ).token
 
         self._client = CopilotClient(
             {"cli_args": ["--allow-all-tools", "--allow-all-paths"]}

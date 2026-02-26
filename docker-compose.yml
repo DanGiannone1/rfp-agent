@@ -6,6 +6,7 @@ services:
     environment:
       - AZURE_ENDPOINT
       - AZURE_DEPLOYMENT
+      - AZURE_OPENAI_TOKEN
       - WORKSPACE=/workspace
     volumes:
       - ./workspace:/workspace
