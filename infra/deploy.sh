@@ -266,9 +266,11 @@ az containerapp auth microsoft update \
     --yes \
     -o none
 
+# AllowAnonymous lets CORS preflight (OPTIONS) through; the app
+# enforces auth by checking X-MS-CLIENT-PRINCIPAL on real requests.
 az containerapp auth update \
     --name "$APP_NAME" --resource-group "$RG" \
-    --unauthenticated-client-action Return401 \
+    --unauthenticated-client-action AllowAnonymous \
     -o none
 
 # ── 13. Build & Push Frontend Image (first pass — no auth) ───────────────
