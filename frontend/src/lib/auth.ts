@@ -1,17 +1,18 @@
 import { PublicClientApplication, SilentRequest } from "@azure/msal-browser";
 
-const clientId = process.env.NEXT_PUBLIC_ENTRA_CLIENT_ID ?? "";
 const tenantId = process.env.NEXT_PUBLIC_ENTRA_TENANT_ID ?? "";
 const backendClientId = process.env.NEXT_PUBLIC_ENTRA_BACKEND_CLIENT_ID ?? "";
 const redirectUri = process.env.NEXT_PUBLIC_ENTRA_REDIRECT_URI ?? "";
 
 /** True when all MSAL env vars are configured. */
-export const authEnabled = !!(clientId && tenantId && backendClientId);
+export const authEnabled = !!(tenantId && backendClientId);
 
+// Use the backend app registration as the SPA client — single app reg,
+// no custom API scopes, no consent required.
 export const msalInstance: PublicClientApplication | null = authEnabled
   ? new PublicClientApplication({
       auth: {
-        clientId,
+        clientId: backendClientId,
         authority: `https://login.microsoftonline.com/${tenantId}`,
         redirectUri,
       },
@@ -20,7 +21,7 @@ export const msalInstance: PublicClientApplication | null = authEnabled
   : null;
 
 export const loginRequest = {
-  scopes: [`api://${backendClientId}/.default`],
+  scopes: ["openid", "profile"],
 };
 
 /**
@@ -43,7 +44,7 @@ export async function getAccessToken(): Promise<string | null> {
 
   try {
     const response = await msalInstance.acquireTokenSilent(request);
-    return response.accessToken;
+    return response.idToken;
   } catch {
     // Silent renewal failed — trigger interactive redirect
     await msalInstance.acquireTokenRedirect(loginRequest);

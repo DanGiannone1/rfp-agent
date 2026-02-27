@@ -271,13 +271,9 @@ az containerapp auth update \
     --unauthenticated-client-action Return401 \
     -o none
 
-# ── 13. Entra ID — Frontend App Registration (SPA) ──────────────────────
-echo ">>> Creating frontend Entra ID app registration..."
-
-# Deploy frontend first to get the URL, then create the app registration
-# (we need the URL for redirect URIs)
-
-# ── 14. Build & Push Frontend Image (first pass — no auth) ──────────────
+# ── 13. Build & Push Frontend Image (first pass — no auth) ───────────────
+# Deploy frontend first to get the URL, then add SPA redirect URIs
+# to the backend app registration (single app reg approach).
 echo ">>> Building frontend image..."
 az acr build \
     --registry "$ACR_NAME" \
@@ -287,7 +283,7 @@ az acr build \
     frontend/ \
     -o none
 
-# ── 15. Deploy Frontend as Container App ────────────────────────────────
+# ── 14. Deploy Frontend as Container App ────────────────────────────────
 echo ">>> Deploying frontend container app..."
 FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:latest"
 
@@ -312,17 +308,13 @@ FRONTEND_URL=$(az containerapp show \
 
 echo "    Frontend URL: https://$FRONTEND_URL"
 
-# Now create the SPA app registration with the real frontend URL
-FRONTEND_APP_ID=$(az ad app create \
-    --display-name "${PREFIX}-frontend" \
-    --sign-in-audience AzureADMyOrg \
-    --enable-id-token-issuance true \
-    --query appId -o tsv)
-
-# Configure SPA redirect URIs via REST API (az ad app create --web-redirect-uris
-# sets web platform, not SPA platform)
+# ── 15. Add SPA redirect URIs to backend app registration ─────────────
+# Single app reg: the frontend uses the backend app ID as its MSAL client.
+# Only openid/profile scopes are requested — always pre-consented, no admin
+# consent required even in locked-down tenants.
+echo ">>> Adding SPA redirect URIs to backend app registration..."
 az rest --method PATCH \
-    --uri "https://graph.microsoft.com/v1.0/applications/$(az ad app show --id "$FRONTEND_APP_ID" --query id -o tsv)" \
+    --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJECT_ID" \
     --headers "Content-Type=application/json" \
     --body "{
         \"spa\": {
@@ -334,15 +326,6 @@ az rest --method PATCH \
     }" \
     -o none
 
-# Grant the frontend app permission to call the backend API
-az ad app permission add \
-    --id "$FRONTEND_APP_ID" \
-    --api "$BACKEND_APP_ID" \
-    --api-permissions "$SCOPE_ID=Scope" \
-    -o none
-
-echo "    Frontend App ID: $FRONTEND_APP_ID"
-
 # ── 16. Rebuild Frontend with Auth Config ────────────────────────────────
 echo ">>> Rebuilding frontend with Entra ID config..."
 az acr build \
@@ -350,7 +333,6 @@ az acr build \
     --image "rfp-frontend:latest" \
     --file frontend/Dockerfile \
     --build-arg "NEXT_PUBLIC_API_URL=https://$APP_URL" \
-    --build-arg "NEXT_PUBLIC_ENTRA_CLIENT_ID=$FRONTEND_APP_ID" \
     --build-arg "NEXT_PUBLIC_ENTRA_TENANT_ID=$TENANT_ID" \
     --build-arg "NEXT_PUBLIC_ENTRA_BACKEND_CLIENT_ID=$BACKEND_APP_ID" \
     --build-arg "NEXT_PUBLIC_ENTRA_REDIRECT_URI=https://$FRONTEND_URL" \
@@ -364,7 +346,7 @@ az containerapp update \
     --image "$FRONTEND_IMAGE" \
     -o none
 
-# ── 17. Update orchestrator CORS with frontend URL ──────────────────────
+# ── 17. Update orchestrator CORS with frontend URL ─────────────────────
 echo ">>> Updating orchestrator CORS..."
 az containerapp update \
     --name "$APP_NAME" \
@@ -382,7 +364,6 @@ echo "Pool Management Endpoint: $POOL_ENDPOINT"
 echo "Managed Identity:         $IDENTITY_CLIENT_ID"
 echo ""
 echo "Entra ID (auth):"
-echo "  Backend App ID:         $BACKEND_APP_ID"
-echo "  Frontend App ID:        $FRONTEND_APP_ID"
+echo "  App Registration:       $BACKEND_APP_ID (single app reg, SPA + Easy Auth)"
 echo "  Tenant ID:              $TENANT_ID"
 echo ""
