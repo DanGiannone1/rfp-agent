@@ -210,9 +210,11 @@ BACKEND_APP_ID=$(az ad app create \
 # Create service principal (idempotent — ignores "already exists" errors)
 az ad sp create --id "$BACKEND_APP_ID" 2>/dev/null || true
 
+END_DATE=$(date -u -d "+29 days" '+%Y-%m-%dT%H:%M:%SZ')  # tenant policy caps at 30 days
 BACKEND_SECRET=$(az ad app credential reset \
     --id "$BACKEND_APP_ID" \
     --display-name "easy-auth" \
+    --end-date "$END_DATE" \
     --query password -o tsv)
 
 echo "    Backend App ID: $BACKEND_APP_ID"
@@ -222,26 +224,37 @@ echo ">>> Configuring backend API scope..."
 az ad app update --id "$BACKEND_APP_ID" \
     --identifier-uris "api://$BACKEND_APP_ID"
 
-# Add oauth2PermissionScopes via MS Graph REST API
-SCOPE_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
-az rest --method PATCH \
-    --uri "https://graph.microsoft.com/v1.0/applications/$(az ad app show --id "$BACKEND_APP_ID" --query id -o tsv)" \
-    --headers "Content-Type=application/json" \
-    --body "{
-        \"api\": {
-            \"oauth2PermissionScopes\": [{
-                \"adminConsentDescription\": \"Allow the app to access the RFP Agent API on behalf of the signed-in user\",
-                \"adminConsentDisplayName\": \"Access RFP Agent\",
-                \"id\": \"$SCOPE_ID\",
-                \"isEnabled\": true,
-                \"type\": \"User\",
-                \"userConsentDescription\": \"Allow the app to access the RFP Agent API on your behalf\",
-                \"userConsentDisplayName\": \"Access RFP Agent\",
-                \"value\": \"user_impersonation\"
-            }]
-        }
-    }" \
-    -o none
+# Add oauth2PermissionScopes via MS Graph REST API (idempotent — skip if scope exists)
+APP_OBJECT_ID=$(az ad app show --id "$BACKEND_APP_ID" --query id -o tsv)
+EXISTING_SCOPE=$(az rest --method GET \
+    --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJECT_ID" \
+    --query "api.oauth2PermissionScopes[?value=='user_impersonation'].id" -o tsv)
+
+if [ -z "$EXISTING_SCOPE" ]; then
+    SCOPE_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+    az rest --method PATCH \
+        --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJECT_ID" \
+        --headers "Content-Type=application/json" \
+        --body "{
+            \"api\": {
+                \"oauth2PermissionScopes\": [{
+                    \"adminConsentDescription\": \"Allow the app to access the RFP Agent API on behalf of the signed-in user\",
+                    \"adminConsentDisplayName\": \"Access RFP Agent\",
+                    \"id\": \"$SCOPE_ID\",
+                    \"isEnabled\": true,
+                    \"type\": \"User\",
+                    \"userConsentDescription\": \"Allow the app to access the RFP Agent API on your behalf\",
+                    \"userConsentDisplayName\": \"Access RFP Agent\",
+                    \"value\": \"user_impersonation\"
+                }]
+            }
+        }" \
+        -o none
+    SCOPE_ID="$SCOPE_ID"
+else
+    echo "    Scope already exists, skipping."
+    SCOPE_ID="$EXISTING_SCOPE"
+fi
 
 # ── 12. Entra ID — Enable Easy Auth on Orchestrator ─────────────────────
 echo ">>> Enabling Easy Auth on orchestrator..."
@@ -249,7 +262,6 @@ az containerapp auth microsoft update \
     --name "$APP_NAME" --resource-group "$RG" \
     --client-id "$BACKEND_APP_ID" \
     --client-secret "$BACKEND_SECRET" \
-    --tenant-id "$TENANT_ID" \
     --issuer "https://login.microsoftonline.com/$TENANT_ID/v2.0" \
     --yes \
     -o none
