@@ -21,6 +21,7 @@ ACR_NAME="${PREFIX}acr"
 ENV_NAME="${PREFIX}-env"
 SESSION_POOL_NAME="${PREFIX}-sessions"
 APP_NAME="${PREFIX}-app"
+FRONTEND_NAME="${PREFIX}-frontend"
 
 AZURE_DEPLOYMENT="${AZURE_DEPLOYMENT:-gpt-5-codex}"
 COSMOS_ENDPOINT="${COSMOS_ENDPOINT:-}"
@@ -197,17 +198,179 @@ APP_URL=$(az containerapp show \
 
 echo "    App URL: https://$APP_URL"
 
-# ── 11. Summary ──────────────────────────────────────────────────────────
+# ── 11. Entra ID — Backend App Registration ─────────────────────────────
+echo ">>> Creating backend Entra ID app registration..."
+TENANT_ID=$(az account show --query tenantId -o tsv)
+
+BACKEND_APP_ID=$(az ad app create \
+    --display-name "${PREFIX}-orchestrator" \
+    --sign-in-audience AzureADMyOrg \
+    --query appId -o tsv)
+
+# Create service principal (idempotent — ignores "already exists" errors)
+az ad sp create --id "$BACKEND_APP_ID" 2>/dev/null || true
+
+BACKEND_SECRET=$(az ad app credential reset \
+    --id "$BACKEND_APP_ID" \
+    --display-name "easy-auth" \
+    --query password -o tsv)
+
+echo "    Backend App ID: $BACKEND_APP_ID"
+
+# Expose an API scope (Application ID URI + user_impersonation)
+echo ">>> Configuring backend API scope..."
+az ad app update --id "$BACKEND_APP_ID" \
+    --identifier-uris "api://$BACKEND_APP_ID"
+
+# Add oauth2PermissionScopes via MS Graph REST API
+SCOPE_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+az rest --method PATCH \
+    --uri "https://graph.microsoft.com/v1.0/applications/$(az ad app show --id "$BACKEND_APP_ID" --query id -o tsv)" \
+    --headers "Content-Type=application/json" \
+    --body "{
+        \"api\": {
+            \"oauth2PermissionScopes\": [{
+                \"adminConsentDescription\": \"Allow the app to access the RFP Agent API on behalf of the signed-in user\",
+                \"adminConsentDisplayName\": \"Access RFP Agent\",
+                \"id\": \"$SCOPE_ID\",
+                \"isEnabled\": true,
+                \"type\": \"User\",
+                \"userConsentDescription\": \"Allow the app to access the RFP Agent API on your behalf\",
+                \"userConsentDisplayName\": \"Access RFP Agent\",
+                \"value\": \"user_impersonation\"
+            }]
+        }
+    }" \
+    -o none
+
+# ── 12. Entra ID — Enable Easy Auth on Orchestrator ─────────────────────
+echo ">>> Enabling Easy Auth on orchestrator..."
+az containerapp auth microsoft update \
+    --name "$APP_NAME" --resource-group "$RG" \
+    --client-id "$BACKEND_APP_ID" \
+    --client-secret "$BACKEND_SECRET" \
+    --tenant-id "$TENANT_ID" \
+    --issuer "https://login.microsoftonline.com/$TENANT_ID/v2.0" \
+    --yes \
+    -o none
+
+az containerapp auth update \
+    --name "$APP_NAME" --resource-group "$RG" \
+    --unauthenticated-client-action Return401 \
+    -o none
+
+# ── 13. Entra ID — Frontend App Registration (SPA) ──────────────────────
+echo ">>> Creating frontend Entra ID app registration..."
+
+# Deploy frontend first to get the URL, then create the app registration
+# (we need the URL for redirect URIs)
+
+# ── 14. Build & Push Frontend Image (first pass — no auth) ──────────────
+echo ">>> Building frontend image..."
+az acr build \
+    --registry "$ACR_NAME" \
+    --image "rfp-frontend:latest" \
+    --file frontend/Dockerfile \
+    --build-arg "NEXT_PUBLIC_API_URL=https://$APP_URL" \
+    frontend/ \
+    -o none
+
+# ── 15. Deploy Frontend as Container App ────────────────────────────────
+echo ">>> Deploying frontend container app..."
+FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:latest"
+
+az containerapp create \
+    --name "$FRONTEND_NAME" \
+    --resource-group "$RG" \
+    --environment "$ENV_NAME" \
+    --image "$FRONTEND_IMAGE" \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-identity "$IDENTITY_ID" \
+    --target-port 3000 \
+    --ingress external \
+    --min-replicas 1 \
+    --max-replicas 3 \
+    --cpu 0.25 --memory 0.5Gi \
+    -o none
+
+FRONTEND_URL=$(az containerapp show \
+    --name "$FRONTEND_NAME" \
+    --resource-group "$RG" \
+    --query "properties.configuration.ingress.fqdn" -o tsv)
+
+echo "    Frontend URL: https://$FRONTEND_URL"
+
+# Now create the SPA app registration with the real frontend URL
+FRONTEND_APP_ID=$(az ad app create \
+    --display-name "${PREFIX}-frontend" \
+    --sign-in-audience AzureADMyOrg \
+    --enable-id-token-issuance true \
+    --query appId -o tsv)
+
+# Configure SPA redirect URIs via REST API (az ad app create --web-redirect-uris
+# sets web platform, not SPA platform)
+az rest --method PATCH \
+    --uri "https://graph.microsoft.com/v1.0/applications/$(az ad app show --id "$FRONTEND_APP_ID" --query id -o tsv)" \
+    --headers "Content-Type=application/json" \
+    --body "{
+        \"spa\": {
+            \"redirectUris\": [
+                \"https://$FRONTEND_URL\",
+                \"http://localhost:3000\"
+            ]
+        }
+    }" \
+    -o none
+
+# Grant the frontend app permission to call the backend API
+az ad app permission add \
+    --id "$FRONTEND_APP_ID" \
+    --api "$BACKEND_APP_ID" \
+    --api-permissions "$SCOPE_ID=Scope" \
+    -o none
+
+echo "    Frontend App ID: $FRONTEND_APP_ID"
+
+# ── 16. Rebuild Frontend with Auth Config ────────────────────────────────
+echo ">>> Rebuilding frontend with Entra ID config..."
+az acr build \
+    --registry "$ACR_NAME" \
+    --image "rfp-frontend:latest" \
+    --file frontend/Dockerfile \
+    --build-arg "NEXT_PUBLIC_API_URL=https://$APP_URL" \
+    --build-arg "NEXT_PUBLIC_ENTRA_CLIENT_ID=$FRONTEND_APP_ID" \
+    --build-arg "NEXT_PUBLIC_ENTRA_TENANT_ID=$TENANT_ID" \
+    --build-arg "NEXT_PUBLIC_ENTRA_BACKEND_CLIENT_ID=$BACKEND_APP_ID" \
+    --build-arg "NEXT_PUBLIC_ENTRA_REDIRECT_URI=https://$FRONTEND_URL" \
+    frontend/ \
+    -o none
+
+# Update the frontend container app with the new image
+az containerapp update \
+    --name "$FRONTEND_NAME" \
+    --resource-group "$RG" \
+    --image "$FRONTEND_IMAGE" \
+    -o none
+
+# ── 17. Update orchestrator CORS with frontend URL ──────────────────────
+echo ">>> Updating orchestrator CORS..."
+az containerapp update \
+    --name "$APP_NAME" \
+    --resource-group "$RG" \
+    --set-env-vars "FRONTEND_URL=https://$FRONTEND_URL" \
+    -o none
+
+# ── 18. Summary ──────────────────────────────────────────────────────────
 echo ""
 echo "=== Deployment Complete ==="
 echo ""
-echo "Pool Management Endpoint: $POOL_ENDPOINT"
+echo "Frontend URL:             https://$FRONTEND_URL"
 echo "Orchestrator URL:         https://$APP_URL"
+echo "Pool Management Endpoint: $POOL_ENDPOINT"
 echo "Managed Identity:         $IDENTITY_CLIENT_ID"
 echo ""
-echo "Next steps:"
-echo "  1. Deploy the frontend with NEXT_PUBLIC_API_URL=https://$APP_URL"
-echo "  2. Update the orchestrator with FRONTEND_URL for CORS:"
-echo "     az containerapp update --name $APP_NAME --resource-group $RG \\"
-echo "       --set-env-vars FRONTEND_URL=https://your-frontend-url"
+echo "Entra ID (auth):"
+echo "  Backend App ID:         $BACKEND_APP_ID"
+echo "  Frontend App ID:        $FRONTEND_APP_ID"
+echo "  Tenant ID:              $TENANT_ID"
 echo ""

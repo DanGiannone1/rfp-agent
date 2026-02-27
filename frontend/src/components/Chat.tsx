@@ -1,7 +1,9 @@
 "use client";
 
 import { useReducer, useRef, useCallback, useEffect } from "react";
+import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { ChatMessage, SSEEvent } from "@/lib/types";
+import { authEnabled, loginRequest } from "@/lib/auth";
 import { streamSSE } from "@/lib/sse";
 import { createSession, getSession } from "@/lib/api";
 import {
@@ -179,6 +181,8 @@ const initialState: State = {
 export default function Chat() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const abortRef = useRef<AbortController | null>(null);
+  const isAuthenticated = useIsAuthenticated();
+  const { instance } = useMsal();
 
   // Initialise or restore session on mount
   useEffect(() => {
@@ -314,6 +318,37 @@ export default function Chat() {
         dispatch({ type: "ERROR", message: event.message });
         break;
     }
+  }
+
+  // Gate: require login when Entra ID auth is configured
+  if (authEnabled && !isAuthenticated) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-6 bg-background text-foreground">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient shadow-lg shadow-indigo-500/20">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white"
+          >
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-semibold">RFP Agent</h1>
+        <p className="text-sm text-zinc-500">Sign in to start your analysis</p>
+        <button
+          onClick={() => instance.loginRedirect(loginRequest)}
+          className="accent-gradient rounded-full px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110"
+        >
+          Sign in with Microsoft
+        </button>
+      </div>
+    );
   }
 
   return (

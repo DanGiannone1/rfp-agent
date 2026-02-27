@@ -212,3 +212,4 @@ workspace/
 # Frontend
 frontend/node_modules/
 frontend/.next/
+!frontend/src/lib/
