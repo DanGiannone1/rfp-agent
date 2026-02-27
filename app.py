@@ -3,11 +3,10 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from session_manager import SessionManager
 
@@ -67,24 +66,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-# Auth middleware: Easy Auth is set to AllowAnonymous so CORS preflight
-# (OPTIONS) passes through.  It still validates Bearer tokens and injects
-# X-MS-CLIENT-PRINCIPAL when a valid token is present.  We enforce auth
-# here for all non-health, non-OPTIONS requests.
-class RequireAuthMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        if request.method == "OPTIONS" or request.url.path == "/health":
-            return await call_next(request)
-        if not request.headers.get("x-ms-client-principal"):
-            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
-        return await call_next(request)
-
-
-# Only enforce when running in Azure (Easy Auth injects the header)
-if os.getenv("AZURE_CLIENT_ID"):
-    app.add_middleware(RequireAuthMiddleware)
 
 
 # ---------------------------------------------------------------------------
