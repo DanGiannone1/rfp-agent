@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -53,7 +53,6 @@ app = FastAPI(title="RFP Agent", lifespan=lifespan)
 # CORS: allow localhost for dev, plus configurable FRONTEND_URL for production
 cors_origins = [
     "http://localhost:3000",
-    "http://frontend:3000",
 ]
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
@@ -120,6 +119,17 @@ async def delete_session(session_id: str):
         await session_manager.delete_session(session_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Session not found")
+
+
+@app.post("/sessions/{session_id}/upload")
+async def upload_file(session_id: str, file: UploadFile):
+    try:
+        await session_manager.validate_session(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    result = await session_manager.upload_file(session_id, file)
+    return result
 
 
 # ---------------------------------------------------------------------------

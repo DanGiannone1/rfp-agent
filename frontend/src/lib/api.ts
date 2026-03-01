@@ -57,3 +57,21 @@ export async function deleteSession(sessionId: string): Promise<void> {
   if (!res.ok && res.status !== 404)
     throw new Error(`Failed to delete session: ${res.status}`);
 }
+
+export async function uploadFile(
+  sessionId: string,
+  file: File,
+): Promise<{ path: string; filename: string; size: number }> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/upload`, {
+    method: "POST",
+    headers: await authHeaders(),
+    body: form,
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Upload failed (${res.status}): ${detail}`);
+  }
+  return res.json();
+}

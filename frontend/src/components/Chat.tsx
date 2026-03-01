@@ -5,7 +5,7 @@ import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { ChatMessage, SSEEvent } from "@/lib/types";
 import { authEnabled, loginRequest } from "@/lib/auth";
 import { streamSSE } from "@/lib/sse";
-import { createSession, getSession } from "@/lib/api";
+import { createSession, getSession, uploadFile } from "@/lib/api";
 import {
   getStoredSessionId,
   storeSessionId,
@@ -26,7 +26,8 @@ type Action =
   | { type: "ERROR"; message: string }
   | { type: "LOAD_HISTORY"; messages: ChatMessage[] }
   | { type: "SET_SESSION_ID"; sessionId: string }
-  | { type: "SET_INITIALIZING"; value: boolean };
+  | { type: "SET_INITIALIZING"; value: boolean }
+  | { type: "FILE_UPLOADED"; filename: string };
 
 interface State {
   messages: ChatMessage[];
@@ -166,6 +167,21 @@ function reducer(state: State, action: Action): State {
       return { ...state, messages: msgs, isStreaming: false };
     }
 
+    case "FILE_UPLOADED":
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            id: crypto.randomUUID(),
+            role: "user",
+            content: `Uploaded: **${action.filename}**`,
+            isStreaming: false,
+            toolActivity: [],
+          },
+        ],
+      };
+
     default:
       return state;
   }
@@ -294,6 +310,22 @@ export default function Chat() {
     [state.sessionId],
   );
 
+  const handleUpload = useCallback(
+    async (file: File) => {
+      if (!state.sessionId) return;
+      try {
+        const result = await uploadFile(state.sessionId, file);
+        dispatch({ type: "FILE_UPLOADED", filename: result.filename });
+      } catch (err) {
+        dispatch({
+          type: "ERROR",
+          message: err instanceof Error ? err.message : "Upload failed",
+        });
+      }
+    },
+    [state.sessionId],
+  );
+
   function handleSSEEvent(event: SSEEvent) {
     switch (event.type) {
       case "delta":
@@ -375,6 +407,7 @@ export default function Chat() {
             <p className="text-xs text-zinc-500">AI-powered analysis</p>
           </div>
           <button
+            data-testid="new-chat-button"
             onClick={handleNewChat}
             disabled={state.isStreaming || state.isInitializing}
             className="rounded-lg border border-border-subtle px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200 disabled:pointer-events-none disabled:opacity-40"
@@ -384,13 +417,13 @@ export default function Chat() {
         </div>
       </header>
       {state.isInitializing ? (
-        <div className="flex flex-1 items-center justify-center">
+        <div data-testid="initializing" className="flex flex-1 items-center justify-center">
           <p className="text-sm text-zinc-500">Starting session...</p>
         </div>
       ) : (
         <>
           <MessageList messages={state.messages} />
-          <InputBar onSend={handleSend} disabled={state.isStreaming} />
+          <InputBar onSend={handleSend} onUpload={handleUpload} disabled={state.isStreaming} />
         </>
       )}
     </div>

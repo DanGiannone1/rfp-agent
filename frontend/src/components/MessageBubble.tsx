@@ -9,6 +9,10 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const isThinking =
+    message.isStreaming &&
+    message.content === "" &&
+    message.toolActivity.length === 0;
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -26,18 +30,28 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             ))}
           </div>
         )}
-        <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-2">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {message.content}
-          </ReactMarkdown>
-          {message.isStreaming && (
-            <span className="inline-flex items-center gap-1 ml-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce-dot" />
-              <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce-dot [animation-delay:0.2s]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce-dot [animation-delay:0.4s]" />
+        {isThinking ? (
+          <div className="flex items-center gap-2 text-zinc-400">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-500" />
             </span>
-          )}
-        </div>
+            <span className="text-sm animate-pulse">Thinking...</span>
+          </div>
+        ) : (
+          <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-2">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+            {message.isStreaming && message.content !== "" && (
+              <span className="inline-flex items-center gap-1 ml-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce-dot" />
+                <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce-dot [animation-delay:0.2s]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce-dot [animation-delay:0.4s]" />
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

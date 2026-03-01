@@ -73,14 +73,54 @@ async def get_status():
     return {"status": _session.status}
 
 
+UPLOAD_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".txt", ".csv", ".json", ".xml",
+    ".md", ".xlsx", ".pptx", ".xls", ".rtf", ".html", ".htm",
+}
+
+
 @app.post("/upload")
 async def upload(file: UploadFile):
     """Save an uploaded file to the workspace directory."""
+    from pathlib import PurePosixPath
+
+    # Sanitize filename — strip path components
+    raw_name = file.filename or "upload"
+    safe_name = PurePosixPath(raw_name).name
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    # Extension allowlist
+    ext = os.path.splitext(safe_name)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type '{ext}' not allowed",
+        )
+
     os.makedirs(WORKSPACE, exist_ok=True)
-    dest = os.path.join(WORKSPACE, file.filename)
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-    return {"path": dest}
+    dest = os.path.join(WORKSPACE, safe_name)
+
+    # Verify resolved path is under WORKSPACE (prevent traversal)
+    real_dest = os.path.realpath(dest)
+    real_workspace = os.path.realpath(WORKSPACE)
+    if not real_dest.startswith(real_workspace + os.sep) and real_dest != real_workspace:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    # Stream file with size limit
+    bytes_written = 0
+    with open(real_dest, "wb") as f:
+        while chunk := await file.read(8192):
+            bytes_written += len(chunk)
+            if bytes_written > UPLOAD_MAX_BYTES:
+                f.close()
+                os.remove(real_dest)
+                raise HTTPException(status_code=413, detail="File too large (50 MB limit)")
+            f.write(chunk)
+
+    logger.info("Uploaded %s (%d bytes)", safe_name, bytes_written)
+    return {"path": real_dest, "filename": safe_name, "size": bytes_written}
 
 
 @app.get("/health")

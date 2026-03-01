@@ -171,80 +171,98 @@ class SessionManager:
         StreamingResponse. SSE only flows orchestrator → frontend; the
         session container is called with plain HTTP request/response.
         """
-        self._turn_indices[session_id] = self._turn_indices.get(session_id, 0) + 1
-        turn = self._turn_indices[session_id]
-        now = datetime.now(timezone.utc)
-
-        # Persist user message
-        if self._cosmos:
-            await self._cosmos.add_message({
-                "session_id": session_id,
-                "role": "user",
-                "content": prompt,
-                "tool_activity": [],
-                "timestamp": now.isoformat(),
-                "turn_index": turn,
-            })
-
-        chat_url = self._pool_url("/chat", session_id)
-        status_url = self._pool_url("/status", session_id)
-
-        # Get a Cognitive Services token to forward to the session container
-        cogservices_token = await self._get_cogservices_token()
-        chat_body = {"prompt": prompt}
-        if cogservices_token:
-            chat_body["token"] = cogservices_token
-
-        # Fire off the blocking /chat request as a background task
-        chat_task = asyncio.create_task(
-            self._http.post(chat_url, json=chat_body)
-        )
-
-        # Poll /status and yield SSE events until /chat completes
-        last_status = None
-        while not chat_task.done():
-            await asyncio.sleep(STATUS_POLL_INTERVAL)
-            try:
-                status_resp = await self._http.get(
-                    status_url,
-                    timeout=httpx.Timeout(connect=5, read=5, write=5, pool=5),
-                )
-                if status_resp.status_code == 200:
-                    current = status_resp.json().get("status", "idle")
-                    if current != last_status:
-                        last_status = current
-                        yield _sse_event({"type": "status", "status": current})
-            except httpx.HTTPError:
-                pass  # status poll failure is non-fatal
-
-        # Get the result from /chat
-        chat_resp = chat_task.result()
-        if chat_resp.status_code == 409:
-            yield _sse_event({"type": "error", "message": "Session is busy"})
-            yield _sse_event({"type": "done"})
-            return
-
-        chat_resp.raise_for_status()
-        result = chat_resp.json()
-
-        yield _sse_event({
-            "type": "message",
-            "content": result.get("content", ""),
-        })
-        yield _sse_event({"type": "done"})
-
-        # Persist assistant message
-        if self._cosmos:
+        try:
+            self._turn_indices[session_id] = self._turn_indices.get(session_id, 0) + 1
+            turn = self._turn_indices[session_id]
             now = datetime.now(timezone.utc)
-            await self._cosmos.add_message({
-                "session_id": session_id,
-                "role": "assistant",
+
+            # Persist user message
+            if self._cosmos:
+                await self._cosmos.add_message({
+                    "session_id": session_id,
+                    "role": "user",
+                    "content": prompt,
+                    "tool_activity": [],
+                    "timestamp": now.isoformat(),
+                    "turn_index": turn,
+                })
+
+            chat_url = self._pool_url("/chat", session_id)
+            status_url = self._pool_url("/status", session_id)
+
+            # Get a Cognitive Services token to forward to the session container
+            cogservices_token = await self._get_cogservices_token()
+            chat_body = {"prompt": prompt}
+            if cogservices_token:
+                chat_body["token"] = cogservices_token
+
+            # Fire off the blocking /chat request as a background task
+            chat_task = asyncio.create_task(
+                self._http.post(chat_url, json=chat_body)
+            )
+
+            # Poll /status and yield SSE events until /chat completes
+            last_status = None
+            while not chat_task.done():
+                try:
+                    status_resp = await self._http.get(
+                        status_url,
+                        timeout=httpx.Timeout(connect=5, read=5, write=5, pool=5),
+                    )
+                    if status_resp.status_code == 200:
+                        try:
+                            current = status_resp.json().get("status", "idle")
+                        except (ValueError, KeyError):
+                            current = None
+                        if current and current != last_status:
+                            last_status = current
+                            yield _sse_event({"type": "status", "status": current})
+                except httpx.HTTPError:
+                    pass  # status poll failure is non-fatal
+                await asyncio.sleep(STATUS_POLL_INTERVAL)
+
+            # Get the result from /chat
+            chat_resp = chat_task.result()
+            if chat_resp.status_code == 409:
+                yield _sse_event({"type": "error", "message": "Session is busy"})
+                yield _sse_event({"type": "done"})
+                return
+
+            chat_resp.raise_for_status()
+            result = chat_resp.json()
+
+            yield _sse_event({
+                "type": "message",
                 "content": result.get("content", ""),
-                "tool_activity": result.get("tool_activity", []),
-                "timestamp": now.isoformat(),
-                "turn_index": turn,
             })
-            await self._cosmos.update_session_activity(session_id, now)
+            yield _sse_event({"type": "done"})
+
+            # Persist assistant message
+            if self._cosmos:
+                now = datetime.now(timezone.utc)
+                await self._cosmos.add_message({
+                    "session_id": session_id,
+                    "role": "assistant",
+                    "content": result.get("content", ""),
+                    "tool_activity": result.get("tool_activity", []),
+                    "timestamp": now.isoformat(),
+                    "turn_index": turn,
+                })
+                await self._cosmos.update_session_activity(session_id, now)
+
+        except Exception:
+            logger.exception("send_message failed for session %s", session_id)
+            yield _sse_event({"type": "error", "message": "Internal server error"})
+            yield _sse_event({"type": "done"})
+
+    async def upload_file(self, session_id: str, upload_file) -> dict:
+        """Proxy a file upload to the session container's /upload endpoint."""
+        url = self._pool_url("/upload", session_id)
+        content = await upload_file.read()
+        files = {"file": (upload_file.filename, content, upload_file.content_type)}
+        resp = await self._http.post(url, files=files)
+        resp.raise_for_status()
+        return resp.json()
 
     async def get_session(self, session_id: str) -> dict:
         """Return session metadata + message history from Cosmos."""
