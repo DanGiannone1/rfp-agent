@@ -271,16 +271,6 @@ az containerapp auth update \
     --unauthenticated-client-action Return401 \
     -o none
 
-# CORS at the ingress level runs before Easy Auth, so preflight (OPTIONS)
-# passes through without a token.
-az containerapp ingress cors enable \
-    --name "$APP_NAME" --resource-group "$RG" \
-    --allowed-origins "https://$FRONTEND_URL" "http://localhost:3000" \
-    --allowed-methods "*" \
-    --allowed-headers "Authorization" "Content-Type" \
-    --allow-credentials true \
-    -o none
-
 # ── 13. Build & Push Frontend Image (first pass — no auth) ───────────────
 # Deploy frontend first to get the URL, then add SPA redirect URIs
 # to the backend app registration (single app reg approach).
@@ -362,6 +352,17 @@ az containerapp update \
     --name "$APP_NAME" \
     --resource-group "$RG" \
     --set-env-vars "FRONTEND_URL=https://$FRONTEND_URL" \
+    -o none
+
+# CORS at the ingress level runs before Easy Auth, so preflight (OPTIONS)
+# passes through without a token.
+echo ">>> Enabling ingress CORS..."
+az containerapp ingress cors enable \
+    --name "$APP_NAME" --resource-group "$RG" \
+    --allowed-origins "https://$FRONTEND_URL" "http://localhost:3000" \
+    --allowed-methods "*" \
+    --allowed-headers "Authorization" "Content-Type" \
+    --allow-credentials true \
     -o none
 
 # ── 18. Summary ──────────────────────────────────────────────────────────
