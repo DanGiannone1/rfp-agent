@@ -11,10 +11,12 @@ import json
 import logging
 import os
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
 import httpx
 from azure.identity.aio import DefaultAzureCredential
+from fastapi import UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +43,7 @@ class _SessionPoolAuth(httpx.Auth):
     def _needs_token(self) -> bool:
         return POOL_MANAGEMENT_ENDPOINT.startswith("https://")
 
-    async def _refresh(self):
+    async def _refresh(self) -> None:
         import time
 
         if not self._needs_token():
@@ -62,7 +64,7 @@ class _SessionPoolAuth(httpx.Auth):
             request.headers["Authorization"] = f"Bearer {self._token}"
         yield request
 
-    async def close(self):
+    async def close(self) -> None:
         if self._credential:
             await self._credential.close()
 
@@ -70,8 +72,9 @@ class _SessionPoolAuth(httpx.Auth):
 class SessionManager:
     """Proxies session lifecycle to ACA dynamic session containers."""
 
-    def __init__(self, cosmos_store=None):
+    def __init__(self, cosmos_store=None, content_processor=None):
         self._cosmos = cosmos_store
+        self._content_processor = content_processor
         self._auth = _SessionPoolAuth()
         self._http = httpx.AsyncClient(
             auth=self._auth,
@@ -103,10 +106,10 @@ class SessionManager:
         self._cogservices_expires_on = tok.expires_on
         return self._cogservices_token
 
-    async def start(self):
+    async def start(self) -> None:
         logger.info("SessionManager started (pool=%s)", POOL_MANAGEMENT_ENDPOINT)
 
-    async def stop(self):
+    async def stop(self) -> None:
         await self._http.aclose()
         await self._auth.close()
         if self._cogservices_credential:
@@ -145,7 +148,7 @@ class SessionManager:
         logger.info("Created session %s", session_id)
         return metadata
 
-    async def validate_session(self, session_id: str):
+    async def validate_session(self, session_id: str) -> None:
         """Ensure session exists and recover turn index from Cosmos if needed.
 
         Call this eagerly (before constructing StreamingResponse) so that
@@ -164,7 +167,7 @@ class SessionManager:
                 return
         raise KeyError(session_id)
 
-    async def send_message(self, session_id: str, prompt: str):
+    async def send_message(self, session_id: str, prompt: str) -> AsyncGenerator[str, None]:
         """Send a message, poll for status, yield SSE events to the frontend.
 
         This is an async generator that the FastAPI endpoint wraps in a
@@ -228,7 +231,19 @@ class SessionManager:
                 yield _sse_event({"type": "done"})
                 return
 
-            chat_resp.raise_for_status()
+            if chat_resp.status_code >= 400:
+                try:
+                    detail = chat_resp.json().get("detail", chat_resp.text)
+                except Exception:
+                    detail = chat_resp.text
+                logger.error(
+                    "Session container returned %s for %s: %s",
+                    chat_resp.status_code, session_id, detail,
+                )
+                yield _sse_event({"type": "error", "message": f"Session error: {detail}"})
+                yield _sse_event({"type": "done"})
+                return
+
             result = chat_resp.json()
 
             yield _sse_event({
@@ -255,14 +270,33 @@ class SessionManager:
             yield _sse_event({"type": "error", "message": "Internal server error"})
             yield _sse_event({"type": "done"})
 
-    async def upload_file(self, session_id: str, upload_file) -> dict:
+    async def upload_file(self, session_id: str, upload_file: UploadFile) -> dict:
         """Proxy a file upload to the session container's /upload endpoint."""
         url = self._pool_url("/upload", session_id)
         content = await upload_file.read()
-        files = {"file": (upload_file.filename, content, upload_file.content_type)}
+        filename = upload_file.filename
+        content_type = upload_file.content_type or "application/octet-stream"
+        files = {"file": (filename, content, content_type)}
         resp = await self._http.post(url, files=files)
         resp.raise_for_status()
-        return resp.json()
+        result = resp.json()
+
+        # Background: ADLS storage + markdown conversion (fire-and-forget)
+        if self._content_processor and self._content_processor.enabled:
+
+            async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
+                fwd_url = self._pool_url("/upload", session_id)
+                fwd_files = {"file": (md_filename, md_bytes, "text/markdown")}
+                fwd_resp = await self._http.post(fwd_url, files=fwd_files)
+                fwd_resp.raise_for_status()
+
+            asyncio.create_task(
+                self._content_processor.process_document(
+                    session_id, filename, content, content_type, forward_markdown
+                )
+            )
+
+        return result
 
     async def get_session(self, session_id: str) -> dict:
         """Return session metadata + message history from Cosmos."""
@@ -282,7 +316,7 @@ class SessionManager:
             "messages": [],
         }
 
-    async def delete_session(self, session_id: str):
+    async def delete_session(self, session_id: str) -> None:
         self._turn_indices.pop(session_id, None)
 
         if self._cosmos:

@@ -13,7 +13,6 @@ Endpoints:
 import asyncio
 import logging
 import os
-import shutil
 
 from fastapi import FastAPI, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -32,8 +31,8 @@ _session: AgentSession | None = None
 _lock = asyncio.Lock()
 
 
-async def _get_session(token: str | None = None) -> AgentSession:
-    """Lazy-init the AgentSession on first request."""
+async def _get_or_create_session(token: str | None = None) -> AgentSession:
+    """Lazy-init the AgentSession singleton on first request."""
     global _session
     if _session is None:
         _session = AgentSession(WORKSPACE)
@@ -50,23 +49,27 @@ class ChatRequest(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
 @app.post("/chat")
-async def chat(req: ChatRequest):
+async def chat(req: ChatRequest) -> dict:
     """Run a full agent turn. Blocks until complete, returns JSON result."""
+    logger.info("POST /chat received (prompt=%r, has_token=%s)", req.prompt[:50], bool(req.token))
     if _lock.locked():
         raise HTTPException(status_code=409, detail="Session is busy (concurrent turn)")
 
     try:
         async with _lock:
-            session = await _get_session(token=req.token)
+            logger.info("Acquiring session...")
+            session = await _get_or_create_session(token=req.token)
+            logger.info("Session acquired, sending prompt...")
             result = await session.send_and_collect(req.prompt)
+            logger.info("Got result (content length=%d)", len(result.get("content", "")))
             return result
     except Exception as exc:
-        logger.exception("Chat failed")
-        raise HTTPException(status_code=500, detail=str(exc))
+        logger.exception("Chat failed: %s", exc)
+        return {"error": str(exc), "type": type(exc).__name__}  # Return 200 with error details for debugging
 
 
 @app.get("/status")
-async def get_status():
+async def get_status() -> dict:
     """Return the agent's current activity. Designed to be polled."""
     if _session is None:
         return {"status": "idle"}
@@ -81,7 +84,7 @@ ALLOWED_EXTENSIONS = {
 
 
 @app.post("/upload")
-async def upload(file: UploadFile):
+async def upload(file: UploadFile) -> dict:
     """Save an uploaded file to the workspace directory."""
     from pathlib import PurePosixPath
 
@@ -124,5 +127,5 @@ async def upload(file: UploadFile):
 
 
 @app.get("/health")
-async def health():
+async def health() -> dict:
     return {"status": "ok"}

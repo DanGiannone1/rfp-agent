@@ -356,26 +356,29 @@ export default function Chat() {
   if (authEnabled && !isAuthenticated) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-6 bg-background text-foreground">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient shadow-lg shadow-indigo-500/20">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-white"
-          >
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
+        <div className="relative">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl accent-gradient shadow-xl shadow-indigo-500/20">
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-white"
+            >
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <div className="absolute -inset-3 rounded-3xl bg-indigo-500/5 blur-xl" aria-hidden="true" />
         </div>
         <h1 className="text-2xl font-semibold">RFP Agent</h1>
         <p className="text-sm text-zinc-500">Sign in to start your analysis</p>
         <button
           onClick={() => instance.loginRedirect(loginRequest)}
-          className="accent-gradient rounded-full px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-all hover:brightness-110"
+          className="accent-gradient rounded-xl px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:shadow-indigo-500/30 hover:brightness-110 active:scale-[0.98]"
         >
           Sign in with Microsoft
         </button>
@@ -385,9 +388,10 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
+      {/* Header */}
       <header className="glass sticky top-0 z-10 border-b border-border-subtle">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg accent-gradient">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg accent-gradient shadow-md shadow-indigo-500/10">
             <svg
               width="16"
               height="16"
@@ -403,26 +407,49 @@ export default function Chat() {
             </svg>
           </div>
           <div className="flex-1">
-            <h1 className="text-lg font-semibold">RFP Agent</h1>
-            <p className="text-xs text-zinc-500">AI-powered analysis</p>
+            <h1 className="text-base font-semibold tracking-tight">RFP Agent</h1>
+            <p className="text-[11px] text-zinc-500">AI-powered analysis</p>
           </div>
+
+          {/* Streaming status indicator */}
+          {state.isStreaming && (
+            <div className="flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-2.5 py-1 text-[11px] text-indigo-400 ring-1 ring-indigo-500/20 animate-fade-in">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-500" />
+              </span>
+              Processing
+            </div>
+          )}
+
           <button
             data-testid="new-chat-button"
             onClick={handleNewChat}
             disabled={state.isStreaming || state.isInitializing}
-            className="rounded-lg border border-border-subtle px-3 py-1.5 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200 disabled:pointer-events-none disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg border border-zinc-700/50 px-3 py-1.5 text-sm text-zinc-400 transition-all duration-200 hover:border-zinc-600 hover:bg-white/5 hover:text-zinc-200 disabled:pointer-events-none disabled:opacity-40 active:scale-[0.98]"
           >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
             New chat
           </button>
         </div>
       </header>
+
+      {/* Main content */}
       {state.isInitializing ? (
-        <div data-testid="initializing" className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-zinc-500">Starting session...</p>
+        <div data-testid="initializing" className="flex flex-1 flex-col items-center justify-center gap-3 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin-slow text-indigo-400">
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            <p className="text-sm text-zinc-500">Starting session...</p>
+          </div>
         </div>
       ) : (
         <>
-          <MessageList messages={state.messages} />
+          <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
           <InputBar onSend={handleSend} onUpload={handleUpload} disabled={state.isStreaming} />
         </>
       )}

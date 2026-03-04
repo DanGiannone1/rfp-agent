@@ -1,3 +1,9 @@
+"""AgentSession wrapping the GitHub Copilot SDK with an event queue.
+
+Provides both streaming (async generator) and blocking (collect) interfaces
+for running agent turns against Azure OpenAI.
+"""
+
 import asyncio
 import json
 import os
@@ -62,7 +68,7 @@ class AgentSession:
         """Current activity: 'idle', 'thinking', 'tool:<name>', or 'error'."""
         return self._status
 
-    async def __aenter__(self, token: str | None = None):
+    async def __aenter__(self, token: str | None = None) -> "AgentSession":
         if not token:
             token = os.getenv("AZURE_OPENAI_TOKEN")
         if not token:
@@ -92,6 +98,7 @@ class AgentSession:
                     "content": SYSTEM_PROMPT,
                 },
                 "working_directory": self._working_dir,
+                "excluded_tools": ["web_fetch"],
                 "streaming": True,
                 "on_permission_request": lambda _req, _ctx: {"kind": "approved"},
             }
@@ -100,7 +107,7 @@ class AgentSession:
         self._unsubscribe = self._session.on(self._on_event)
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if self._unsubscribe:
             self._unsubscribe()
         if self._session:
@@ -108,7 +115,7 @@ class AgentSession:
         if self._client:
             await self._client.stop()
 
-    def _on_event(self, event):
+    def _on_event(self, event) -> None:
         """Push events into the async queue from the SDK's internal thread."""
         item = None
 

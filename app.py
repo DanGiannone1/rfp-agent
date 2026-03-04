@@ -1,3 +1,8 @@
+"""FastAPI orchestrator — session CRUD, message streaming, and file upload.
+
+Proxies all AI interactions to isolated session containers via SessionManager.
+"""
+
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -16,12 +21,13 @@ logger = logging.getLogger(__name__)
 # Globals set during lifespan
 # ---------------------------------------------------------------------------
 session_manager: SessionManager | None = None
-cosmos_store = None
+cosmos_store = None  # CosmosStore | None — lazy import in lifespan
+content_processor = None  # ContentProcessor | None — lazy import in lifespan
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global session_manager, cosmos_store
+    global session_manager, cosmos_store, content_processor
 
     # Try to initialise CosmosDB (optional — runs fine without it)
     cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
@@ -36,13 +42,28 @@ async def lifespan(app: FastAPI):
             logger.warning("CosmosDB unavailable — running without persistence", exc_info=True)
             cosmos_store = None
 
-    session_manager = SessionManager(cosmos_store)
+    # Try to initialise Content Processing (optional — uploads work without it)
+    try:
+        from content_processing import ContentProcessor
+
+        cp = ContentProcessor()
+        if cp.enabled:
+            await cp.initialize()
+            content_processor = cp
+            logger.info("Content processing enabled")
+    except Exception:
+        logger.warning("Content processing unavailable", exc_info=True)
+        content_processor = None
+
+    session_manager = SessionManager(cosmos_store, content_processor)
     await session_manager.start()
     logger.info("Application started")
 
     yield
 
     await session_manager.stop()
+    if content_processor:
+        await content_processor.close()
     if cosmos_store:
         await cosmos_store.close()
     logger.info("Application shut down")
@@ -82,13 +103,15 @@ class SendMessageRequest(BaseModel):
 # Session endpoints
 # ---------------------------------------------------------------------------
 @app.post("/sessions", status_code=201)
-async def create_session(req: CreateSessionRequest = None):
+async def create_session(req: CreateSessionRequest | None = None) -> dict:
+    """Create a new isolated agent session."""
     metadata = await session_manager.create_session()
     return metadata
 
 
 @app.post("/sessions/{session_id}/messages")
-async def send_message(session_id: str, req: SendMessageRequest):
+async def send_message(session_id: str, req: SendMessageRequest) -> StreamingResponse:
+    """Send a user message and stream back SSE events (status updates + final response)."""
     # Validate eagerly so KeyError is raised before we return a StreamingResponse
     try:
         await session_manager.validate_session(session_id)
@@ -106,7 +129,8 @@ async def send_message(session_id: str, req: SendMessageRequest):
 
 
 @app.get("/sessions/{session_id}")
-async def get_session(session_id: str):
+async def get_session(session_id: str) -> dict:
+    """Return session metadata and message history."""
     try:
         return await session_manager.get_session(session_id)
     except KeyError:
@@ -114,7 +138,8 @@ async def get_session(session_id: str):
 
 
 @app.delete("/sessions/{session_id}", status_code=204)
-async def delete_session(session_id: str):
+async def delete_session(session_id: str) -> None:
+    """Close and delete a session."""
     try:
         await session_manager.delete_session(session_id)
     except KeyError:
@@ -122,7 +147,8 @@ async def delete_session(session_id: str):
 
 
 @app.post("/sessions/{session_id}/upload")
-async def upload_file(session_id: str, file: UploadFile):
+async def upload_file(session_id: str, file: UploadFile) -> dict:
+    """Upload a document to a session's workspace."""
     try:
         await session_manager.validate_session(session_id)
     except KeyError:
@@ -136,10 +162,12 @@ async def upload_file(session_id: str, file: UploadFile):
 # Health
 # ---------------------------------------------------------------------------
 @app.get("/health")
-async def health():
+async def health() -> dict:
+    """Return service health and connectivity status."""
     return {
         "status": "ok",
         "active_sessions": session_manager.active_count if session_manager else 0,
         "cosmos_connected": cosmos_store is not None,
+        "content_processing_enabled": content_processor is not None,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

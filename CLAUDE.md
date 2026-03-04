@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Local dev runs natively — no Docker. Docker/container testing happens in Azure DevOps.
 
 ```bash
-./dev.sh                  # starts all 3 services with hot-reload
+uv run dev.py             # starts all 3 services with hot-reload
 ```
 
 This runs:
@@ -66,6 +66,7 @@ CosmosDB stores session metadata + message history. App runs fine without it (`C
 - `session_manager.py` — proxies to session containers, manages SSE polling loop, handles auth token forwarding
 - `session-container/server.py` — container endpoints (/chat, /status, /upload, /health)
 - `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue
+- `content_processing.py` — optional ADLS upload + Content Understanding markdown conversion
 - `cosmos.py` — async CosmosDB client (sessions + messages)
 - `frontend/src/components/Chat.tsx` — main state machine (useReducer), session lifecycle, SSE handling
 - `frontend/src/lib/sse.ts` — SSE stream parser
@@ -77,5 +78,5 @@ CosmosDB stores session metadata + message history. App runs fine without it (`C
 - Python: async everywhere (FastAPI + httpx + azure SDK async clients)
 - Frontend: React 19, Tailwind CSS 4, TypeScript strict, `data-testid` attributes for Playwright selectors
 - Two separate `uv` projects: root (orchestrator) and `session-container/` — each has its own `pyproject.toml` and `uv.lock`
-- `WORKSPACE` env var controls where uploaded files land; `dev.sh` sets it to an absolute path
+- `WORKSPACE` env var controls where uploaded files land; `dev.py` sets it to an absolute path
 - Docker Compose + Dockerfiles exist for CI/Azure DevOps — not used for local dev

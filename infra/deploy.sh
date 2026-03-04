@@ -25,6 +25,8 @@ FRONTEND_NAME="${PREFIX}-frontend"
 
 AZURE_DEPLOYMENT="${AZURE_DEPLOYMENT:-gpt-5-codex}"
 COSMOS_ENDPOINT="${COSMOS_ENDPOINT:-}"
+ADLS_ACCOUNT_NAME="${ADLS_ACCOUNT_NAME:-${PREFIX}adls}"
+ADLS_FILESYSTEM="${ADLS_FILESYSTEM:-documents}"
 
 echo "=== RFP Agent Deployment ==="
 echo "Resource Group:  $RG"
@@ -65,35 +67,67 @@ az role assignment create \
     --scope "$ACR_ID" \
     -o none
 
-# ── 4. Cognitive Services role (needed by session containers for Azure OpenAI) ─
+# ── 4. Cognitive Services role (Azure OpenAI + Content Understanding) ────
 AZURE_ENDPOINT="${AZURE_ENDPOINT:-}"
 if [ -z "$AZURE_ENDPOINT" ]; then
     echo "ERROR: AZURE_ENDPOINT must be set"
     exit 1
 fi
 
-echo ">>> Granting Cognitive Services OpenAI User to managed identity..."
+# Cognitive Services User covers both OpenAI and Content Understanding
+echo ">>> Granting Cognitive Services User to managed identity..."
 AOAI_RESOURCE_NAME=$(echo "$AZURE_ENDPOINT" | sed -n 's|https://\(.*\)\.cognitiveservices.*|\1|p')
+if [ -z "$AOAI_RESOURCE_NAME" ]; then
+    # Try Foundry-style endpoint: https://name.services.ai.azure.com/
+    AOAI_RESOURCE_NAME=$(echo "$AZURE_ENDPOINT" | sed -n 's|https://\(.*\)\.services\.ai\.azure\.com.*|\1|p')
+fi
 if [ -n "$AOAI_RESOURCE_NAME" ]; then
     AOAI_ID=$(az cognitiveservices account list --resource-group "$RG" \
         --query "[?name=='$AOAI_RESOURCE_NAME'].id" -o tsv 2>/dev/null || true)
     if [ -z "$AOAI_ID" ]; then
-        echo "    Note: Azure OpenAI resource not found in $RG. Assigning at subscription scope."
+        echo "    Note: Cognitive Services resource not found in $RG. Assigning at subscription scope."
         az role assignment create \
             --assignee-object-id "$IDENTITY_PRINCIPAL_ID" \
             --assignee-principal-type ServicePrincipal \
-            --role "Cognitive Services OpenAI User" \
+            --role "Cognitive Services User" \
             --scope "/subscriptions/$(az account show --query id -o tsv)" \
             -o none
     else
         az role assignment create \
             --assignee-object-id "$IDENTITY_PRINCIPAL_ID" \
             --assignee-principal-type ServicePrincipal \
-            --role "Cognitive Services OpenAI User" \
+            --role "Cognitive Services User" \
             --scope "$AOAI_ID" \
             -o none
     fi
 fi
+
+# ── 4b. ADLS Gen2 Storage ────────────────────────────────────────────────
+echo ">>> Creating ADLS Gen2 storage account..."
+az storage account create \
+    --name "$ADLS_ACCOUNT_NAME" \
+    --resource-group "$RG" \
+    --location "$LOCATION" \
+    --sku Standard_LRS \
+    --kind StorageV2 \
+    --hns true \
+    -o none
+
+echo ">>> Creating ADLS filesystem..."
+az storage fs create \
+    --name "$ADLS_FILESYSTEM" \
+    --account-name "$ADLS_ACCOUNT_NAME" \
+    --auth-mode login \
+    -o none 2>/dev/null || true  # ignore "already exists"
+
+echo ">>> Granting Storage Blob Data Contributor to managed identity on ADLS..."
+ADLS_ID=$(az storage account show --name "$ADLS_ACCOUNT_NAME" --resource-group "$RG" --query id -o tsv)
+az role assignment create \
+    --assignee-object-id "$IDENTITY_PRINCIPAL_ID" \
+    --assignee-principal-type ServicePrincipal \
+    --role "Storage Blob Data Contributor" \
+    --scope "$ADLS_ID" \
+    -o none
 
 # ── 5. Container Apps Environment ────────────────────────────────────────
 echo ">>> Creating Container Apps environment..."
@@ -188,6 +222,9 @@ az containerapp create \
     --env-vars \
         "POOL_MANAGEMENT_ENDPOINT=$POOL_ENDPOINT" \
         "COSMOS_ENDPOINT=$COSMOS_ENDPOINT" \
+        "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
+        "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
+        "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
         "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
     -o none
 

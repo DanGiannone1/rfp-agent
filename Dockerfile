@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application code
-COPY app.py cosmos.py session_manager.py ./
+COPY app.py content_processing.py cosmos.py session_manager.py ./
 
 ENV PATH="/app/.venv/bin:$PATH"
 

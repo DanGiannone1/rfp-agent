@@ -27,7 +27,7 @@ class CosmosStore:
         self._client: CosmosClient | None = None
         self._container = None
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         self._client = CosmosClient(self._endpoint, credential=self._credential)
         database = await self._client.create_database_if_not_exists(DATABASE_NAME)
         self._container = await database.create_container_if_not_exists(
@@ -36,7 +36,7 @@ class CosmosStore:
         )
         logger.info("CosmosDB initialised: %s/%s", DATABASE_NAME, CONTAINER_NAME)
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client:
             await self._client.close()
         if self._credential:
@@ -45,7 +45,7 @@ class CosmosStore:
     # ------------------------------------------------------------------
     # Session CRUD
     # ------------------------------------------------------------------
-    async def create_session(self, metadata: dict):
+    async def create_session(self, metadata: dict) -> None:
         doc = {
             "id": metadata["session_id"],
             "session_id": metadata["session_id"],
@@ -65,7 +65,7 @@ class CosmosStore:
 
     async def update_session_activity(
         self, session_id: str, last_activity_at: datetime
-    ):
+    ) -> None:
         try:
             item = await self._container.read_item(
                 item=session_id, partition_key=session_id
@@ -75,7 +75,7 @@ class CosmosStore:
         except exceptions.CosmosResourceNotFoundError:
             logger.warning("Session %s not found for activity update", session_id)
 
-    async def close_session(self, session_id: str):
+    async def close_session(self, session_id: str) -> None:
         try:
             item = await self._container.read_item(
                 item=session_id, partition_key=session_id
@@ -89,7 +89,7 @@ class CosmosStore:
     # ------------------------------------------------------------------
     # Message CRUD
     # ------------------------------------------------------------------
-    async def add_message(self, message: dict):
+    async def add_message(self, message: dict) -> None:
         doc = {
             "id": uuid.uuid4().hex,
             "doc_type": "message",

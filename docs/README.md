@@ -1,0 +1,170 @@
+# RFP Agent Documentation
+
+## Problem
+
+Responding to Requests for Proposal is a time-consuming, manual process. Teams spend hours reading lengthy documents, extracting requirements, cross-referencing compliance criteria, and drafting responses. Key details get missed, deadlines slip, and institutional knowledge stays siloed.
+
+## Solution
+
+RFP Agent automates the analysis phase. Users upload RFP documents and chat with an AI agent that:
+
+- Reads and indexes all uploaded files
+- Summarizes scope, requirements, evaluation criteria, and deadlines
+- Highlights compliance requirements and flags risks
+- Suggests response strategies and drafts sections on request
+
+The agent uses the GitHub Copilot SDK with Azure OpenAI, running in an isolated per-user container with access to shell tools (`bash`, `grep`, `glob`, `str_replace_editor`) for deep document analysis.
+
+## Prerequisites
+
+- **Python 3.12+** with [`uv`](https://docs.astral.sh/uv/)
+- **Node 18+** with `npm`
+- **Azure OpenAI** endpoint and deployment (see `.env.example`)
+
+## Setup
+
+1. Clone the repository:
+   ```bash
+   git clone <repo-url>
+   cd rfp-agent
+   ```
+
+2. Copy and configure environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env — minimum required:
+   #   AZURE_ENDPOINT=https://your-resource.cognitiveservices.azure.com/openai/v1/
+   #   AZURE_DEPLOYMENT=your-deployment-name
+   ```
+
+3. Install dependencies:
+   ```bash
+   # Orchestrator (root)
+   uv sync
+
+   # Session container
+   cd session-container && uv sync && cd ..
+
+   # Frontend
+   cd frontend && npm install && cd ..
+   ```
+
+4. Start all services:
+   ```bash
+   uv run dev.py
+   ```
+   This launches:
+   | Service | Port | Directory |
+   |---------|------|-----------|
+   | Session Container | :8080 | `session-container/` |
+   | Orchestrator | :8000 | root |
+   | Frontend | :3000 | `frontend/` |
+
+5. Open http://localhost:3000 in your browser.
+
+### Testing
+
+```bash
+npx playwright test --project=api     # API integration tests
+npx playwright test --project=e2e     # browser E2E tests
+npx playwright test                   # both
+```
+
+## Deployment
+
+The [`infra/deploy.sh`](../infra/deploy.sh) script performs a full Azure deployment with a single command:
+
+```bash
+AZURE_ENDPOINT=https://... ./infra/deploy.sh
+```
+
+### Azure resources created
+
+| Resource | Purpose |
+|----------|---------|
+| Resource Group | Contains all resources |
+| User-Assigned Managed Identity | Authentication between services |
+| Azure Container Registry | Hosts container images |
+| Container Apps Environment | Runtime environment |
+| Session Pool (Custom Container) | Isolated per-user agent sessions |
+| Orchestrator Container App | API gateway, session lifecycle, SSE streaming |
+| Frontend Container App | Next.js web UI |
+| Entra ID App Registration | Single app reg for Easy Auth + MSAL SPA |
+
+Optional: Set `COSMOS_ENDPOINT` for persistent session/message storage via CosmosDB. Set `ADLS_ACCOUNT_NAME` (and optionally `ADLS_FILESYSTEM`) for ADLS Gen2 document storage and Content Understanding markdown conversion.
+
+### Configuration
+
+Override defaults via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PREFIX` | `rfpagent` | Naming prefix for all resources |
+| `LOCATION` | `eastus2` | Azure region |
+| `AZURE_DEPLOYMENT` | `gpt-5-codex` | Azure OpenAI model deployment |
+
+## Architecture
+
+```
++-------------------+
+|    Frontend       |
+|  (Next.js, :3000) |
++--------+----------+
+         | HTTP + SSE
++--------v----------+
+|   Orchestrator    |
+| (FastAPI, :8000)  |
++--------+----------+
+         | HTTP (blocking /chat + polling /status)
++--------v----------+
+| Session Container |
+| (FastAPI + Copilot|
+|  SDK, :8080)      |
++--------+----------+
+         | github-copilot-sdk
++--------v----------+
+|   Azure OpenAI    |
++-------------------+
+```
+
+### Data flow
+
+1. User sends a message via the frontend
+2. Frontend POSTs to the orchestrator's `/sessions/{id}/messages` endpoint
+3. Orchestrator forwards the prompt to the session container's `/chat` endpoint (blocking HTTP call)
+4. While `/chat` is processing, orchestrator polls `/status` on the session container
+5. Status updates (thinking, tool:bash, tool:grep, etc.) are streamed as SSE events to the frontend
+6. When `/chat` completes, the final message is streamed as an SSE event
+7. Frontend renders the response with real-time tool activity indicators
+
+### Key design decisions
+
+- **Orchestrator never runs the Copilot SDK** — it only proxies HTTP to session containers. This keeps the orchestrator stateless and allows per-user isolation via ACA Dynamic Sessions in production.
+- **SSE is one-way** (backend to frontend). The frontend uses standard HTTP POST to send messages.
+- **Auth is optional** — the app runs fully functional without Entra ID configuration, making local development frictionless.
+- **Persistence is optional** — CosmosDB stores session history but the app works without it (in-memory only).
+- **Content processing is optional** — when `ADLS_ACCOUNT_NAME` is set, uploaded documents are stored in ADLS Gen2 and converted to markdown via Azure Content Understanding (using the same Foundry resource as `AZURE_ENDPOINT`). The markdown is forwarded to the session container alongside the original file.
+
+## Responsible AI (RAI)
+
+### Human-in-the-loop
+
+The agent provides analysis, summaries, and draft suggestions. It does **not** autonomously submit proposals, sign documents, or make binding decisions. Every output requires human review before use.
+
+### Data privacy
+
+- All data stays within the user's Azure tenant — documents are processed by Azure OpenAI in the configured region
+- Session containers are isolated per-user; one user cannot access another's documents
+- No user data is used for model training
+- No PII is extracted, stored, or transmitted beyond what the user explicitly uploads
+
+### Transparency
+
+- The frontend shows real-time tool activity (which tools the agent is using, what files it's reading) so users can observe the agent's reasoning process
+- All agent outputs are clearly presented as AI-generated suggestions, not authoritative answers
+
+### Limitations
+
+- The agent's analysis quality depends on the underlying Azure OpenAI model
+- It may miss nuanced legal or domain-specific requirements that require expert review
+- It operates only on uploaded documents — it has no access to external data sources or the internet
