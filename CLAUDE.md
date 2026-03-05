@@ -18,15 +18,16 @@ This runs:
 ### Prerequisites
 - Python 3.12+ with `uv` (both root and `session-container/` have separate `pyproject.toml` + `uv.lock`)
 - Node 18+ with `npm` (frontend)
-- `.env` file at root (see `.env.example`). Minimum: `AZURE_ENDPOINT` and `AZURE_DEPLOYMENT`
+- `.env` file at root (see `.env.example`). Required: `AZURE_ENDPOINT`, `AZURE_DEPLOYMENT`, `ADLS_ACCOUNT_NAME`, `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_KEY`
 
 ### Testing (Playwright)
 ```bash
-npx playwright test                           # full comprehensive suite (35 tests)
-npx playwright test -g "Session Lifecycle"    # run a single test block
-npx playwright test -g "SSE"                  # run by keyword
+npx playwright test                                    # full suite (19 tests, 6 journeys)
+npx playwright test -g "Journey 1"                     # chat conversation
+npx playwright test -g "Journey 3: Document Conversion" # CU/ADLS pipeline
+npx playwright test -g "Journey 5"                     # security & error handling
 ```
-Tests default to `localhost:8000`/`localhost:3000`. Override with `API_URL`/`APP_URL` env vars for CI. Tests that require Content Understanding or ADLS skip gracefully when those services are unavailable.
+Tests default to `localhost:8000`/`localhost:3000`. Override with `API_URL`/`APP_URL` env vars for CI. Content Understanding and ADLS are required infrastructure — tests will fail if these services are unavailable. No skip logic.
 
 ### Frontend only
 ```bash
@@ -60,15 +61,15 @@ Entra ID via MSAL on frontend, Easy Auth on orchestrator. Disabled locally when 
 ### Persistence (optional)
 CosmosDB stores session metadata + message history. App runs fine without it (`COSMOS_ENDPOINT` unset) — sessions are in-memory only.
 
-### Document processing (optional)
-Uploaded files can be converted to markdown and stored on ADLS Gen2. Both services are optional and independent — the upload flow works unchanged without them.
+### Document processing
+Uploaded files are converted to markdown and stored on ADLS Gen2. Both services must be configured for processing to activate.
 
-- **Content Understanding** — converts uploaded documents (PDF, images, Office) to structured markdown using the `prebuilt-layout` analyzer. Uses the same Foundry/Cognitive Services resource as `AZURE_ENDPOINT` (the base URL is derived automatically). Enabled whenever `AZURE_ENDPOINT` is set.
-- **ADLS Gen2** — persists originals at `originals/{session_id}/{filename}` and markdown at `markdown/{session_id}/{filename}.md`. Enabled when `ADLS_ACCOUNT_NAME` is set.
+- **Content Understanding** — converts uploaded documents (PDF, images, Office) to structured markdown using the `prebuilt-layout` analyzer. Uses the same Foundry/Cognitive Services resource as `AZURE_ENDPOINT` (the base URL is derived automatically).
+- **ADLS Gen2** — persists originals at `originals/{session_id}/{filename}` and markdown at `markdown/{session_id}/{filename}.md`. Requires `ADLS_ACCOUNT_NAME`.
 
-Processing runs as a fire-and-forget background task after the upload is proxied to the session container. The converted markdown is also forwarded to the session container as a separate `/upload` so the agent can reference it. All failures are logged as warnings, never surfaced to the user.
+Processing runs synchronously during the upload request — the orchestrator waits for Content Understanding to complete before returning the upload result to the frontend. The converted markdown is forwarded to the session container as a separate `/upload` so the agent can reference it. The upload response includes a `markdown_ready` flag so the frontend knows whether conversion succeeded, and processing failures are surfaced to the user.
 
-To enable locally: set `ADLS_ACCOUNT_NAME` in `.env` and ensure `az login` has `Storage Blob Data Contributor` on the account. Content Understanding requires `Cognitive Services User` on the Foundry resource.
+To enable locally: set `ADLS_ACCOUNT_NAME` in `.env` and ensure `az login` has `Storage Blob Data Contributor` on the account. Both ADLS and Content Understanding are required — the processor only activates when both are configured. Content Understanding requires `Cognitive Services User` on the Foundry resource.
 
 ### Knowledge base (optional)
 Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and exposes a `knowledge_base_retrieve` tool to the agent via MCP. This lets the agent search across all uploaded documents, past proposals, and reference materials.
@@ -85,7 +86,7 @@ Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and ex
 - `session-container/server.py` — container endpoints (/chat, /status, /upload, /health)
 - `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue, system prompt, skill_directories config
 - `session-container/skills/` — 10 markdown skill files (bid-no-bid, requirements, strategy, drafting, exec summary, compliance, risk/gap, pricing analysis, customer intelligence, iterative refinement)
-- `content_processing.py` — optional ADLS upload + Content Understanding markdown conversion
+- `content_processing.py` — ADLS upload + Content Understanding markdown conversion
 - `setup_knowledge_base.py` — one-time script to create Foundry IQ knowledge source + knowledge base
 - `index_knowledge_base.py` — uploads sample_data PDFs to ADLS for indexing
 - `sample_data/generate_knowledge_base.py` — generates all sample KB PDFs (master script invokes subdirectory generators)

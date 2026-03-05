@@ -324,6 +324,18 @@ export default function Chat() {
         const result = await uploadFile(state.sessionId, file);
         dispatch({ type: "FILE_UPLOADED", filename: result.filename });
         dispatch({ type: "FILES_CHANGED" });
+
+        // Build auto-prompt based on processing result
+        let autoPrompt: string;
+        if (result.markdown_ready) {
+          autoPrompt = `I've uploaded "${result.filename}" for analysis. The document has been converted to markdown (${result.filename}.md) for analysis. Please read the document and confirm what you see — summarize the RFP title, issuing organization, key dates, and scope of work. Then list the workflow options available (bid/no-bid analysis, requirements extraction, response strategy, etc.) so I know what I can ask for next.`;
+        } else {
+          const errorNote = result.processing_error
+            ? ` (${result.processing_error})`
+            : "";
+          autoPrompt = `I've uploaded "${result.filename}" but document conversion to markdown failed${errorNote}. The original file is in the workspace. Please attempt to work with it directly and let me know what you find.`;
+        }
+        handleSend(autoPrompt);
       } catch (err) {
         dispatch({
           type: "ERROR",
@@ -331,7 +343,7 @@ export default function Chat() {
         });
       }
     },
-    [state.sessionId],
+    [state.sessionId, handleSend],
   );
 
   function handleSSEEvent(event: SSEEvent) {

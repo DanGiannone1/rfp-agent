@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 session_manager: SessionManager | None = None
 cosmos_store = None  # CosmosStore | None — lazy import in lifespan
-content_processor = None  # ContentProcessor | None — lazy import in lifespan
+content_processor = None  # ContentProcessor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global session_manager, cosmos_store, content_processor
 
-    # Try to initialise CosmosDB (optional — runs fine without it)
+    # CosmosDB (optional — runs fine without it, sessions are in-memory only)
     cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
     if cosmos_endpoint:
         try:
@@ -42,18 +42,12 @@ async def lifespan(app: FastAPI):
             logger.warning("CosmosDB unavailable — running without persistence", exc_info=True)
             cosmos_store = None
 
-    # Try to initialise Content Processing (optional — uploads work without it)
-    try:
-        from content_processing import ContentProcessor
+    # Content Processing (required — ADLS + Content Understanding)
+    from content_processing import ContentProcessor
 
-        cp = ContentProcessor()
-        if cp.enabled:
-            await cp.initialize()
-            content_processor = cp
-            logger.info("Content processing enabled")
-    except Exception:
-        logger.warning("Content processing unavailable", exc_info=True)
-        content_processor = None
+    content_processor = ContentProcessor()
+    await content_processor.initialize()
+    logger.info("Content processing ready")
 
     session_manager = SessionManager(cosmos_store, content_processor)
     await session_manager.start()
@@ -62,8 +56,7 @@ async def lifespan(app: FastAPI):
     yield
 
     await session_manager.stop()
-    if content_processor:
-        await content_processor.close()
+    await content_processor.close()
     if cosmos_store:
         await cosmos_store.close()
     logger.info("Application shut down")

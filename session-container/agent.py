@@ -45,7 +45,14 @@ models, scorecards), save it as a downloadable file in the working directory in 
 to showing it in chat. Prefer PDF or DOCX for polished deliverables, CSV/XLSX for data \
 tables, and markdown for working drafts.
 
-{kb_prompt}\
+## Getting Started
+
+When the workspace has no uploaded documents (or only default files), greet the user \
+warmly and guide them to upload their RFP document as the first step. Once an RFP is \
+uploaded, it will be automatically converted to markdown for analysis, and the full \
+suite of RFP workflow tools — from bid/no-bid analysis through compliance review — \
+becomes available. Start by asking the user to drag and drop or attach their RFP file.
+
 ## Skills & Workflows
 
 You have detailed skill guides loaded for structured RFP workflows. Reference them \
@@ -200,14 +207,17 @@ class AgentSession:
 
         self._loop = asyncio.get_running_loop()
 
-        # Build session config
-        kb_enabled = bool(SEARCH_ENDPOINT)
-        system_prompt = SYSTEM_PROMPT.format(
-            kb_prompt=KB_PROMPT_SECTION if kb_enabled else ""
-        )
-
         # Resolve skills directory relative to this file
         skills_dir = str(Path(__file__).parent / "skills")
+
+        # Build system prompt — include KB section only when search is configured
+        kb_enabled = bool(SEARCH_ENDPOINT)
+        system_prompt = SYSTEM_PROMPT
+        if kb_enabled:
+            system_prompt = SYSTEM_PROMPT.replace(
+                "## Skills & Workflows",
+                KB_PROMPT_SECTION + "## Skills & Workflows",
+            )
 
         session_config = {
             "model": os.environ["AZURE_DEPLOYMENT"],

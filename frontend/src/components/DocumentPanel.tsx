@@ -174,8 +174,8 @@ export default function DocumentPanel({ sessionId, refreshKey }: DocumentPanelPr
                     Converting...
                   </span>
                 ) : (
-                  <span data-testid="conversion-pending" className="rounded-full bg-zinc-500/10 px-1.5 py-0.5 text-[10px] text-zinc-500 ring-1 ring-zinc-500/20">
-                    Original
+                  <span data-testid="conversion-failed" className="rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-400 ring-1 ring-red-500/20">
+                    Failed
                   </span>
                 )}
               </div>

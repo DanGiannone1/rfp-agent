@@ -21,7 +21,12 @@ if not (ROOT / ".env").exists():
 load_dotenv(ROOT / ".env")
 os.environ["POOL_MANAGEMENT_ENDPOINT"] = "http://localhost:8080"
 os.environ["WORKSPACE"] = str(ROOT / "workspace")
-(ROOT / "workspace").mkdir(exist_ok=True)
+workspace = ROOT / "workspace"
+# Clean workspace on startup so sessions don't see stale files
+if workspace.exists():
+    import shutil
+    shutil.rmtree(workspace)
+workspace.mkdir(exist_ok=True)
 
 procs: list[subprocess.Popen] = []
 

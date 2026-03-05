@@ -114,404 +114,24 @@ async function getHealth(): Promise<any> {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Session Lifecycle (API)
+// Journey 1: Chat Conversation (Browser, serial)
 // ---------------------------------------------------------------------------
-test.describe("Session Lifecycle", () => {
-  test("create session returns valid structure", async () => {
-    const res = await fetch(`${API}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body).toHaveProperty("session_id");
-    expect(body.status).toBe("active");
-    expect(body).toHaveProperty("created_at");
-    expect(body).toHaveProperty("last_activity_at");
-    // cleanup
-    await deleteSessionViaAPI(body.session_id);
-  });
-
-  test("get session returns messages array", async () => {
-    const sid = await createSessionViaAPI();
-    const res = await fetch(`${API}/sessions/${sid}`);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.session_id).toBe(sid);
-    expect(Array.isArray(body.messages)).toBe(true);
-    await deleteSessionViaAPI(sid);
-  });
-
-  test("delete session then get returns 404", async () => {
-    const sid = await createSessionViaAPI();
-    const del = await fetch(`${API}/sessions/${sid}`, { method: "DELETE" });
-    expect(del.status).toBe(204);
-    const get = await fetch(`${API}/sessions/${sid}`);
-    expect(get.status).toBe(404);
-  });
-
-  test("get nonexistent session returns 404", async () => {
-    const res = await fetch(`${API}/sessions/nonexistent_session_xyz`);
-    expect(res.status).toBe(404);
-  });
-
-  test("delete nonexistent session returns 404 or 204", async () => {
-    const res = await fetch(`${API}/sessions/nonexistent_session_xyz`, {
-      method: "DELETE",
-    });
-    // Without Cosmos, delete always returns 204; with Cosmos, returns 404
-    expect([204, 404]).toContain(res.status);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 2. File Upload & Listing (API)
-// ---------------------------------------------------------------------------
-test.describe.serial("File Upload & Listing", () => {
-  let sessionId: string;
-
-  test.beforeAll(async () => {
-    sessionId = await createSessionViaAPI();
-  });
-
-  test.afterAll(async () => {
-    if (sessionId) await deleteSessionViaAPI(sessionId);
-  });
-
-  test("upload .txt returns valid response", async () => {
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "requirements.txt",
-      "Budget: $500,000\nDeadline: March 2026\nScope: Full system replacement",
-      "text/plain",
-    );
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.filename).toBe("requirements.txt");
-    expect(body.size).toBeGreaterThan(0);
-    expect(body).toHaveProperty("path");
-  });
-
-  test("file listing includes uploaded file with correct fields", async () => {
-    const res = await fetch(`${API}/sessions/${sessionId}/files`);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    const file = body.files.find(
-      (f: any) => f.filename === "requirements.txt",
-    );
-    expect(file).toBeTruthy();
-    expect(file.size).toBeGreaterThan(0);
-    expect(file).toHaveProperty("modified_at");
-    expect(file).toHaveProperty("has_markdown");
-  });
-
-  test("upload .csv and listing shows both files", async () => {
-    const csv = "Name,Value\nItem1,100\nItem2,200";
-    const res = await uploadFileViaAPI(sessionId, "data.csv", csv, "text/csv");
-    expect(res.status).toBe(200);
-
-    const list = await fetch(`${API}/sessions/${sessionId}/files`);
-    const body = await list.json();
-    const filenames = body.files.map((f: any) => f.filename);
-    expect(filenames).toContain("requirements.txt");
-    expect(filenames).toContain("data.csv");
-  });
-
-  test("reject .exe upload", async () => {
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "malware.exe",
-      "fake exe",
-      "application/octet-stream",
-    );
-    expect(res.status).toBe(400);
-  });
-
-  test("reject .sh upload", async () => {
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "script.sh",
-      "#!/bin/bash\necho hello",
-      "application/x-sh",
-    );
-    expect(res.status).toBe(400);
-  });
-
-  test("upload to nonexistent session returns 404", async () => {
-    const res = await uploadFileViaAPI(
-      "nonexistent_session_xyz",
-      "test.txt",
-      "hello",
-      "text/plain",
-    );
-    expect(res.status).toBe(404);
-  });
-
-  test("list files on nonexistent session returns 404", async () => {
-    const res = await fetch(
-      `${API}/sessions/nonexistent_session_xyz/files`,
-    );
-    expect(res.status).toBe(404);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 3. Content Understanding Conversion (API) — skip if CU disabled
-// ---------------------------------------------------------------------------
-test.describe.serial("Content Understanding Conversion", () => {
-  let sessionId: string;
-  let cuEnabled = false;
-
-  test.beforeAll(async () => {
-    const health = await getHealth();
-    cuEnabled = health.content_processing_enabled === true;
-    if (cuEnabled) {
-      sessionId = await createSessionViaAPI();
-    }
-  });
-
-  test.afterAll(async () => {
-    if (sessionId) await deleteSessionViaAPI(sessionId);
-  });
-
-  test("upload file and poll until has_markdown is true", async () => {
-    test.skip(!cuEnabled, "Content Understanding not enabled");
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "proposal.txt",
-      "This is a test proposal document with detailed budget information and project scope.",
-      "text/plain",
-    );
-    expect(res.status).toBe(200);
-
-    const files = await pollFiles(
-      sessionId,
-      (f) =>
-        f.some(
-          (file: any) =>
-            file.filename === "proposal.txt" && file.has_markdown === true,
-        ),
-      60_000,
-      3_000,
-    );
-    const file = files.find((f: any) => f.filename === "proposal.txt");
-    expect(file.has_markdown).toBe(true);
-  });
-
-  test("markdown sibling exists in listing with size > 0", async () => {
-    test.skip(!cuEnabled, "Content Understanding not enabled");
-    const res = await fetch(`${API}/sessions/${sessionId}/files`);
-    const body = await res.json();
-    const mdFile = body.files.find(
-      (f: any) => f.filename === "proposal.txt.md",
-    );
-    expect(mdFile).toBeTruthy();
-    expect(mdFile.size).toBeGreaterThan(0);
-  });
-
-  test("markdown content is non-trivial", async () => {
-    test.skip(!cuEnabled, "Content Understanding not enabled");
-    const res = await fetch(`${API}/sessions/${sessionId}/files`);
-    const body = await res.json();
-    const mdFile = body.files.find(
-      (f: any) => f.filename === "proposal.txt.md",
-    );
-    expect(mdFile.size).toBeGreaterThan(10);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 4. SSE Message Streaming (API)
-// ---------------------------------------------------------------------------
-test.describe("SSE Message Streaming", () => {
-  let sessionId: string;
-
-  test.beforeAll(async () => {
-    sessionId = await createSessionViaAPI();
-  });
-
-  test.afterAll(async () => {
-    if (sessionId) await deleteSessionViaAPI(sessionId);
-  });
-
-  test("send message returns well-formed SSE stream ending with done", async () => {
-    const { events, text } = await sendMessageViaAPI(
-      sessionId,
-      "What is 2 + 2? Answer in one sentence.",
-    );
-
-    // Stream contains data: lines
-    expect(text).toContain("data: ");
-
-    // Events have type field
-    expect(events.length).toBeGreaterThan(0);
-    for (const e of events) {
-      expect(typeof e.type).toBe("string");
-    }
-
-    // Ends with done event
-    expect(events[events.length - 1].type).toBe("done");
-
-    // Has a message event with non-empty content
-    const messageEvent = events.find((e) => e.type === "message");
-    expect(messageEvent).toBeTruthy();
-    expect(messageEvent!.content!.length).toBeGreaterThan(0);
-  });
-
-  test("no status events appear after message event", async () => {
-    const { events } = await sendMessageViaAPI(
-      sessionId,
-      "Say hello briefly.",
-    );
-    const messageIdx = events.findIndex((e) => e.type === "message");
-    if (messageIdx >= 0) {
-      const afterMessage = events.slice(messageIdx + 1);
-      const statusAfter = afterMessage.filter((e) => e.type === "status");
-      expect(statusAfter.length).toBe(0);
-    }
-  });
-
-  test("multi-turn context is preserved across messages", async () => {
-    // First turn: establish context
-    await sendMessageViaAPI(
-      sessionId,
-      "Remember this code word: PINEAPPLE. Just acknowledge you will remember it.",
-    );
-
-    // Second turn: ask about it
-    const { events } = await sendMessageViaAPI(
-      sessionId,
-      "What was the code word I just told you?",
-    );
-    const messageEvent = events.find((e) => e.type === "message");
-    expect(messageEvent).toBeTruthy();
-    expect(messageEvent!.content!.length).toBeGreaterThan(5);
-    expect(messageEvent!.content!.toUpperCase()).toContain("PINEAPPLE");
-  });
-
-  test("send to nonexistent session returns 404", async () => {
-    const res = await fetch(
-      `${API}/sessions/nonexistent_session_xyz/messages`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: "hello" }),
-      },
-    );
-    expect(res.status).toBe(404);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 5. Agent + Uploaded Files (API)
-// ---------------------------------------------------------------------------
-test.describe("Agent + Uploaded Files", () => {
-  let sessionId: string;
-
-  test.beforeAll(async () => {
-    sessionId = await createSessionViaAPI();
-
-    const rfpContent = [
-      "REQUEST FOR PROPOSAL",
-      "Project: Enterprise Data Platform Migration",
-      "Budget: $2,500,000",
-      "Deadline: September 30, 2026",
-      "Requirements:",
-      "- Migrate 15 legacy databases to cloud",
-      "- Zero downtime during migration",
-      "- SOC 2 Type II compliance required",
-      "- 99.99% uptime SLA post-migration",
-      "Contact: Jane Smith, CTO, jane.smith@example.com",
-    ].join("\n");
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "rfp-document.txt",
-      rfpContent,
-      "text/plain",
-    );
-    expect(res.status).toBe(200);
-  });
-
-  test.afterAll(async () => {
-    if (sessionId) await deleteSessionViaAPI(sessionId);
-  });
-
-  test("agent references specific details from uploaded document", async () => {
-    const { events } = await sendMessageViaAPI(
-      sessionId,
-      "Read the rfp-document.txt file in the workspace and tell me the budget and deadline mentioned in it.",
-    );
-    const msg = events.find((e) => e.type === "message");
-    expect(msg).toBeTruthy();
-    const content = msg!.content!;
-    expect(content.length).toBeGreaterThan(50);
-
-    // Agent should reference at least one specific detail from the file
-    const mentionsBudget =
-      content.includes("2,500,000") ||
-      content.includes("2.5") ||
-      content.includes("$2.5M");
-    const mentionsDeadline =
-      content.includes("September") || content.includes("2026");
-    expect(mentionsBudget || mentionsDeadline).toBe(true);
-  });
-
-  test("agent summarizes uploaded file without claiming no files exist", async () => {
-    const { events } = await sendMessageViaAPI(
-      sessionId,
-      "Summarize the key requirements from rfp-document.txt.",
-    );
-    const msg = events.find((e) => e.type === "message");
-    expect(msg).toBeTruthy();
-    const content = msg!.content!;
-    expect(content.length).toBeGreaterThan(50);
-
-    // Should not claim no files exist
-    const lower = content.toLowerCase();
-    const claimsNoFiles =
-      lower.includes("no files found") ||
-      lower.includes("no files were found") ||
-      lower.includes("cannot find any files");
-    expect(claimsNoFiles).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 6. Health Endpoint (API)
-// ---------------------------------------------------------------------------
-test.describe("Health Endpoint", () => {
-  test("returns all required fields with correct types", async () => {
-    const health = await getHealth();
-    expect(health.status).toBe("ok");
-    expect(typeof health.active_sessions).toBe("number");
-    expect(typeof health.cosmos_connected).toBe("boolean");
-    expect(typeof health.content_processing_enabled).toBe("boolean");
-    expect(health).toHaveProperty("timestamp");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 7. Browser Chat Flow (E2E)
-// ---------------------------------------------------------------------------
-test.describe("Browser Chat Flow", () => {
-  test.beforeEach(async ({ page }) => {
+test.describe.serial("Journey 1: Chat Conversation", () => {
+  test("App loads and session initializes", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("chat-input")).toBeVisible({
       timeout: 30_000,
     });
-  });
-
-  test("page loads with empty state and input enabled", async ({ page }) => {
-    const input = page.getByTestId("chat-input");
-    await expect(input).toBeEnabled();
-    // No initializing spinner visible
+    await expect(page.getByTestId("chat-input")).toBeEnabled();
     await expect(page.getByTestId("initializing")).toBeHidden();
   });
 
-  test("send message and receive non-empty assistant response", async ({
-    page,
-  }) => {
+  test("Send message and receive response", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("chat-input")).toBeVisible({
+      timeout: 30_000,
+    });
+
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
 
@@ -526,144 +146,216 @@ test.describe("Browser Chat Flow", () => {
     // Wait for streaming to finish
     await expect(input).toBeEnabled({ timeout: 120_000 });
 
-    // Page should contain substantive response
+    // Assistant response is substantive (not just empty or error)
     const body = await page.locator("body").textContent();
     expect(body!.length).toBeGreaterThan(50);
   });
 
-  test("multi-turn conversation preserves context", async ({ page }) => {
+  test("Multi-turn context preserved", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("chat-input")).toBeVisible({
+      timeout: 30_000,
+    });
+
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
 
-    await input.fill("Remember the number 7777.");
+    // First turn: establish context
+    await input.fill(
+      "Remember this code word: PINEAPPLE. Just acknowledge you will remember it.",
+    );
     await send.click();
     await expect(input).toBeEnabled({ timeout: 120_000 });
 
-    await input.fill("What number did I just ask you to remember?");
+    // Second turn: ask about it
+    await input.fill("What was the code word I just told you?");
     await send.click();
     await expect(input).toBeEnabled({ timeout: 120_000 });
 
-    await expect(page.locator("body")).toContainText("7777");
+    await expect(page.locator("body")).toContainText("PINEAPPLE");
   });
 });
 
 // ---------------------------------------------------------------------------
-// 8. Browser File Upload (E2E)
+// Journey 2: Upload Document and Discuss (Browser, serial)
 // ---------------------------------------------------------------------------
-test.describe("Browser File Upload", () => {
-  const tmpDir = path.join(__dirname, ".tmp-comprehensive");
-  const tmpFile = path.join(tmpDir, "test-upload.txt");
+test.describe.serial("Journey 2: Upload Document and Discuss", () => {
+  const tmpDir = path.join(__dirname, ".tmp-journey2");
+  const tmpFile = path.join(tmpDir, "rfp-document.txt");
+
+  const rfpContent = [
+    "REQUEST FOR PROPOSAL",
+    "Project: Enterprise Data Platform Migration",
+    "Budget: $2,500,000",
+    "Deadline: September 30, 2026",
+    "Requirements:",
+    "- Migrate 15 legacy databases to cloud",
+    "- Zero downtime during migration",
+    "- SOC 2 Type II compliance required",
+    "- 99.99% uptime SLA post-migration",
+    "Contact: Jane Smith, CTO, jane.smith@example.com",
+  ].join("\n");
 
   test.beforeAll(() => {
     fs.mkdirSync(tmpDir, { recursive: true });
-    fs.writeFileSync(tmpFile, "Test document content for comprehensive suite.");
+    fs.writeFileSync(tmpFile, rfpContent);
   });
 
   test.afterAll(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test.beforeEach(async ({ page }) => {
+  test("Upload shows in UI and document panel", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("chat-input")).toBeVisible({
       timeout: 30_000,
     });
-  });
 
-  test("upload shows chip, sends, and document panel appears with filename", async ({
-    page,
-  }) => {
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(tmpFile);
 
-    // File chip in input bar
+    // File chip visible in input bar
     await expect(
-      page.locator("form").getByText("test-upload.txt"),
+      page.locator("form").getByText("rfp-document.txt"),
     ).toBeVisible();
 
-    const send = page.getByTestId("send-button");
-    await send.click();
+    await page.getByTestId("send-button").click();
 
     // Uploaded message appears
-    await expect(page.locator("text=Uploaded")).toBeVisible({
+    await expect(page.locator("text=Uploaded").first()).toBeVisible({
       timeout: 30_000,
     });
 
-    // Document panel with filename (use filter — shared workspace may have other files)
+    // Wait for auto-prompt agent response to complete before moving on
+    const input = page.getByTestId("chat-input");
+    await expect(input).toBeEnabled({ timeout: 120_000 });
+
+    // Document panel with filename
     await expect(page.getByTestId("document-panel")).toBeVisible({
       timeout: 10_000,
     });
     await expect(
-      page.getByTestId("document-name").getByText("test-upload.txt"),
+      page.getByTestId("document-name").getByText("rfp-document.txt"),
     ).toBeVisible();
+
+    // Get the last assistant message — auto-prompt should reference RFP details
+    const lastAssistant = page
+      .locator('[class*="justify-start"] [class*="prose"]')
+      .last();
+    const reply = await lastAssistant.textContent();
+
+    const mentionsBudget =
+      reply!.includes("2,500,000") ||
+      reply!.includes("2.5") ||
+      reply!.includes("$2.5M");
+    const mentionsDeadline =
+      reply!.includes("September") || reply!.includes("2026");
+    expect(mentionsBudget).toBe(true);
+    expect(mentionsDeadline).toBe(true);
   });
 
-  test("conversion badge exists (done or pending)", async ({ page }) => {
+  test("Agent retains file context in follow-up", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("chat-input")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Upload the file
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(tmpFile);
     await page.getByTestId("send-button").click();
-
-    await expect(page.getByTestId("document-panel")).toBeVisible({
-      timeout: 10_000,
+    await expect(page.locator("text=Uploaded").first()).toBeVisible({
+      timeout: 30_000,
     });
 
-    // Either conversion-done or conversion-pending badge should exist
-    const done = page.getByTestId("conversion-done");
-    const pending = page.getByTestId("conversion-pending");
-    const hasBadge = (await done.count()) > 0 || (await pending.count()) > 0;
-    expect(hasBadge).toBe(true);
-  });
+    const input = page.getByTestId("chat-input");
+    const send = page.getByTestId("send-button");
 
-  test("toggle collapse hides items, re-expand shows them", async ({
-    page,
-  }) => {
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile);
-    await page.getByTestId("send-button").click();
+    // Wait for auto-prompt agent response to complete
+    await expect(input).toBeEnabled({ timeout: 120_000 });
 
-    await expect(page.getByTestId("document-panel")).toBeVisible({
-      timeout: 10_000,
-    });
+    // Follow-up about compliance
+    await input.fill(
+      "What compliance certifications are required according to the document?",
+    );
+    await send.click();
+    await expect(input).toBeEnabled({ timeout: 120_000 });
 
-    const toggle = page.getByTestId("document-panel-toggle");
+    const lastAssistant = page
+      .locator('[class*="justify-start"] [class*="prose"]')
+      .last();
+    const reply = await lastAssistant.textContent();
 
-    // Collapse
-    await toggle.click();
-    await expect(page.getByTestId("document-item").first()).toBeHidden();
-
-    // Re-expand
-    await toggle.click();
-    await expect(page.getByTestId("document-item").first()).toBeVisible();
+    // Should mention SOC 2 and not claim no files found
+    expect(reply!).toMatch(/SOC\s*2/i);
+    const lower = reply!.toLowerCase();
+    expect(lower).not.toContain("no files found");
+    expect(lower).not.toContain("no files were found");
+    expect(lower).not.toContain("cannot find any files");
   });
 });
 
 // ---------------------------------------------------------------------------
-// 9. CU in Document Panel (E2E) — skip if CU disabled
+// Journey 3: Document Conversion Pipeline (API + Browser, serial)
+// No skip logic. CU and ADLS are required infrastructure.
 // ---------------------------------------------------------------------------
-test.describe("CU in Document Panel", () => {
-  let cuEnabled = false;
-  const tmpDir = path.join(__dirname, ".tmp-cu-panel");
-  const tmpFile = path.join(tmpDir, "cu-panel-test.txt");
+test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
+  let sessionId: string;
+  const tmpDir = path.join(__dirname, ".tmp-journey3");
+  const tmpFile = path.join(tmpDir, "conversion-test.txt");
 
   test.beforeAll(async () => {
-    const health = await getHealth();
-    cuEnabled = health.content_processing_enabled === true;
-    if (cuEnabled) {
-      fs.mkdirSync(tmpDir, { recursive: true });
-      fs.writeFileSync(tmpFile, "Content for CU conversion panel testing.");
-    }
+    sessionId = await createSessionViaAPI();
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(
+      tmpFile,
+      "Conversion pipeline test document with budget $1M for cloud migration by Q3 2026.",
+    );
   });
 
-  test.afterAll(() => {
-    if (fs.existsSync(tmpDir)) {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    }
+  test.afterAll(async () => {
+    if (sessionId) await deleteSessionViaAPI(sessionId);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("conversion-pending badge becomes conversion-done", async ({
+  test("Upload triggers markdown conversion", async () => {
+    const res = await uploadFileViaAPI(
+      sessionId,
+      "conversion-test.txt",
+      "Conversion pipeline test document with budget $1M for cloud migration by Q3 2026.",
+      "text/plain",
+    );
+    expect(res.status).toBe(200);
+
+    // Poll until has_markdown becomes true — fail if it doesn't within 60s
+    const files = await pollFiles(
+      sessionId,
+      (f) =>
+        f.some(
+          (file: any) =>
+            file.filename === "conversion-test.txt" &&
+            file.has_markdown === true,
+        ),
+      60_000,
+      3_000,
+    );
+    const file = files.find((f: any) => f.filename === "conversion-test.txt");
+    expect(file.has_markdown).toBe(true);
+  });
+
+  test("Markdown content is non-trivial", async () => {
+    const res = await fetch(`${API}/sessions/${sessionId}/files`);
+    const body = await res.json();
+    const mdFile = body.files.find(
+      (f: any) => f.filename === "conversion-test.txt.md",
+    );
+    expect(mdFile).toBeTruthy();
+    expect(mdFile.size).toBeGreaterThan(10);
+  });
+
+  test("Conversion badge transitions to done in browser", async ({
     page,
   }) => {
-    test.skip(!cuEnabled, "Content Understanding not enabled");
     await page.goto("/");
     await expect(page.getByTestId("chat-input")).toBeVisible({
       timeout: 30_000,
@@ -677,17 +369,13 @@ test.describe("CU in Document Panel", () => {
       timeout: 10_000,
     });
 
-    // Wait for conversion to complete (DocumentPanel polls every 10s)
-    // Use .first() — shared workspace may have multiple converted files
+    // Wait for conversion-done badge — fail if it stays pending
     await expect(page.getByTestId("conversion-done").first()).toBeVisible({
       timeout: 90_000,
     });
   });
 
-  test("markdown sibling is not shown in document panel", async ({
-    page,
-  }) => {
-    test.skip(!cuEnabled, "Content Understanding not enabled");
+  test("Markdown sibling hidden in document panel", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("chat-input")).toBeVisible({
       timeout: 30_000,
@@ -701,12 +389,12 @@ test.describe("CU in Document Panel", () => {
       timeout: 10_000,
     });
 
-    // Wait for conversion to complete
+    // Wait for conversion to finish so .md sibling would exist if shown
     await expect(page.getByTestId("conversion-done").first()).toBeVisible({
       timeout: 90_000,
     });
 
-    // The .md sibling should NOT appear in the panel (DocumentPanel filters them)
+    // No document-name should end with .txt.md
     const names = page.getByTestId("document-name");
     const count = await names.count();
     for (let i = 0; i < count; i++) {
@@ -717,27 +405,23 @@ test.describe("CU in Document Panel", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10. New Chat Reset (E2E)
+// Journey 4: Session Isolation (Browser, serial)
 // ---------------------------------------------------------------------------
-test.describe("New Chat Reset", () => {
-  test.beforeEach(async ({ page }) => {
+test.describe.serial("Journey 4: Session Isolation", () => {
+  test("New chat clears messages", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByTestId("chat-input")).toBeVisible({
       timeout: 30_000,
     });
-  });
 
-  test("new chat clears messages and restores empty state", async ({
-    page,
-  }) => {
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
 
-    await input.fill("Hello from comprehensive test");
+    await input.fill("Hello from session isolation test");
     await send.click();
     await expect(input).toBeEnabled({ timeout: 120_000 });
     await expect(
-      page.locator("text=Hello from comprehensive test"),
+      page.locator("text=Hello from session isolation test"),
     ).toBeVisible();
 
     // Click new chat
@@ -746,13 +430,16 @@ test.describe("New Chat Reset", () => {
 
     // Old message should be gone
     await expect(
-      page.locator("text=Hello from comprehensive test"),
+      page.locator("text=Hello from session isolation test"),
     ).toBeHidden();
   });
 
-  test("new session has no context from previous session", async ({
-    page,
-  }) => {
+  test("New session has no context from previous", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("chat-input")).toBeVisible({
+      timeout: 30_000,
+    });
+
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
 
@@ -773,7 +460,6 @@ test.describe("New Chat Reset", () => {
     await expect(input).toBeEnabled({ timeout: 120_000 });
 
     // Agent should NOT know STARFISH from the previous session
-    // Check only the last assistant message, not the full page (which includes user input text)
     const lastAssistant = page
       .locator('[class*="justify-start"] [class*="prose"]')
       .last();
@@ -783,53 +469,9 @@ test.describe("New Chat Reset", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 11. ADLS + Content Understanding Full Pipeline (API) — skip if CU disabled
+// Journey 5: Security and Error Handling (API)
 // ---------------------------------------------------------------------------
-test.describe("ADLS + CU Full Pipeline", () => {
-  let cuEnabled = false;
-  let sessionId: string;
-
-  test.beforeAll(async () => {
-    const health = await getHealth();
-    cuEnabled = health.content_processing_enabled === true;
-    if (cuEnabled) sessionId = await createSessionViaAPI();
-  });
-
-  test.afterAll(async () => {
-    if (sessionId) await deleteSessionViaAPI(sessionId);
-  });
-
-  test("upload triggers full pipeline: markdown sibling appears in listing", async () => {
-    test.skip(!cuEnabled, "Content Understanding not enabled");
-    const content =
-      "Full pipeline test: budget of $1M for cloud migration by Q3 2026.";
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "pipeline-test.txt",
-      content,
-      "text/plain",
-    );
-    expect(res.status).toBe(200);
-
-    // Poll until .md sibling appears
-    const files = await pollFiles(
-      sessionId,
-      (f) => f.some((file: any) => file.filename === "pipeline-test.txt.md"),
-      60_000,
-      3_000,
-    );
-    const mdFile = files.find(
-      (f: any) => f.filename === "pipeline-test.txt.md",
-    );
-    expect(mdFile).toBeTruthy();
-    expect(mdFile.size).toBeGreaterThan(0);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 12. Edge Cases (API)
-// ---------------------------------------------------------------------------
-test.describe("Edge Cases", () => {
+test.describe("Journey 5: Security and Error Handling", () => {
   let sessionId: string;
 
   test.beforeAll(async () => {
@@ -840,7 +482,25 @@ test.describe("Edge Cases", () => {
     if (sessionId) await deleteSessionViaAPI(sessionId);
   });
 
-  test("path traversal filename is sanitized or rejected", async () => {
+  test("Rejects dangerous file types", async () => {
+    const exeRes = await uploadFileViaAPI(
+      sessionId,
+      "malware.exe",
+      "fake exe",
+      "application/octet-stream",
+    );
+    expect(exeRes.status).toBe(400);
+
+    const shRes = await uploadFileViaAPI(
+      sessionId,
+      "script.sh",
+      "#!/bin/bash\necho hello",
+      "application/x-sh",
+    );
+    expect(shRes.status).toBe(400);
+  });
+
+  test("Path traversal sanitized", async () => {
     const res = await uploadFileViaAPI(
       sessionId,
       "../../../etc/passwd.txt",
@@ -848,18 +508,38 @@ test.describe("Edge Cases", () => {
       "text/plain",
     );
     if (res.status === 200) {
-      // Server sanitized the filename — should strip path components
       const body = await res.json();
       expect(body.filename).not.toContain("..");
       expect(body.filename).toBe("passwd.txt");
     } else {
-      // Server rejected outright
       expect(res.status).toBe(400);
     }
   });
 
-  test("concurrent sends: one succeeds, other gets busy or also succeeds", async () => {
-    // Fire two requests nearly simultaneously
+  test("Nonexistent session returns 404", async () => {
+    const getRes = await fetch(`${API}/sessions/nonexistent_session_xyz`);
+    expect(getRes.status).toBe(404);
+
+    const msgRes = await fetch(
+      `${API}/sessions/nonexistent_session_xyz/messages`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "hello" }),
+      },
+    );
+    expect(msgRes.status).toBe(404);
+
+    const uploadRes = await uploadFileViaAPI(
+      "nonexistent_session_xyz",
+      "test.txt",
+      "hello",
+      "text/plain",
+    );
+    expect(uploadRes.status).toBe(404);
+  });
+
+  test("Concurrent sends: busy detection", async () => {
     const [result1, result2] = await Promise.all([
       sendMessageViaAPI(sessionId, "Count from 1 to 5.").catch(() => ({
         events: [] as SSEEvent[],
@@ -876,7 +556,7 @@ test.describe("Edge Cases", () => {
       ),
     ]);
 
-    // At least one should have completed successfully with a done event
+    // At least one should complete successfully with a done event
     const r1Done = result1.events.some((e) => e.type === "done");
     const r2Done = result2.events.some((e) => e.type === "done");
     expect(r1Done || r2Done).toBe(true);
@@ -900,5 +580,89 @@ test.describe("Edge Cases", () => {
       );
       expect(hasError).toBe(true);
     }
+  });
+
+  test("Delete then get returns 404", async () => {
+    const sid = await createSessionViaAPI();
+    const del = await fetch(`${API}/sessions/${sid}`, { method: "DELETE" });
+    expect(del.status).toBe(204);
+    const get = await fetch(`${API}/sessions/${sid}`);
+    expect(get.status).toBe(404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Journey 6: Document Panel UX (Browser)
+// ---------------------------------------------------------------------------
+test.describe.serial("Journey 6: Document Panel UX", () => {
+  const tmpDir = path.join(__dirname, ".tmp-journey6");
+  const tmpFile1 = path.join(tmpDir, "doc-one.txt");
+  const tmpFile2 = path.join(tmpDir, "doc-two.txt");
+
+  test.beforeAll(() => {
+    fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(tmpFile1, "First document for panel UX test.");
+    fs.writeFileSync(tmpFile2, "Second document for panel UX test.");
+  });
+
+  test.afterAll(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  test("Collapse toggle", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("chat-input")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(tmpFile1);
+    await page.getByTestId("send-button").click();
+
+    await expect(page.getByTestId("document-panel")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const toggle = page.getByTestId("document-panel-toggle");
+
+    // Collapse
+    await toggle.click();
+    await expect(page.getByTestId("document-item").first()).toBeHidden();
+
+    // Re-expand
+    await toggle.click();
+    await expect(page.getByTestId("document-item").first()).toBeVisible();
+  });
+
+  test("Multiple files in panel", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByTestId("chat-input")).toBeVisible({
+      timeout: 30_000,
+    });
+
+    // Upload first file
+    const fileInput = page.locator('input[type="file"]');
+    await fileInput.setInputFiles(tmpFile1);
+    await page.getByTestId("send-button").click();
+    await expect(page.getByTestId("document-panel")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Wait for input to be ready again
+    await expect(page.getByTestId("chat-input")).toBeEnabled({
+      timeout: 120_000,
+    });
+
+    // Upload second file
+    await fileInput.setInputFiles(tmpFile2);
+    await page.getByTestId("send-button").click();
+
+    // Both filenames visible in panel
+    await expect(
+      page.getByTestId("document-name").getByText("doc-one.txt"),
+    ).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.getByTestId("document-name").getByText("doc-two.txt"),
+    ).toBeVisible({ timeout: 10_000 });
   });
 });

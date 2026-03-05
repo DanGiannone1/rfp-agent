@@ -271,7 +271,11 @@ class SessionManager:
             yield _sse_event({"type": "done"})
 
     async def upload_file(self, session_id: str, upload_file: UploadFile) -> dict:
-        """Proxy a file upload to the session container's /upload endpoint."""
+        """Proxy a file upload to the session container, then run ADLS + CU.
+
+        Waits for Content Understanding to complete so the caller knows the
+        document is fully processed before prompting the agent.
+        """
         url = self._pool_url("/upload", session_id)
         content = await upload_file.read()
         filename = upload_file.filename
@@ -281,20 +285,24 @@ class SessionManager:
         resp.raise_for_status()
         result = resp.json()
 
-        # Background: ADLS storage + markdown conversion (fire-and-forget)
+        # ADLS storage + markdown conversion (synchronous — wait for completion)
         if self._content_processor and self._content_processor.enabled:
-
             async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
                 fwd_url = self._pool_url("/upload", session_id)
                 fwd_files = {"file": (md_filename, md_bytes, "text/markdown")}
                 fwd_resp = await self._http.post(fwd_url, files=fwd_files)
                 fwd_resp.raise_for_status()
 
-            asyncio.create_task(
-                self._content_processor.process_document(
-                    session_id, filename, content, content_type, forward_markdown
-                )
+            proc_result = await self._content_processor.process_document(
+                session_id, filename, content, content_type, forward_markdown
             )
+            result["markdown_ready"] = (
+                proc_result["markdown_produced"] and proc_result["markdown_forwarded"]
+            )
+            if proc_result["error"]:
+                result["processing_error"] = proc_result["error"]
+        else:
+            result["markdown_ready"] = False
 
         return result
 

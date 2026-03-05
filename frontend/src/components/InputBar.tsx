@@ -21,16 +21,26 @@ export default function InputBar({ onSend, onUpload, disabled }: InputBarProps) 
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    const trimmed = input.trim();
+    if (!trimmed && !selectedFile) return;
+
     if (selectedFile && onUpload) {
       onUpload(selectedFile);
       setSelectedFile(null);
+      // If there's also text, send it as a separate message
+      if (trimmed) {
+        onSend(trimmed);
+        setInput("");
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "auto";
+        }
+      }
+      return;
     }
-    const trimmed = input.trim();
-    if (!trimmed && !selectedFile) return;
+
     if (trimmed) {
       onSend(trimmed);
       setInput("");
-      // Reset textarea height
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
