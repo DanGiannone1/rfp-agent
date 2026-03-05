@@ -1,4 +1,3 @@
-import { getAccessToken } from "./auth";
 import { SSEEvent } from "./types";
 
 const API_BASE =
@@ -7,21 +6,13 @@ const API_BASE =
 export async function* streamSSE(
   prompt: string,
   signal: AbortSignal,
-  sessionId?: string,
+  sessionId: string,
 ): AsyncGenerator<SSEEvent> {
-  const url = sessionId
-    ? `${API_BASE}/sessions/${sessionId}/messages`
-    : `${API_BASE}/analyze`;
-
-  const token = await getAccessToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const url = `${API_BASE}/sessions/${sessionId}/messages`;
 
   const res = await fetch(url, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
     signal,
   });

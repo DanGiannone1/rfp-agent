@@ -1,9 +1,7 @@
 "use client";
 
 import { useReducer, useRef, useCallback, useEffect } from "react";
-import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { ChatMessage, SSEEvent } from "@/lib/types";
-import { authEnabled, loginRequest } from "@/lib/auth";
 import { streamSSE } from "@/lib/sse";
 import { createSession, getSession, uploadFile } from "@/lib/api";
 import {
@@ -204,8 +202,6 @@ const initialState: State = {
 export default function Chat() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const abortRef = useRef<AbortController | null>(null);
-  const isAuthenticated = useIsAuthenticated();
-  const { instance } = useMsal();
 
   // Initialise or restore session on mount
   useEffect(() => {
@@ -299,7 +295,7 @@ export default function Chat() {
         for await (const event of streamSSE(
           content,
           controller.signal,
-          state.sessionId ?? undefined,
+          state.sessionId!,
         )) {
           handleSSEEvent(event);
         }
@@ -325,16 +321,7 @@ export default function Chat() {
         dispatch({ type: "FILE_UPLOADED", filename: result.filename });
         dispatch({ type: "FILES_CHANGED" });
 
-        // Build auto-prompt based on processing result
-        let autoPrompt: string;
-        if (result.markdown_ready) {
-          autoPrompt = `I've uploaded "${result.filename}" for analysis. The document has been converted to markdown (${result.filename}.md) for analysis. Please read the document and confirm what you see — summarize the RFP title, issuing organization, key dates, and scope of work. Then list the workflow options available (bid/no-bid analysis, requirements extraction, response strategy, etc.) so I know what I can ask for next.`;
-        } else {
-          const errorNote = result.processing_error
-            ? ` (${result.processing_error})`
-            : "";
-          autoPrompt = `I've uploaded "${result.filename}" but document conversion to markdown failed${errorNote}. The original file is in the workspace. Please attempt to work with it directly and let me know what you find.`;
-        }
+        const autoPrompt = `I've uploaded "${result.filename}". Please convert it to markdown and analyze it.`;
         handleSend(autoPrompt);
       } catch (err) {
         dispatch({
@@ -370,40 +357,6 @@ export default function Chat() {
         dispatch({ type: "ERROR", message: event.message });
         break;
     }
-  }
-
-  // Gate: require login when Entra ID auth is configured
-  if (authEnabled && !isAuthenticated) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-6 bg-background text-foreground">
-        <div className="relative">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl accent-gradient shadow-xl shadow-indigo-500/20">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-white"
-            >
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-          <div className="absolute -inset-3 rounded-3xl bg-indigo-500/5 blur-xl" aria-hidden="true" />
-        </div>
-        <h1 className="text-2xl font-semibold">RFP Agent</h1>
-        <p className="text-sm text-zinc-500">Sign in to start your analysis</p>
-        <button
-          onClick={() => instance.loginRedirect(loginRequest)}
-          className="accent-gradient rounded-xl px-6 py-2.5 text-sm font-medium text-white shadow-lg shadow-indigo-500/20 transition-all duration-200 hover:shadow-indigo-500/30 hover:brightness-110 active:scale-[0.98]"
-        >
-          Sign in with Microsoft
-        </button>
-      </div>
-    );
   }
 
   return (

@@ -1,12 +1,10 @@
 """Session manager that proxies requests to ACA dynamic session containers.
 
 Each user gets an isolated container via the ACA session pool. The orchestrator
-never runs the Copilot SDK directly — it sends blocking HTTP requests to the
-session container and polls for status updates, yielding SSE events to the
-frontend.
+never runs the Copilot SDK directly — it streams SSE from the session
+container's /chat/stream endpoint and passes events through to the frontend.
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -21,7 +19,6 @@ from fastapi import UploadFile
 logger = logging.getLogger(__name__)
 
 POOL_MANAGEMENT_ENDPOINT = os.getenv("POOL_MANAGEMENT_ENDPOINT", "")
-STATUS_POLL_INTERVAL = 1.5  # seconds between /status polls
 
 
 def _sse_event(data: dict) -> str:
@@ -72,15 +69,13 @@ class _SessionPoolAuth(httpx.Auth):
 class SessionManager:
     """Proxies session lifecycle to ACA dynamic session containers."""
 
-    def __init__(self, cosmos_store=None, content_processor=None):
-        self._cosmos = cosmos_store
-        self._content_processor = content_processor
+    def __init__(self):
         self._auth = _SessionPoolAuth()
         self._http = httpx.AsyncClient(
             auth=self._auth,
             timeout=httpx.Timeout(connect=10, read=600, write=10, pool=10),
         )
-        self._turn_indices: dict[str, int] = {}
+        self._sessions: set[str] = set()
         self._cogservices_credential: DefaultAzureCredential | None = None
         self._cogservices_token: str | None = None
         self._cogservices_expires_on: float = 0
@@ -118,7 +113,7 @@ class SessionManager:
 
     @property
     def active_count(self) -> int:
-        return len(self._turn_indices)
+        return len(self._sessions)
 
     def _pool_url(self, path: str, session_id: str) -> str:
         base = POOL_MANAGEMENT_ENDPOINT.rstrip("/")
@@ -133,137 +128,55 @@ class SessionManager:
         resp = await self._http.get(url)
         resp.raise_for_status()
 
-        self._turn_indices[session_id] = 0
+        self._sessions.add(session_id)
 
-        metadata = {
+        logger.info("Created session %s", session_id)
+        return {
             "session_id": session_id,
             "status": "active",
             "created_at": now.isoformat(),
             "last_activity_at": now.isoformat(),
         }
 
-        if self._cosmos:
-            await self._cosmos.create_session(metadata)
-
-        logger.info("Created session %s", session_id)
-        return metadata
-
     async def validate_session(self, session_id: str) -> None:
-        """Ensure session exists and recover turn index from Cosmos if needed.
-
-        Call this eagerly (before constructing StreamingResponse) so that
-        KeyError can be caught by the endpoint handler.
-        """
-        if session_id in self._turn_indices:
-            return
-        if self._cosmos:
-            meta = await self._cosmos.get_session(session_id)
-            if meta and meta.get("status") == "active":
-                messages = await self._cosmos.get_messages(session_id)
-                max_turn = max(
-                    (m.get("turn_index", 0) for m in messages), default=0
-                )
-                self._turn_indices[session_id] = max_turn
-                return
-        raise KeyError(session_id)
+        """Ensure session exists. Raises KeyError if not tracked."""
+        if session_id not in self._sessions:
+            raise KeyError(session_id)
 
     async def send_message(self, session_id: str, prompt: str) -> AsyncGenerator[str, None]:
-        """Send a message, poll for status, yield SSE events to the frontend.
-
-        This is an async generator that the FastAPI endpoint wraps in a
-        StreamingResponse. SSE only flows orchestrator → frontend; the
-        session container is called with plain HTTP request/response.
-        """
+        """Stream SSE events from the session container to the frontend."""
         try:
-            self._turn_indices[session_id] = self._turn_indices.get(session_id, 0) + 1
-            turn = self._turn_indices[session_id]
-            now = datetime.now(timezone.utc)
+            stream_url = self._pool_url("/chat/stream", session_id)
 
-            # Persist user message
-            if self._cosmos:
-                await self._cosmos.add_message({
-                    "session_id": session_id,
-                    "role": "user",
-                    "content": prompt,
-                    "tool_activity": [],
-                    "timestamp": now.isoformat(),
-                    "turn_index": turn,
-                })
-
-            chat_url = self._pool_url("/chat", session_id)
-            status_url = self._pool_url("/status", session_id)
-
-            # Get a Cognitive Services token to forward to the session container
             cogservices_token = await self._get_cogservices_token()
             chat_body = {"prompt": prompt}
             if cogservices_token:
                 chat_body["token"] = cogservices_token
 
-            # Fire off the blocking /chat request as a background task
-            chat_task = asyncio.create_task(
-                self._http.post(chat_url, json=chat_body)
-            )
+            async with self._http.stream("POST", stream_url, json=chat_body) as resp:
+                if resp.status_code == 409:
+                    yield _sse_event({"type": "error", "message": "Session is busy"})
+                    yield _sse_event({"type": "done"})
+                    return
 
-            # Poll /status and yield SSE events until /chat completes
-            last_status = None
-            while not chat_task.done():
-                try:
-                    status_resp = await self._http.get(
-                        status_url,
-                        timeout=httpx.Timeout(connect=5, read=5, write=5, pool=5),
+                if resp.status_code >= 400:
+                    await resp.aread()
+                    try:
+                        detail = resp.json().get("detail", resp.text)
+                    except Exception:
+                        detail = resp.text
+                    logger.error(
+                        "Session container returned %s for %s: %s",
+                        resp.status_code, session_id, detail,
                     )
-                    if status_resp.status_code == 200:
-                        try:
-                            current = status_resp.json().get("status", "idle")
-                        except (ValueError, KeyError):
-                            current = None
-                        if current and current != last_status:
-                            last_status = current
-                            yield _sse_event({"type": "status", "status": current})
-                except httpx.HTTPError:
-                    pass  # status poll failure is non-fatal
-                await asyncio.sleep(STATUS_POLL_INTERVAL)
+                    yield _sse_event({"type": "error", "message": f"Session error: {detail}"})
+                    yield _sse_event({"type": "done"})
+                    return
 
-            # Get the result from /chat
-            chat_resp = chat_task.result()
-            if chat_resp.status_code == 409:
-                yield _sse_event({"type": "error", "message": "Session is busy"})
-                yield _sse_event({"type": "done"})
-                return
-
-            if chat_resp.status_code >= 400:
-                try:
-                    detail = chat_resp.json().get("detail", chat_resp.text)
-                except Exception:
-                    detail = chat_resp.text
-                logger.error(
-                    "Session container returned %s for %s: %s",
-                    chat_resp.status_code, session_id, detail,
-                )
-                yield _sse_event({"type": "error", "message": f"Session error: {detail}"})
-                yield _sse_event({"type": "done"})
-                return
-
-            result = chat_resp.json()
-
-            yield _sse_event({
-                "type": "message",
-                "content": result.get("content", ""),
-            })
-            yield _sse_event({"type": "done"})
-
-            # Persist assistant message
-            if self._cosmos:
-                now = datetime.now(timezone.utc)
-                await self._cosmos.add_message({
-                    "session_id": session_id,
-                    "role": "assistant",
-                    "content": result.get("content", ""),
-                    "tool_activity": result.get("tool_activity", []),
-                    "timestamp": now.isoformat(),
-                    "turn_index": turn,
-                })
-                await self._cosmos.update_session_activity(session_id, now)
+                async for line in resp.aiter_lines():
+                    line = line.strip()
+                    if line:
+                        yield line + "\n\n"
 
         except Exception:
             logger.exception("send_message failed for session %s", session_id)
@@ -271,11 +184,7 @@ class SessionManager:
             yield _sse_event({"type": "done"})
 
     async def upload_file(self, session_id: str, upload_file: UploadFile) -> dict:
-        """Proxy a file upload to the session container, then run ADLS + CU.
-
-        Waits for Content Understanding to complete so the caller knows the
-        document is fully processed before prompting the agent.
-        """
+        """Proxy a file upload to the session container."""
         url = self._pool_url("/upload", session_id)
         content = await upload_file.read()
         filename = upload_file.filename
@@ -283,28 +192,7 @@ class SessionManager:
         files = {"file": (filename, content, content_type)}
         resp = await self._http.post(url, files=files)
         resp.raise_for_status()
-        result = resp.json()
-
-        # ADLS storage + markdown conversion (synchronous — wait for completion)
-        if self._content_processor and self._content_processor.enabled:
-            async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
-                fwd_url = self._pool_url("/upload", session_id)
-                fwd_files = {"file": (md_filename, md_bytes, "text/markdown")}
-                fwd_resp = await self._http.post(fwd_url, files=fwd_files)
-                fwd_resp.raise_for_status()
-
-            proc_result = await self._content_processor.process_document(
-                session_id, filename, content, content_type, forward_markdown
-            )
-            result["markdown_ready"] = (
-                proc_result["markdown_produced"] and proc_result["markdown_forwarded"]
-            )
-            if proc_result["error"]:
-                result["processing_error"] = proc_result["error"]
-        else:
-            result["markdown_ready"] = False
-
-        return result
+        return resp.json()
 
     async def list_files(self, session_id: str) -> dict:
         """Proxy GET /files to the session container."""
@@ -314,16 +202,8 @@ class SessionManager:
         return resp.json()
 
     async def get_session(self, session_id: str) -> dict:
-        """Return session metadata + message history from Cosmos."""
-        if self._cosmos:
-            metadata = await self._cosmos.get_session(session_id)
-            if not metadata:
-                raise KeyError(session_id)
-            messages = await self._cosmos.get_messages(session_id)
-            return {**metadata, "messages": messages}
-
-        # In-memory fallback (no history)
-        if session_id not in self._turn_indices:
+        """Return minimal session metadata (no persistence)."""
+        if session_id not in self._sessions:
             raise KeyError(session_id)
         return {
             "session_id": session_id,
@@ -332,14 +212,5 @@ class SessionManager:
         }
 
     async def delete_session(self, session_id: str) -> None:
-        self._turn_indices.pop(session_id, None)
-
-        if self._cosmos:
-            metadata = await self._cosmos.get_session(session_id)
-            if metadata:
-                await self._cosmos.close_session(session_id)
-                logger.info("Deleted session %s", session_id)
-                return
-            raise KeyError(session_id)
-
+        self._sessions.discard(session_id)
         logger.info("Deleted session %s", session_id)

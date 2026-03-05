@@ -21,44 +21,19 @@ logger = logging.getLogger(__name__)
 # Globals set during lifespan
 # ---------------------------------------------------------------------------
 session_manager: SessionManager | None = None
-cosmos_store = None  # CosmosStore | None — lazy import in lifespan
-content_processor = None  # ContentProcessor
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global session_manager, cosmos_store, content_processor
+    global session_manager
 
-    # CosmosDB (optional — runs fine without it, sessions are in-memory only)
-    cosmos_endpoint = os.getenv("COSMOS_ENDPOINT")
-    if cosmos_endpoint:
-        try:
-            from cosmos import CosmosStore
-
-            cosmos_store = CosmosStore(cosmos_endpoint)
-            await cosmos_store.initialize()
-            logger.info("CosmosDB connected (%s)", cosmos_endpoint)
-        except Exception:
-            logger.warning("CosmosDB unavailable — running without persistence", exc_info=True)
-            cosmos_store = None
-
-    # Content Processing (required — ADLS + Content Understanding)
-    from content_processing import ContentProcessor
-
-    content_processor = ContentProcessor()
-    await content_processor.initialize()
-    logger.info("Content processing ready")
-
-    session_manager = SessionManager(cosmos_store, content_processor)
+    session_manager = SessionManager()
     await session_manager.start()
     logger.info("Application started")
 
     yield
 
     await session_manager.stop()
-    await content_processor.close()
-    if cosmos_store:
-        await cosmos_store.close()
     logger.info("Application shut down")
 
 
@@ -104,8 +79,7 @@ async def create_session(req: CreateSessionRequest | None = None) -> dict:
 
 @app.post("/sessions/{session_id}/messages")
 async def send_message(session_id: str, req: SendMessageRequest) -> StreamingResponse:
-    """Send a user message and stream back SSE events (status updates + final response)."""
-    # Validate eagerly so KeyError is raised before we return a StreamingResponse
+    """Send a user message and stream back SSE events."""
     try:
         await session_manager.validate_session(session_id)
     except KeyError:
@@ -123,7 +97,7 @@ async def send_message(session_id: str, req: SendMessageRequest) -> StreamingRes
 
 @app.get("/sessions/{session_id}")
 async def get_session(session_id: str) -> dict:
-    """Return session metadata and message history."""
+    """Return session metadata."""
     try:
         return await session_manager.get_session(session_id)
     except KeyError:
@@ -161,7 +135,6 @@ async def upload_file(session_id: str, file: UploadFile) -> dict:
     try:
         result = await session_manager.upload_file(session_id, file)
     except Exception as exc:
-        # Propagate 4xx errors from the session container
         import httpx
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
             detail = exc.response.text
@@ -179,11 +152,9 @@ async def upload_file(session_id: str, file: UploadFile) -> dict:
 # ---------------------------------------------------------------------------
 @app.get("/health")
 async def health() -> dict:
-    """Return service health and connectivity status."""
+    """Return service health."""
     return {
         "status": "ok",
         "active_sessions": session_manager.active_count if session_manager else 0,
-        "cosmos_connected": cosmos_store is not None,
-        "content_processing_enabled": content_processor is not None,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

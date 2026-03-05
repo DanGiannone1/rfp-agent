@@ -1,13 +1,7 @@
-import { getAccessToken } from "./auth";
 import type { FileInfo } from "./types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-async function authHeaders(): Promise<Record<string, string>> {
-  const token = await getAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 export interface SessionMetadata {
   session_id: string;
@@ -28,13 +22,11 @@ export interface SessionWithMessages extends SessionMetadata {
   }>;
 }
 
-export async function createSession(
-  workingDir?: string,
-): Promise<SessionMetadata> {
+export async function createSession(): Promise<SessionMetadata> {
   const res = await fetch(`${API_BASE}/sessions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-    body: JSON.stringify({ working_dir: workingDir ?? null }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
   });
   if (!res.ok) throw new Error(`Failed to create session: ${res.status}`);
   return res.json();
@@ -43,9 +35,7 @@ export async function createSession(
 export async function getSession(
   sessionId: string,
 ): Promise<SessionWithMessages> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-    headers: await authHeaders(),
-  });
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}`);
   if (!res.ok) throw new Error(`Failed to get session: ${res.status}`);
   return res.json();
 }
@@ -53,7 +43,6 @@ export async function getSession(
 export async function deleteSession(sessionId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
     method: "DELETE",
-    headers: await authHeaders(),
   });
   if (!res.ok && res.status !== 404)
     throw new Error(`Failed to delete session: ${res.status}`);
@@ -62,12 +51,11 @@ export async function deleteSession(sessionId: string): Promise<void> {
 export async function uploadFile(
   sessionId: string,
   file: File,
-): Promise<{ path: string; filename: string; size: number; markdown_ready?: boolean; processing_error?: string }> {
+): Promise<{ path: string; filename: string; size: number }> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_BASE}/sessions/${sessionId}/upload`, {
     method: "POST",
-    headers: await authHeaders(),
     body: form,
   });
   if (!res.ok) {
@@ -80,9 +68,7 @@ export async function uploadFile(
 export async function listFiles(
   sessionId: string,
 ): Promise<{ files: FileInfo[] }> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files`, {
-    headers: await authHeaders(),
-  });
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files`);
   if (!res.ok) throw new Error(`Failed to list files: ${res.status}`);
   return res.json();
 }

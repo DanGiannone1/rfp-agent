@@ -44,32 +44,19 @@ Three-tier system where the orchestrator proxies to isolated session containers:
 Frontend (Next.js 16, App Router)
     ↓ HTTP + SSE
 Orchestrator (FastAPI)
-    ↓ HTTP (blocking /chat + polling /status)
+    ↓ SSE stream proxy (POST /chat/stream)
 Session Container (FastAPI + Copilot SDK)
     ↓ github-copilot-sdk
 Azure OpenAI
 ```
 
-**Key design:** The orchestrator never runs the Copilot SDK directly. It POSTs to `/chat` on the session container (which blocks until the agent turn completes), polls `/status` for progress, and streams SSE events back to the frontend. In production, each user gets an isolated container via ACA Dynamic Sessions. Locally, a single session container serves all sessions.
+**Key design:** The orchestrator never runs the Copilot SDK directly. It streams SSE from the session container's `/chat/stream` endpoint and passes events through to the frontend. In production, each user gets an isolated container via ACA Dynamic Sessions. Locally, a single session container serves all sessions. Sessions are tracked in-memory only (no persistence layer).
 
 ### SSE event flow
-Session container emits events (delta, tool_start, tool_end, message, done, error) → orchestrator re-emits status + final message as SSE → frontend `Chat.tsx` reducer dispatches actions per event type.
-
-### Auth (optional)
-Entra ID via MSAL on frontend, Easy Auth on orchestrator. Disabled locally when `NEXT_PUBLIC_ENTRA_*` vars are unset. The session manager auto-detects local vs prod: skips Azure auth tokens when `POOL_MANAGEMENT_ENDPOINT` is `http://` (not `https://`).
-
-### Persistence (optional)
-CosmosDB stores session metadata + message history. App runs fine without it (`COSMOS_ENDPOINT` unset) — sessions are in-memory only.
+Session container streams events (delta, tool_start, tool_end, message, done, error) via `/chat/stream` → orchestrator proxies the SSE stream through to the frontend → `Chat.tsx` reducer dispatches actions per event type.
 
 ### Document processing
-Uploaded files are converted to markdown and stored on ADLS Gen2. Both services must be configured for processing to activate.
-
-- **Content Understanding** — converts uploaded documents (PDF, images, Office) to structured markdown using the `prebuilt-layout` analyzer. Uses the same Foundry/Cognitive Services resource as `AZURE_ENDPOINT` (the base URL is derived automatically).
-- **ADLS Gen2** — persists originals at `originals/{session_id}/{filename}` and markdown at `markdown/{session_id}/{filename}.md`. Requires `ADLS_ACCOUNT_NAME`.
-
-Processing runs synchronously during the upload request — the orchestrator waits for Content Understanding to complete before returning the upload result to the frontend. The converted markdown is forwarded to the session container as a separate `/upload` so the agent can reference it. The upload response includes a `markdown_ready` flag so the frontend knows whether conversion succeeded, and processing failures are surfaced to the user.
-
-To enable locally: set `ADLS_ACCOUNT_NAME` in `.env` and ensure `az login` has `Storage Blob Data Contributor` on the account. Both ADLS and Content Understanding are required — the processor only activates when both are configured. Content Understanding requires `Cognitive Services User` on the Foundry resource.
+Uploaded files are sent directly to the session container's `/upload` endpoint and saved to the workspace. The agent uses the `convert_document` MCP tool (in `session-container/tools/convert_document.py`) to convert documents to markdown via Azure Content Understanding. ADLS is used for storage when `ADLS_ACCOUNT_NAME` is set.
 
 ### Knowledge base (optional)
 Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and exposes a `knowledge_base_retrieve` tool to the agent via MCP. This lets the agent search across all uploaded documents, past proposals, and reference materials.
@@ -82,16 +69,13 @@ Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and ex
 ## Key files
 
 - `app.py` — orchestrator endpoints (session CRUD, message streaming, file upload)
-- `session_manager.py` — proxies to session containers, manages SSE polling loop, handles auth token forwarding
-- `session-container/server.py` — container endpoints (/chat, /status, /upload, /health)
+- `session_manager.py` — thin SSE proxy to session containers, manages session set, handles auth token forwarding
+- `session-container/server.py` — container endpoints (/chat, /chat/stream, /status, /upload, /health)
 - `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue, system prompt, skill_directories config
 - `session-container/skills/` — 10 markdown skill files (bid-no-bid, requirements, strategy, drafting, exec summary, compliance, risk/gap, pricing analysis, customer intelligence, iterative refinement)
-- `content_processing.py` — ADLS upload + Content Understanding markdown conversion
 - `setup_knowledge_base.py` — one-time script to create Foundry IQ knowledge source + knowledge base
 - `index_knowledge_base.py` — uploads sample_data PDFs to ADLS for indexing
-- `sample_data/generate_knowledge_base.py` — generates all sample KB PDFs (master script invokes subdirectory generators)
 - `mcp.json` — reference MCP server configuration (documents the Foundry IQ connection; not loaded by code — agent.py builds the config programmatically)
-- `cosmos.py` — async CosmosDB client (sessions + messages)
 - `frontend/src/components/Chat.tsx` — main state machine (useReducer), session lifecycle, SSE handling
 - `frontend/src/lib/sse.ts` — SSE stream parser
 - `frontend/src/lib/api.ts` — backend HTTP client
