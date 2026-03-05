@@ -4,9 +4,12 @@ version = "0.1.0"
 description = "Session container for RFP agent — one instance per user"
 requires-python = ">=3.12"
 dependencies = [
+    "azure-ai-contentunderstanding>=1.0.0",
     "azure-identity>=1.25.2",
+    "azure-storage-file-datalake>=12.23.0",
     "fastapi>=0.133.0",
     "github-copilot-sdk>=0.1.25",
+    "mcp>=1.0.0",
     "python-dotenv>=1.2.1",
     "python-multipart>=0.0.20",
     "uvicorn[standard]>=0.41.0",

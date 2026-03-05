@@ -105,11 +105,9 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
         try:
             async with _lock:
                 session = await _get_or_create_session(token=req.token)
-                async for event in asyncio.wait_for(
-                    _consume_stream(session, req.prompt),
-                    timeout=chat_timeout,
-                ):
-                    yield event
+                async with asyncio.timeout(chat_timeout):
+                    async for event in session.send(req.prompt):
+                        yield event
         except asyncio.TimeoutError:
             logger.warning("Chat stream timed out after %ds", chat_timeout)
             if _session is not None:
@@ -124,12 +122,6 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
             yield _sse_event({"type": "done"})
 
     return StreamingResponse(generate(), media_type="text/event-stream")
-
-
-async def _consume_stream(session: AgentSession, prompt: str):
-    """Helper to wrap the async generator so wait_for can timeout it."""
-    async for event in session.send(prompt):
-        yield event
 
 
 @app.get("/status")

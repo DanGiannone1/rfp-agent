@@ -25,6 +25,7 @@ Optional env vars:
 
 import os
 import sys
+import time
 
 from dotenv import load_dotenv
 
@@ -33,6 +34,7 @@ load_dotenv()
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import (
+    AIServices,
     AzureBlobKnowledgeSource,
     AzureBlobKnowledgeSourceParameters,
     AzureOpenAIVectorizerParameters,
@@ -91,6 +93,8 @@ def main() -> None:
     _require("AZURE_ENDPOINT", AZURE_ENDPOINT)
 
     aoai_url = _aoai_resource_url(AZURE_ENDPOINT)
+    # AI Services endpoint — strip /openai/v1/ suffix
+    ai_services_url = AZURE_ENDPOINT.rstrip("/").removesuffix("/openai/v1").removesuffix("/openai")
 
     # Build ADLS connection string for Azure AI Search indexer
     if ADLS_CONNECTION_STRING:
@@ -138,9 +142,11 @@ def main() -> None:
         azure_blob_parameters=AzureBlobKnowledgeSourceParameters(
             connection_string=adls_connection,
             container_name=ADLS_FILESYSTEM,
+            folder_path="knowledge_base",
             is_adls_gen2=True,
             ingestion_parameters=KnowledgeSourceIngestionParameters(
                 content_extraction_mode=KnowledgeSourceContentExtractionMode.STANDARD,
+                ai_services=AIServices(uri=ai_services_url),
                 embedding_model=KnowledgeSourceAzureOpenAIVectorizer(
                     azure_open_ai_parameters=aoai_params,
                 ),
@@ -185,8 +191,32 @@ def main() -> None:
     print(f"  Done.")
 
     print()
-    print("Setup complete. The indexer will begin processing documents automatically.")
+    print("Setup complete. Indexer scoped to 'knowledge_base/' folder only.")
     print(f"MCP endpoint: {SEARCH_ENDPOINT}/knowledgebases/{KB_NAME}/mcp?api-version=2025-11-01-preview")
+    print()
+
+    # Poll indexer status to confirm it started
+    print("Checking indexer status...")
+    for attempt in range(5):
+        try:
+            status = client.get_knowledge_source_status(KS_NAME)
+            sync_state = getattr(status, "sync_state", None) or "unknown"
+            doc_count = getattr(status, "document_count", None)
+            error_count = getattr(status, "error_count", None)
+            print(f"  Sync state: {sync_state}")
+            if doc_count is not None:
+                print(f"  Document count: {doc_count}")
+            if error_count is not None:
+                print(f"  Error count: {error_count}")
+            if sync_state != "unknown":
+                break
+        except Exception as exc:
+            print(f"  Status check attempt {attempt + 1}/5: {exc}")
+        if attempt < 4:
+            time.sleep(10)
+
+    print()
+    print("Done. Upload documents with: uv run python index_knowledge_base.py")
 
 
 if __name__ == "__main__":

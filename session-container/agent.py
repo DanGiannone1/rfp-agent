@@ -7,6 +7,7 @@ for running agent turns against Azure OpenAI.
 import asyncio
 import json
 import os
+import sys
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
@@ -49,9 +50,18 @@ tables, and markdown for working drafts.
 
 When the workspace has no uploaded documents (or only default files), greet the user \
 warmly and guide them to upload their RFP document as the first step. Once an RFP is \
-uploaded, it will be automatically converted to markdown for analysis, and the full \
-suite of RFP workflow tools — from bid/no-bid analysis through compliance review — \
-becomes available. Start by asking the user to drag and drop or attach their RFP file.
+uploaded, use the `convert_document` tool to convert it to markdown for analysis. \
+The full suite of RFP workflow tools — from bid/no-bid analysis through compliance \
+review — becomes available after conversion. Start by asking the user to drag and \
+drop or attach their RFP file.
+
+## Document Conversion
+
+You have a `convert_document` tool that converts uploaded documents (PDF, images, \
+Office files) to structured markdown using Azure Content Understanding. When a user \
+uploads a file, call `convert_document` with the filename to produce a `.md` version \
+in the working directory. The tool is idempotent — it skips conversion if the markdown \
+file already exists. After conversion, read the markdown file to analyze the content.
 
 ## Skills & Workflows
 
@@ -238,19 +248,35 @@ class AgentSession:
             "on_permission_request": lambda _req, _ctx: {"kind": "approved"},
         }
 
+        # MCP servers
+        mcp_servers = {
+            "document_converter": {
+                "type": "stdio",
+                "command": sys.executable,
+                "args": [str(Path(__file__).parent / "tools" / "convert_document.py")],
+                "tools": ["convert_document"],
+                "env": {
+                    "AZURE_ENDPOINT": os.environ.get("AZURE_ENDPOINT", ""),
+                    "ADLS_ACCOUNT_NAME": os.getenv("ADLS_ACCOUNT_NAME", ""),
+                    "ADLS_FILESYSTEM": os.getenv("ADLS_FILESYSTEM", "documents"),
+                    "WORKSPACE": self._working_dir,
+                },
+            },
+        }
+
         # Add Foundry IQ knowledge base via MCP (optional)
         if kb_enabled:
-            session_config["mcp_servers"] = {
-                "knowledge_base": {
-                    "type": "http",
-                    "url": (
-                        f"{SEARCH_ENDPOINT}/knowledgebases/{SEARCH_KB_NAME}"
-                        f"/mcp?api-version=2025-11-01-preview"
-                    ),
-                    "headers": {"api-key": SEARCH_KEY},
-                    "tools": ["knowledge_base_retrieve"],
-                },
+            mcp_servers["knowledge_base"] = {
+                "type": "http",
+                "url": (
+                    f"{SEARCH_ENDPOINT}/knowledgebases/{SEARCH_KB_NAME}"
+                    f"/mcp?api-version=2025-11-01-preview"
+                ),
+                "headers": {"api-key": SEARCH_KEY},
+                "tools": ["knowledge_base_retrieve"],
             }
+
+        session_config["mcp_servers"] = mcp_servers
 
         self._session = await self._client.create_session(session_config)
 

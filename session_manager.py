@@ -69,7 +69,8 @@ class _SessionPoolAuth(httpx.Auth):
 class SessionManager:
     """Proxies session lifecycle to ACA dynamic session containers."""
 
-    def __init__(self):
+    def __init__(self, content_processor=None):
+        self._content_processor = content_processor
         self._auth = _SessionPoolAuth()
         self._http = httpx.AsyncClient(
             auth=self._auth,
@@ -184,15 +185,39 @@ class SessionManager:
             yield _sse_event({"type": "done"})
 
     async def upload_file(self, session_id: str, upload_file: UploadFile) -> dict:
-        """Proxy a file upload to the session container."""
+        """Proxy a file upload to the session container, then run CU processing."""
         url = self._pool_url("/upload", session_id)
         content = await upload_file.read()
-        filename = upload_file.filename
+        filename = upload_file.filename or "upload"
         content_type = upload_file.content_type or "application/octet-stream"
         files = {"file": (filename, content, content_type)}
         resp = await self._http.post(url, files=files)
         resp.raise_for_status()
-        return resp.json()
+        result = resp.json()
+
+        # Content processing: ADLS upload + Content Understanding markdown conversion
+        if self._content_processor and self._content_processor.enabled:
+            async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
+                """Upload the converted markdown to the session container."""
+                md_url = self._pool_url("/upload", session_id)
+                md_files = {"file": (md_filename, md_bytes, "text/markdown")}
+                md_resp = await self._http.post(md_url, files=md_files)
+                md_resp.raise_for_status()
+
+            proc = await self._content_processor.process_document(
+                session_id=session_id,
+                filename=filename,
+                file_bytes=content,
+                content_type=content_type,
+                forward_markdown_fn=forward_markdown,
+            )
+            result["markdown_ready"] = proc["markdown_forwarded"]
+            if proc.get("error"):
+                result["processing_error"] = proc["error"]
+        else:
+            result["markdown_ready"] = False
+
+        return result
 
     async def list_files(self, session_id: str) -> dict:
         """Proxy GET /files to the session container."""

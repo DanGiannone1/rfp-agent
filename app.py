@@ -21,19 +21,31 @@ logger = logging.getLogger(__name__)
 # Globals set during lifespan
 # ---------------------------------------------------------------------------
 session_manager: SessionManager | None = None
+content_processor = None  # ContentProcessor | None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global session_manager
+    global session_manager, content_processor
 
-    session_manager = SessionManager()
+    # Content Processing (optional — ADLS + Content Understanding)
+    from content_processing import ContentProcessor
+
+    content_processor = ContentProcessor()
+    await content_processor.initialize()
+    if content_processor.enabled:
+        logger.info("Content processing ready")
+    else:
+        logger.info("Content processing disabled (ADLS or CU not configured)")
+
+    session_manager = SessionManager(content_processor)
     await session_manager.start()
     logger.info("Application started")
 
     yield
 
     await session_manager.stop()
+    await content_processor.close()
     logger.info("Application shut down")
 
 
@@ -156,5 +168,6 @@ async def health() -> dict:
     return {
         "status": "ok",
         "active_sessions": session_manager.active_count if session_manager else 0,
+        "content_processing_enabled": content_processor is not None and content_processor.enabled,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

@@ -102,7 +102,18 @@ async def main() -> None:
 
             print()
             print(f"Done: {uploaded} uploaded, {skipped} skipped, {errors} errors")
+
+            # Verify uploads by listing files in knowledge_base/ prefix
+            print()
+            print("Verifying ADLS contents...")
+            adls_count = 0
+            async for path in fs.get_paths(path="knowledge_base", recursive=True):
+                if path.name.endswith(".pdf"):
+                    adls_count += 1
+            print(f"  {adls_count} PDFs found in knowledge_base/ on ADLS")
+
             if uploaded > 0:
+                print()
                 print("The Azure AI Search indexer will process new documents automatically.")
     finally:
         await credential.close()
