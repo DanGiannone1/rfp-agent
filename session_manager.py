@@ -298,6 +298,13 @@ class SessionManager:
 
         return result
 
+    async def list_files(self, session_id: str) -> dict:
+        """Proxy GET /files to the session container."""
+        url = self._pool_url("/files", session_id)
+        resp = await self._http.get(url)
+        resp.raise_for_status()
+        return resp.json()
+
     async def get_session(self, session_id: str) -> dict:
         """Return session metadata + message history from Cosmos."""
         if self._cosmos:

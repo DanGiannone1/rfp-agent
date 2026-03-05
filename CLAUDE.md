@@ -73,7 +73,7 @@ To enable locally: set `ADLS_ACCOUNT_NAME` in `.env` and ensure `az login` has `
 ### Knowledge base (optional)
 Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and exposes a `knowledge_base_retrieve` tool to the agent via MCP. This lets the agent search across all uploaded documents, past proposals, and reference materials.
 
-- **Setup:** Create an Azure AI Search resource (Basic tier), then run `uv run python setup_knowledge_base.py` to create the knowledge source + knowledge base. The indexer auto-processes documents from ADLS.
+- **Setup:** Create an Azure AI Search resource (Basic tier), then run `uv run python setup_knowledge_base.py` to create the knowledge source + knowledge base. Run `uv run python index_knowledge_base.py` to upload sample data PDFs to ADLS. The indexer auto-processes documents from ADLS.
 - **Agent integration:** The session container connects to the Foundry IQ MCP endpoint when `AZURE_SEARCH_ENDPOINT` is set. The Copilot SDK exposes `knowledge_base_retrieve` as a tool automatically — no custom tool code.
 - **Env vars:** `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_KEY`, `AZURE_SEARCH_KB_NAME` (default: `rfp-knowledge`). Set these in both root `.env` (for the setup script) and the session container environment (for the agent).
 - **Roles:** The search service's managed identity needs `Storage Blob Data Reader` on ADLS and `Cognitive Services User` on the Foundry resource. The app's managed identity needs `Search Index Data Reader` + `Search Service Contributor` on the search service.
@@ -83,9 +83,13 @@ Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and ex
 - `app.py` — orchestrator endpoints (session CRUD, message streaming, file upload)
 - `session_manager.py` — proxies to session containers, manages SSE polling loop, handles auth token forwarding
 - `session-container/server.py` — container endpoints (/chat, /status, /upload, /health)
-- `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue
+- `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue, system prompt, skill_directories config
+- `session-container/skills/` — 7 markdown skill files (bid-no-bid, requirements, strategy, drafting, exec summary, compliance, risk/gap)
 - `content_processing.py` — optional ADLS upload + Content Understanding markdown conversion
 - `setup_knowledge_base.py` — one-time script to create Foundry IQ knowledge source + knowledge base
+- `index_knowledge_base.py` — uploads sample_data PDFs to ADLS for indexing
+- `sample_data/generate_knowledge_base.py` — generates all sample KB PDFs (master script invokes subdirectory generators)
+- `mcp.json` — reference MCP server configuration (documents the Foundry IQ connection; not loaded by code — agent.py builds the config programmatically)
 - `cosmos.py` — async CosmosDB client (sessions + messages)
 - `frontend/src/components/Chat.tsx` — main state machine (useReducer), session lifecycle, SSE handling
 - `frontend/src/lib/sse.ts` — SSE stream parser

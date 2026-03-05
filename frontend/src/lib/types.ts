@@ -20,3 +20,10 @@ export interface ToolActivity {
   tool: string;
   status: "running" | "done";
 }
+
+export interface FileInfo {
+  filename: string;
+  size: number;
+  modified_at: string;
+  has_markdown: boolean;
+}

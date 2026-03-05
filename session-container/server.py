@@ -7,6 +7,7 @@ Endpoints:
     POST /chat   — blocks until the agent turn completes, returns JSON result
     GET  /status — returns current agent activity (pollable by orchestrator)
     POST /upload — saves a file to /workspace
+    GET  /files  — lists files in /workspace with metadata
     GET  /health — returns 200
 """
 
@@ -56,13 +57,30 @@ async def chat(req: ChatRequest) -> dict:
         raise HTTPException(status_code=409, detail="Session is busy (concurrent turn)")
 
     try:
+        chat_timeout = int(os.getenv("CHAT_TIMEOUT_SECONDS", "300"))
+    except ValueError:
+        chat_timeout = 300
+
+    try:
         async with _lock:
             logger.info("Acquiring session...")
             session = await _get_or_create_session(token=req.token)
             logger.info("Session acquired, sending prompt...")
-            result = await session.send_and_collect(req.prompt)
+            result = await asyncio.wait_for(
+                session.send_and_collect(req.prompt),
+                timeout=chat_timeout,
+            )
             logger.info("Got result (content length=%d)", len(result.get("content", "")))
             return result
+    except asyncio.TimeoutError:
+        logger.warning("Chat turn timed out after %ds", chat_timeout)
+        # Reset session status so /status doesn't report stale activity
+        if _session is not None:
+            _session._status = "idle"
+            # Drain the queue to discard stale events from the cancelled turn
+            while not _session._queue.empty():
+                _session._queue.get_nowait()
+        return {"error": f"Agent turn timed out after {chat_timeout}s", "type": "TimeoutError"}
     except Exception as exc:
         logger.exception("Chat failed: %s", exc)
         return {"error": str(exc), "type": type(exc).__name__}  # Return 200 with error details for debugging
@@ -124,6 +142,32 @@ async def upload(file: UploadFile) -> dict:
 
     logger.info("Uploaded %s (%d bytes)", safe_name, bytes_written)
     return {"path": real_dest, "filename": safe_name, "size": bytes_written}
+
+
+@app.get("/files")
+async def list_files() -> dict:
+    """List all files in the workspace with metadata."""
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    workspace = Path(WORKSPACE)
+    if not workspace.exists():
+        return {"files": []}
+
+    files = []
+    for entry in sorted(workspace.iterdir()):
+        if not entry.is_file():
+            continue
+        stat = entry.stat()
+        md_sibling = workspace / f"{entry.name}.md"
+        files.append({
+            "filename": entry.name,
+            "size": stat.st_size,
+            "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            "has_markdown": md_sibling.exists(),
+        })
+
+    return {"files": files}
 
 
 @app.get("/health")

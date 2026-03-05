@@ -1,4 +1,5 @@
 import { getAccessToken } from "./auth";
+import type { FileInfo } from "./types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -73,5 +74,15 @@ export async function uploadFile(
     const detail = await res.text();
     throw new Error(`Upload failed (${res.status}): ${detail}`);
   }
+  return res.json();
+}
+
+export async function listFiles(
+  sessionId: string,
+): Promise<{ files: FileInfo[] }> {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files`, {
+    headers: await authHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to list files: ${res.status}`);
   return res.json();
 }

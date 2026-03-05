@@ -1,3 +1,13 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "knowledge_base": {
+      "type": "http",
+      "url": "https://<your-search-service>.search.windows.net/knowledgebases/rfp-knowledge/mcp?api-version=2025-11-01-preview",
+      "headers": {
+        "api-key": "<your-search-admin-key>"
+      },
+      "tools": ["knowledge_base_retrieve"],
+      "description": "Foundry IQ knowledge base for searching RFP documents, past proposals, compliance certifications, personnel records, pricing frameworks, and company reference materials via Azure AI Search agentic retrieval."
+    }
+  }
 }

@@ -129,6 +129,42 @@ az role assignment create \
     --scope "$ADLS_ID" \
     -o none
 
+# ── 4c. Azure AI Search (Foundry IQ agentic retrieval) ────────────────
+SEARCH_NAME="${PREFIX}-search"
+echo ">>> Creating Azure AI Search service..."
+az search service create \
+    --name "$SEARCH_NAME" \
+    --resource-group "$RG" \
+    --location "$LOCATION" \
+    --sku basic \
+    --partition-count 1 \
+    --replica-count 1 \
+    -o none
+
+SEARCH_ENDPOINT="https://${SEARCH_NAME}.search.windows.net"
+SEARCH_KEY=$(az search admin-key show \
+    --service-name "$SEARCH_NAME" \
+    --resource-group "$RG" \
+    --query primaryKey -o tsv)
+
+echo "    Search endpoint: $SEARCH_ENDPOINT"
+
+# Grant Search roles to the managed identity
+echo ">>> Granting Search roles to managed identity..."
+SEARCH_ID=$(az search service show --name "$SEARCH_NAME" --resource-group "$RG" --query id -o tsv)
+az role assignment create \
+    --assignee-object-id "$IDENTITY_PRINCIPAL_ID" \
+    --assignee-principal-type ServicePrincipal \
+    --role "Search Index Data Reader" \
+    --scope "$SEARCH_ID" \
+    -o none
+az role assignment create \
+    --assignee-object-id "$IDENTITY_PRINCIPAL_ID" \
+    --assignee-principal-type ServicePrincipal \
+    --role "Search Service Contributor" \
+    --scope "$SEARCH_ID" \
+    -o none
+
 # ── 5. Container Apps Environment ────────────────────────────────────────
 echo ">>> Creating Container Apps environment..."
 az containerapp env create \
@@ -171,6 +207,9 @@ az containerapp sessionpool create \
     --env-vars \
         "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
         "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
+        "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
+        "AZURE_SEARCH_KEY=$SEARCH_KEY" \
+        "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
     -o none
 
 POOL_ENDPOINT=$(az containerapp sessionpool show \
@@ -411,7 +450,13 @@ echo "Orchestrator URL:         https://$APP_URL"
 echo "Pool Management Endpoint: $POOL_ENDPOINT"
 echo "Managed Identity:         $IDENTITY_CLIENT_ID"
 echo ""
+echo "AI Search (knowledge base):"
+echo "  Endpoint:               $SEARCH_ENDPOINT"
+echo "  KB Name:                rfp-knowledge"
+echo ""
 echo "Entra ID (auth):"
 echo "  App Registration:       $BACKEND_APP_ID (single app reg, SPA + Easy Auth)"
 echo "  Tenant ID:              $TENANT_ID"
+echo ""
+echo "Next step: run 'uv run python setup_knowledge_base.py' to create the knowledge base."
 echo ""

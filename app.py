@@ -146,6 +146,17 @@ async def delete_session(session_id: str) -> None:
         raise HTTPException(status_code=404, detail="Session not found")
 
 
+@app.get("/sessions/{session_id}/files")
+async def list_files(session_id: str) -> dict:
+    """List files in a session's workspace."""
+    try:
+        await session_manager.validate_session(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    return await session_manager.list_files(session_id)
+
+
 @app.post("/sessions/{session_id}/upload")
 async def upload_file(session_id: str, file: UploadFile) -> dict:
     """Upload a document to a session's workspace."""
@@ -154,7 +165,19 @@ async def upload_file(session_id: str, file: UploadFile) -> dict:
     except KeyError:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    result = await session_manager.upload_file(session_id, file)
+    try:
+        result = await session_manager.upload_file(session_id, file)
+    except Exception as exc:
+        # Propagate 4xx errors from the session container
+        import httpx
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
+            detail = exc.response.text
+            try:
+                detail = exc.response.json().get("detail", detail)
+            except Exception:
+                pass
+            raise HTTPException(status_code=exc.response.status_code, detail=detail)
+        raise
     return result
 
 

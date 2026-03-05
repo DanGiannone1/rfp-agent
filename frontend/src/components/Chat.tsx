@@ -13,6 +13,7 @@ import {
 } from "@/lib/session";
 import MessageList from "./MessageList";
 import InputBar from "./InputBar";
+import DocumentPanel from "./DocumentPanel";
 
 type Action =
   | { type: "USER_SEND"; content: string }
@@ -27,13 +28,15 @@ type Action =
   | { type: "LOAD_HISTORY"; messages: ChatMessage[] }
   | { type: "SET_SESSION_ID"; sessionId: string }
   | { type: "SET_INITIALIZING"; value: boolean }
-  | { type: "FILE_UPLOADED"; filename: string };
+  | { type: "FILE_UPLOADED"; filename: string }
+  | { type: "FILES_CHANGED" };
 
 interface State {
   messages: ChatMessage[];
   isStreaming: boolean;
   sessionId: string | null;
   isInitializing: boolean;
+  fileRefreshKey: number;
 }
 
 function reducer(state: State, action: Action): State {
@@ -167,6 +170,9 @@ function reducer(state: State, action: Action): State {
       return { ...state, messages: msgs, isStreaming: false };
     }
 
+    case "FILES_CHANGED":
+      return { ...state, fileRefreshKey: state.fileRefreshKey + 1 };
+
     case "FILE_UPLOADED":
       return {
         ...state,
@@ -192,6 +198,7 @@ const initialState: State = {
   isStreaming: false,
   sessionId: null,
   isInitializing: true,
+  fileRefreshKey: 0,
 };
 
 export default function Chat() {
@@ -316,6 +323,7 @@ export default function Chat() {
       try {
         const result = await uploadFile(state.sessionId, file);
         dispatch({ type: "FILE_UPLOADED", filename: result.filename });
+        dispatch({ type: "FILES_CHANGED" });
       } catch (err) {
         dispatch({
           type: "ERROR",
@@ -408,7 +416,7 @@ export default function Chat() {
           </div>
           <div className="flex-1">
             <h1 className="text-base font-semibold tracking-tight">RFP Agent</h1>
-            <p className="text-[11px] text-zinc-500">AI-powered analysis</p>
+            <p className="text-[11px] text-zinc-500">Copilot SDK + Azure OpenAI</p>
           </div>
 
           {/* Streaming status indicator */}
@@ -449,6 +457,7 @@ export default function Chat() {
         </div>
       ) : (
         <>
+          <DocumentPanel sessionId={state.sessionId} refreshKey={state.fileRefreshKey} />
           <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
           <InputBar onSend={handleSend} onUpload={handleUpload} disabled={state.isStreaming} />
         </>

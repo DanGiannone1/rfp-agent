@@ -162,6 +162,52 @@ Override defaults via environment variables:
 - **Persistence is optional** — CosmosDB stores session history but the app works without it (in-memory only).
 - **Content processing is optional** — when `ADLS_ACCOUNT_NAME` is set, uploaded documents are stored in ADLS Gen2 and converted to markdown via Azure Content Understanding (using the same Foundry resource as `AZURE_ENDPOINT`). The markdown is forwarded to the session container alongside the original file.
 
+## Agent Skills
+
+The agent loads 7 structured RFP workflow skills from markdown files in `session-container/skills/` via the Copilot SDK's `skill_directories` configuration. Each skill provides a detailed step-by-step process, scoring frameworks, and output templates that guide the agent through a specific RFP task.
+
+| Skill | Trigger | Output Format |
+|-------|---------|---------------|
+| Bid/No-Bid Analysis | "Should we bid?", "go/no-go", "pursuit decision" | Scorecard (6 dimensions) with Go/No-Go/Conditional Go |
+| Requirements Extraction | "Extract requirements", "compliance matrix", "parse the RFP" | Classified requirements list + compliance matrix |
+| Response Strategy | "Win strategy", "win themes", "competitive positioning" | Strategy brief with themes, competitive analysis, pricing approach |
+| Draft Generation | "Draft section", "write the technical approach" | Submission-ready prose with KB citations |
+| Executive Summary | "Executive summary" (after other sections drafted) | 1-2 page summary: problem, solution, differentiators |
+| Compliance Review | "Compliance review", "quality check", "final review" | Pass/fail checklist (requirements, instructions, terminology, tone) |
+| Risk & Gap Analysis | "Risk analysis", "gap analysis", "risk register" | Risk register with severity/likelihood scores and mitigations |
+
+Skills are plain markdown files loaded at session creation time. The Copilot SDK makes them available to the agent as reference material that informs its behavior and output structure for each workflow.
+
+## Knowledge Base
+
+The agent integrates with **Foundry IQ** (Azure AI Search agentic retrieval) to search Meridian & Associates LLP's indexed document repository via the `knowledge_base_retrieve` MCP tool.
+
+### What is in the knowledge base
+
+- **Past proposals and engagement letters** -- previously submitted RFP responses with technical approaches, staffing plans, and pricing narratives
+- **Boilerplate and approved language** -- firm overview, methodology descriptions, service line capabilities
+- **Personnel records and bios** -- partner, manager, and staff qualifications and certifications (CPA, CISA, CIA, etc.)
+- **Case studies and past performance** -- client engagement narratives with measurable outcomes
+- **Compliance and regulatory documents** -- quality control policies, peer review results, independence procedures
+- **Pricing frameworks** -- rate structures, fee estimation templates, historical pricing
+- **Certifications and accreditations** -- firm registrations, insurance certificates, minority/diversity certifications
+- **Branding and style guidelines** -- approved descriptions, logo usage, editorial standards
+
+### Setup
+
+1. Ensure documents are uploaded to ADLS Gen2 (the knowledge base indexes from the same ADLS container used for document storage).
+2. Create the knowledge source and knowledge base:
+   ```bash
+   uv run python setup_knowledge_base.py
+   ```
+3. Index documents into the knowledge base:
+   ```bash
+   uv run python index_knowledge_base.py
+   ```
+4. Set `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_KEY`, and `AZURE_SEARCH_KB_NAME` (default: `rfp-knowledge`) in the session container environment.
+
+The Copilot SDK exposes `knowledge_base_retrieve` as a tool automatically via MCP -- no custom tool code is needed.
+
 ## Responsible AI (RAI)
 
 ### Human-in-the-loop
@@ -181,8 +227,19 @@ The agent provides analysis, summaries, and draft suggestions. It does **not** a
 - The frontend shows real-time tool activity (which tools the agent is using, what files it's reading) so users can observe the agent's reasoning process
 - All agent outputs are clearly presented as AI-generated suggestions, not authoritative answers
 
+### Structured workflows
+
+- Skills provide structured, repeatable workflows (scoring frameworks, compliance matrices, output templates) that ensure systematic analysis rather than ad-hoc responses
+- Each skill defines explicit steps and criteria, reducing the risk of overlooking requirements or producing inconsistent output
+
+### KB grounding
+
+- Knowledge base integration helps prevent hallucination by grounding generated content in real organizational data -- past proposals, approved language, personnel records, and verified certifications
+- The agent cites KB sources in its output, making it straightforward for reviewers to verify claims against actual firm materials
+
 ### Limitations
 
 - The agent's analysis quality depends on the underlying Azure OpenAI model
 - It may miss nuanced legal or domain-specific requirements that require expert review
-- It operates only on uploaded documents — it has no access to external data sources or the internet
+- The agent operates on uploaded documents and the knowledge base -- it has no access to external data sources or the internet
+- KB retrieval quality depends on the completeness and currency of indexed documents

@@ -215,22 +215,44 @@ body {
   font-weight: 500;
 }
 
-/* Table enhancements */
+/* Table enhancements — professional compliance-matrix styling */
 .prose table {
   border-collapse: collapse;
   width: 100%;
   font-size: 0.8125rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.prose thead {
+  border-bottom: 2px solid rgba(99, 102, 241, 0.2);
 }
 
 .prose th {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(99, 102, 241, 0.08);
   font-weight: 600;
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: 0.625rem 0.875rem;
+  color: #e4e4e7;
+  white-space: nowrap;
 }
 
 .prose td {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.875rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.prose tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.prose tbody tr:hover {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.prose tbody tr:nth-child(odd) {
+  background: transparent;
 }
 
 /* Link enhancements */

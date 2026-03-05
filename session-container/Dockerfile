@@ -13,6 +13,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application code
 COPY agent.py server.py ./
+COPY skills/ ./skills/
 
 # Create workspace directory
 RUN mkdir -p /workspace

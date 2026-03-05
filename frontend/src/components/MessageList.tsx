@@ -13,43 +13,53 @@ const SUGGESTIONS = [
   {
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-        <line x1="16" y1="13" x2="8" y2="13" />
-        <line x1="16" y1="17" x2="8" y2="17" />
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+        <rect x="9" y="3" width="6" height="4" rx="1" />
+        <path d="M9 14l2 2 4-4" />
       </svg>
     ),
-    text: "Summarize this RFP document",
-    label: "Summarize",
+    text: "Extract and classify all requirements from this RFP into a compliance matrix",
+    label: "Requirements",
+  },
+  {
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3v18" />
+        <path d="M3 12h18" />
+        <path d="M16 7l-4-4-4 4" />
+        <path d="M8 17l4 4 4-4" />
+        <path d="M7 8L3 12l4 4" />
+        <path d="M17 16l4-4-4-4" />
+      </svg>
+    ),
+    text: "Perform a bid/no-bid analysis with scoring across strategic fit, capability, and win probability",
+    label: "Bid/No-Bid",
+  },
+  {
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <path d="M16 13H8" />
+        <path d="M16 17H8" />
+        <path d="M10 9H8" />
+      </svg>
+    ),
+    text: "Draft an executive summary highlighting our key differentiators and win themes",
+    label: "Executive Summary",
   },
   {
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="11" cy="11" r="8" />
         <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        <path d="M6 8h4" />
+        <path d="M6 11h3" />
+        <path d="M6 14h4" />
       </svg>
     ),
-    text: "What are the key requirements?",
-    label: "Requirements",
-  },
-  {
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      </svg>
-    ),
-    text: "Identify compliance risks",
-    label: "Compliance",
-  },
-  {
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
-        <line x1="1" y1="10" x2="23" y2="10" />
-      </svg>
-    ),
-    text: "Draft a response outline",
-    label: "Draft",
+    text: "Search our knowledge base for relevant past proposals, certifications, and company materials",
+    label: "Knowledge Base",
   },
 ];
 
@@ -106,15 +116,15 @@ export default function MessageList({ messages, onSuggestion }: MessageListProps
             </div>
 
             <h2 className="mb-2 text-xl font-semibold text-zinc-100">
-              How can I help you?
+              RFP Response Accelerator
             </h2>
             <p className="mb-8 max-w-md text-sm leading-relaxed text-zinc-500">
-              Upload an RFP document and ask questions, or start a conversation to get AI-powered analysis and insights.
+              Upload an RFP document to get started. I&apos;ll help you analyze requirements, assess bid viability, draft responses, and search your knowledge base for relevant materials.
             </p>
 
             {/* Suggestion chips */}
             {onSuggestion && (
-              <div className="grid w-full max-w-lg grid-cols-2 gap-2">
+              <div className="grid w-full max-w-lg grid-cols-1 gap-2 sm:grid-cols-2">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s.label}
