@@ -1,0 +1,1598 @@
+[
+  {
+    "bid_id": "BID-2022-001",
+    "client_id": "CLI-001",
+    "client": "Pinnacle National Bank",
+    "industry": "financial_services",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2022-03-10",
+    "rfp_due": "2022-04-15",
+    "submitted": "2022-04-12",
+    "deal_value_estimated": 28000000,
+    "our_proposed_price": 24800000,
+    "decision": "go",
+    "decision_rationale": "Flagship core banking modernization opportunity aligning with our Financial Services Practice growth strategy. Sarah Chen had existing CTO relationship from a prior regulatory engagement, and our Thought Machine Vault experience was a rare differentiator in market.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Calloway Donovan",
+      "RSK International"
+    ],
+    "our_win_themes": [
+      "Cloud-native core banking expertise with Thought Machine Vault",
+      "GDC delivery model reducing cost 30% vs. competitors",
+      "Proven API-first integration architecture",
+      "Zero-downtime migration methodology for 22M accounts"
+    ],
+    "evaluation_scores": {
+      "technical": 94,
+      "price": 82,
+      "past_performance": 96
+    },
+    "pursuit_cost": 385000,
+    "response_team_lead": "Sarah Chen",
+    "engagement_id": "ENG-2024-001",
+    "lessons_learned": "Starting the parallel run planning in Phase 1 rather than Phase 2 would have saved 6 weeks. Future core banking proposals should include a parallel run workstream from day one."
+  },
+  {
+    "bid_id": "BID-2022-002",
+    "client_id": "CLI-002",
+    "client": "Lakewood Regional Health System",
+    "industry": "healthcare",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2022-05-18",
+    "rfp_due": "2022-06-30",
+    "submitted": "2022-06-28",
+    "deal_value_estimated": 42000000,
+    "our_proposed_price": 38400000,
+    "decision": "go",
+    "decision_rationale": "Marquee post-merger integration opportunity for a 12-hospital system. Michael Torres had FACHE network connections to the incoming CEO. Our Epic implementation track record and clinical workflow harmonization capability were direct fits for the stated requirements.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 3,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Hensley Pratt",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "Proven healthcare PMI methodology with $52M synergy realization track record",
+      "Embedded clinician model with 8 clinical professionals on team",
+      "Epic-to-Cerner migration toolkit developed by GDC team",
+      "Dedicated OCM team for physician alignment"
+    ],
+    "evaluation_scores": {
+      "technical": 91,
+      "price": 78,
+      "past_performance": 95
+    },
+    "pursuit_cost": 520000,
+    "response_team_lead": "Michael Torres",
+    "engagement_id": "ENG-2023-002",
+    "lessons_learned": "The 120-person peak staffing stretched our healthcare bench thin during Q4 2023. We should build a dedicated PMI rapid-deployment bench of 20 pre-trained consultants for future health system mergers."
+  },
+  {
+    "bid_id": "BID-2022-003",
+    "client_id": "CLI-003",
+    "client": "TriState Energy Holdings",
+    "industry": "energy",
+    "service_lines": [
+      "audit",
+      "tax",
+      "advisory"
+    ],
+    "rfp_received": "2022-06-01",
+    "rfp_due": "2022-07-20",
+    "submitted": "2022-07-18",
+    "deal_value_estimated": 7500000,
+    "our_proposed_price": 6800000,
+    "decision": "go",
+    "decision_rationale": "Multi-service engagement combining integrated audit, tax provision automation, and SOX remediation for a Fortune 500 E&P company. Strategic entry point to displace incumbent auditor. Patricia Hoffman's upstream expertise and Rachel Okonkwo's tax provision capabilities were exactly what the CFO requested.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 4,
+      "profitability": 5
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "Integrated audit-tax-advisory approach eliminating duplicative data requests",
+      "MeridianAI 100% journal entry analytics vs. competitor sample-based approach",
+      "Deep upstream E&P accounting expertise (ASC 932, ARO, derivatives)",
+      "OneSource tax provision automation with SAP S/4HANA integration"
+    ],
+    "evaluation_scores": {
+      "technical": 93,
+      "price": 85,
+      "past_performance": 88
+    },
+    "pursuit_cost": 95000,
+    "response_team_lead": "Patricia Hoffman",
+    "engagement_id": "ENG-2023-003",
+    "lessons_learned": "Co-locating audit, tax, and advisory teams from Day 1 reduced information asymmetry by an estimated 2,400 hours over the engagement lifecycle. This integrated staffing model should be the default for all multi-service energy sector proposals."
+  },
+  {
+    "bid_id": "BID-2022-004",
+    "client_id": "CLI-004",
+    "client": "Westfield Automotive Group",
+    "industry": "manufacturing",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2022-07-12",
+    "rfp_due": "2022-08-20",
+    "submitted": "2022-08-18",
+    "deal_value_estimated": 22000000,
+    "our_proposed_price": 19500000,
+    "decision": "go",
+    "decision_rationale": "SAP S/4HANA global rollout across 18 plants. James O'Sullivan's prior SAP implementations and David Kim's deep S/4HANA FICO expertise gave us a differentiated team. High strategic value to grow the manufacturing ERP practice.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 3,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "price",
+    "loss_detail": "Proposed $19.5M vs. Whitfield & Crane's $15.8M. Client's procurement team weighted price at 40% despite the RFP stating 30%. Our onshore-heavy staffing model was $3.7M more expensive; Whitfield proposed 70% offshore delivery which the client found acceptable given their prior experience with distributed teams.",
+    "winner": "Whitfield & Crane LLP",
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "RSK International"
+    ],
+    "our_win_themes": [
+      "SAP S/4HANA global template with 22-plant proven track record",
+      "Supply chain control tower integration with ERP",
+      "Six Sigma operational excellence embedded in implementation",
+      "GDC Hyderabad SAP FICO center of excellence"
+    ],
+    "evaluation_scores": {
+      "technical": 91,
+      "price": 68,
+      "past_performance": 90
+    },
+    "pursuit_cost": 280000,
+    "response_team_lead": "James O'Sullivan",
+    "engagement_id": null,
+    "lessons_learned": "For large ERP deals where procurement has outsized influence, lead with a GDC-heavy staffing model in the base proposal and offer an onshore-premium option as an upgrade. The $3.7M gap was entirely attributable to our onshore staffing ratio."
+  },
+  {
+    "bid_id": "BID-2022-005",
+    "client_id": "CLI-005",
+    "client": "Pacific Northwest Transit Authority",
+    "industry": "public_sector",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2022-08-05",
+    "rfp_due": "2022-09-30",
+    "submitted": "2022-09-28",
+    "deal_value_estimated": 35000000,
+    "our_proposed_price": 32600000,
+    "decision": "go",
+    "decision_rationale": "Enterprise cloud migration for a large state agency, directly aligned with Dr. Ramanathan's Azure Government expertise and our public sector cloud migration case study. The self-funding model from our prior state government engagement was a compelling differentiator.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Calloway Donovan",
+      "RSK International",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "Proven Azure Government landing zone methodology with StateRAMP compliance",
+      "6R framework tailored for government IT constraints",
+      "Self-funding model where early savings fund later phases",
+      "Workforce development program with cloud certification pathway"
+    ],
+    "evaluation_scores": {
+      "technical": 96,
+      "price": 80,
+      "past_performance": 94
+    },
+    "pursuit_cost": 410000,
+    "response_team_lead": "Dr. Priya Ramanathan",
+    "engagement_id": "ENG-2023-005",
+    "lessons_learned": "The self-funding model was decisive in winning the evaluation. Every public sector cloud migration proposal should include a detailed phase-by-phase savings forecast showing how early wins fund subsequent phases."
+  },
+  {
+    "bid_id": "BID-2022-006",
+    "client_id": "CLI-006",
+    "client": "Grandview Specialty Retail",
+    "industry": "retail",
+    "service_lines": [
+      "advisory",
+      "audit",
+      "tax"
+    ],
+    "rfp_received": "2022-09-15",
+    "rfp_due": "2022-10-25",
+    "submitted": "2022-10-23",
+    "deal_value_estimated": 4500000,
+    "our_proposed_price": 4100000,
+    "decision": "go",
+    "decision_rationale": "Omnichannel revenue recognition overhaul and advisory engagement for a $3.2B specialty retailer. Robert Adeyemi had a personal relationship with the CFO from industry conference networking. The ASC 606 complexity with loyalty programs and gift card breakage was squarely in our technical accounting wheelhouse.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 4,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Hensley Pratt",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "MeridianAI transaction-level revenue analysis across 142M POS records",
+      "ASC 606 loyalty program and gift card breakage deep expertise",
+      "ML-based returns reserve prediction model",
+      "Retail industry specialists with SALT multi-state coverage"
+    ],
+    "evaluation_scores": {
+      "technical": 95,
+      "price": 88,
+      "past_performance": 86
+    },
+    "pursuit_cost": 62000,
+    "response_team_lead": "Robert Adeyemi",
+    "engagement_id": "ENG-2024-006",
+    "lessons_learned": "Aligning our revenue recognition advisory work with the client's commerce platform migration created a natural system-design influence opportunity. Future retail proposals should always inquire about concurrent technology transformations during the pre-RFP phase."
+  },
+  {
+    "bid_id": "BID-2022-007",
+    "client_id": "CLI-007",
+    "client": "Ascend Pharmaceuticals",
+    "industry": "healthcare",
+    "service_lines": [
+      "tax"
+    ],
+    "rfp_received": "2022-10-01",
+    "rfp_due": "2022-11-05",
+    "submitted": "2022-11-03",
+    "deal_value_estimated": 1200000,
+    "our_proposed_price": 1100000,
+    "decision": "go",
+    "decision_rationale": "Transfer pricing study for a mid-size pharma company with cross-border IP structures. Sophia Vasquez's SALT expertise and Rachel Okonkwo's international tax planning capabilities made this a strong capability fit. Entry point for broader relationship.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 4,
+      "resource_availability": 5,
+      "win_probability": 3,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "relationship",
+    "loss_detail": "Client's General Counsel had a longstanding personal relationship with Calloway Donovan's managing partner dating back to law school. Despite scoring higher on technical evaluation (89 vs. 84), the relationship factor was decisive. Client feedback indicated our proposal was 'outstanding' but the existing trust level with Calloway was too strong to overcome.",
+    "winner": "Calloway Donovan",
+    "competitors_identified": [
+      "Calloway Donovan",
+      "Hensley Pratt"
+    ],
+    "our_win_themes": [
+      "Transfer pricing framework aligned with OECD BEPS 2.0 guidelines",
+      "Automated TP documentation using our global tax platform",
+      "Integrated SALT and international tax planning"
+    ],
+    "evaluation_scores": {
+      "technical": 89,
+      "price": 85,
+      "past_performance": 78
+    },
+    "pursuit_cost": 28000,
+    "response_team_lead": "Sophia Vasquez",
+    "engagement_id": null,
+    "lessons_learned": "Relationship-driven losses require earlier engagement. We identified this opportunity from a public posting rather than through proactive business development. Invest in pharma industry networking events to build C-suite relationships before RFPs are issued."
+  },
+  {
+    "bid_id": "BID-2022-008",
+    "client_id": "CLI-008",
+    "client": "Ironclad Defense Systems",
+    "industry": "manufacturing",
+    "service_lines": [
+      "advisory",
+      "consulting"
+    ],
+    "rfp_received": "2022-11-10",
+    "rfp_due": "2022-12-20",
+    "submitted": null,
+    "deal_value_estimated": 15000000,
+    "our_proposed_price": null,
+    "decision": "no-bid",
+    "decision_rationale": "ITAR-regulated defense contractor requiring all team members to hold active US security clearances. Only 12 of our 65 needed consultants held the required clearances, and obtaining new clearances would take 8-14 months. Resource availability gap made a credible proposal impossible within the stated timeline.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 4,
+      "resource_availability": 1,
+      "win_probability": 2,
+      "past_performance": 2,
+      "profitability": 3
+    },
+    "outcome": "no_bid",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": "RSK International",
+    "competitors_identified": [
+      "RSK International",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "Supply chain optimization methodology",
+      "SAP S/4HANA defense industry template"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 18000,
+    "response_team_lead": "James O'Sullivan",
+    "engagement_id": null,
+    "lessons_learned": "Invest in building a cleared workforce bench for A&D opportunities. The defense manufacturing market is underserved by professional services firms without clearance infrastructure. Start a clearance sponsorship program for 30 consultants to open this $500M+ addressable market."
+  },
+  {
+    "bid_id": "BID-2023-001",
+    "client_id": "CLI-009",
+    "client": "Heritage Mutual Insurance",
+    "industry": "financial_services",
+    "service_lines": [
+      "advisory",
+      "consulting"
+    ],
+    "rfp_received": "2023-01-18",
+    "rfp_due": "2023-02-28",
+    "submitted": "2023-02-26",
+    "deal_value_estimated": 12000000,
+    "our_proposed_price": 10800000,
+    "decision": "go",
+    "decision_rationale": "Enterprise data governance program for a major insurance carrier. Sarah Chen's data governance case study with a prior insurance client was directly relevant. The 2.3PB data management track record was a strong proof point.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "2.3PB data governance case study from prior insurance engagement",
+      "14-platform legacy consolidation methodology",
+      "NIST CSF 2.0-aligned data classification framework",
+      "GDC data engineering center of excellence"
+    ],
+    "evaluation_scores": {
+      "technical": 92,
+      "price": 84,
+      "past_performance": 93
+    },
+    "pursuit_cost": 165000,
+    "response_team_lead": "Sarah Chen",
+    "engagement_id": "ENG-2023-009",
+    "lessons_learned": "The NIST CSF 2.0 alignment in our data governance framework was specifically called out by evaluators as a key differentiator. Ensure all advisory proposals for regulated industries explicitly map our methodology to relevant compliance frameworks."
+  },
+  {
+    "bid_id": "BID-2023-002",
+    "client_id": "CLI-010",
+    "client": "ClearVista Technologies",
+    "industry": "technology",
+    "service_lines": [
+      "audit"
+    ],
+    "rfp_received": "2023-03-05",
+    "rfp_due": "2023-04-10",
+    "submitted": "2023-04-08",
+    "deal_value_estimated": 2200000,
+    "our_proposed_price": 1950000,
+    "decision": "go",
+    "decision_rationale": "IPO readiness audit and SOX 404 implementation for a pre-IPO SaaS company. Dr. Ramanathan's technology sector expertise combined with our SOC 2 Type II and ISO 27001 certification knowledge made this a strong fit. Strategic opportunity to build the tech audit practice.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 4,
+      "resource_availability": 4,
+      "win_probability": 3,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "IPO readiness framework with 18-month SOX implementation roadmap",
+      "Technology sector audit expertise with SaaS revenue recognition specialization",
+      "SOC 2 Type II and ISO 27001 integrated compliance approach",
+      "MeridianAI continuous monitoring for SaaS metrics"
+    ],
+    "evaluation_scores": {
+      "technical": 88,
+      "price": 90,
+      "past_performance": 82
+    },
+    "pursuit_cost": 42000,
+    "response_team_lead": "Dr. Priya Ramanathan",
+    "engagement_id": "ENG-2023-010",
+    "lessons_learned": "Pre-IPO companies value speed to SOX readiness above all else. Our 18-month roadmap was viewed as aggressive but achievable; competitors proposed 24-month timelines. Maintaining an accelerated IPO readiness template gives us an edge in this growing market."
+  },
+  {
+    "bid_id": "BID-2023-003",
+    "client_id": "CLI-011",
+    "client": "Continental Pipeline Corp",
+    "industry": "energy",
+    "service_lines": [
+      "tax",
+      "advisory"
+    ],
+    "rfp_received": "2023-04-12",
+    "rfp_due": "2023-05-20",
+    "submitted": "2023-05-18",
+    "deal_value_estimated": 3200000,
+    "our_proposed_price": 2900000,
+    "decision": "go",
+    "decision_rationale": "M&A tax due diligence and integration advisory for a midstream pipeline acquisition. Patricia Hoffman's energy sector relationships and our M&A tax due diligence framework were directly applicable.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 5,
+      "win_probability": 3,
+      "past_performance": 4,
+      "profitability": 5
+    },
+    "outcome": "lost",
+    "loss_reason": "incumbent",
+    "loss_detail": "Hensley Pratt had served as the client's external auditor for 11 years and had deep institutional knowledge of the existing pipeline asset portfolio. The audit committee felt that switching advisors mid-acquisition cycle introduced unnecessary risk. Our technical score was higher (90 vs. 85) but the familiarity advantage was insurmountable.",
+    "winner": "Hensley Pratt",
+    "competitors_identified": [
+      "Hensley Pratt",
+      "Whitfield & Crane LLP"
+    ],
+    "our_win_themes": [
+      "M&A tax due diligence framework for midstream assets",
+      "Integrated IDC and percentage depletion optimization",
+      "Post-acquisition ARO revaluation methodology"
+    ],
+    "evaluation_scores": {
+      "technical": 90,
+      "price": 88,
+      "past_performance": 82
+    },
+    "pursuit_cost": 48000,
+    "response_team_lead": "Patricia Hoffman",
+    "engagement_id": null,
+    "lessons_learned": "Mid-cycle incumbent displacement is nearly impossible for M&A advisory. Focus business development efforts on winning the advisor role before deal announcements. Build a pipeline intelligence network through investment banking relationships."
+  },
+  {
+    "bid_id": "BID-2023-004",
+    "client_id": "CLI-012",
+    "client": "Summerfield Consumer Brands",
+    "industry": "retail",
+    "service_lines": [
+      "tax"
+    ],
+    "rfp_received": "2023-04-25",
+    "rfp_due": "2023-05-30",
+    "submitted": "2023-05-28",
+    "deal_value_estimated": 450000,
+    "our_proposed_price": 420000,
+    "decision": "go",
+    "decision_rationale": "Multi-state SALT compliance and nexus study for a D2C consumer brand expanding into 15 new states. Sophia Vasquez's JD and SALT specialization made this a strong team fit. Small deal but strategic entry point to a fast-growing consumer brand.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 5,
+      "resource_availability": 5,
+      "win_probability": 4,
+      "past_performance": 3,
+      "profitability": 3
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "42-state SALT nexus expertise from retail case study experience",
+      "Automated Wayfair economic nexus tracking platform",
+      "Integration with client's Shopify and Amazon marketplace data"
+    ],
+    "evaluation_scores": {
+      "technical": 91,
+      "price": 92,
+      "past_performance": 80
+    },
+    "pursuit_cost": 12000,
+    "response_team_lead": "Sophia Vasquez",
+    "engagement_id": "ENG-2023-012",
+    "lessons_learned": "D2C brands expanding rapidly have urgent SALT compliance needs but limited budgets. Our standardized SALT compliance package priced at Tier 3 rate card levels makes us competitive. Build a repeatable onboarding playbook for sub-$500K SALT engagements."
+  },
+  {
+    "bid_id": "BID-2023-005",
+    "client_id": "CLI-013",
+    "client": "Atlas Precision Manufacturing",
+    "industry": "manufacturing",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2023-05-20",
+    "rfp_due": "2023-07-01",
+    "submitted": "2023-06-29",
+    "deal_value_estimated": 20000000,
+    "our_proposed_price": 18200000,
+    "decision": "go",
+    "decision_rationale": "Supply chain transformation for a Fortune 200 diversified industrial manufacturer. James O'Sullivan's supply chain control tower methodology and SAP IBP implementation experience were direct fits. Leveraged the manufacturing supply chain case study extensively in the proposal.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "RSK International",
+      "Whitfield & Crane LLP",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "SAP IBP implementation with AI-augmented demand sensing",
+      "Digital supply chain control tower with 15-minute refresh cycles",
+      "Supplier collaboration portal reducing PO cycle time 65%",
+      "Scope 3 emissions visibility module for SBTi compliance"
+    ],
+    "evaluation_scores": {
+      "technical": 95,
+      "price": 82,
+      "past_performance": 94
+    },
+    "pursuit_cost": 265000,
+    "response_team_lead": "James O'Sullivan",
+    "engagement_id": "ENG-2024-013",
+    "lessons_learned": "The Scope 3 sustainability module was not in the original RFP requirements but was included in our proposal as a value-add. It became a decisive differentiator when the board elevated ESG priorities mid-evaluation. Always include sustainability as a differentiator for manufacturing pursuits."
+  },
+  {
+    "bid_id": "BID-2023-006",
+    "client_id": "CLI-014",
+    "client": "NovaTech Solutions",
+    "industry": "technology",
+    "service_lines": [
+      "consulting"
+    ],
+    "rfp_received": "2023-07-05",
+    "rfp_due": "2023-08-10",
+    "submitted": null,
+    "deal_value_estimated": 8000000,
+    "our_proposed_price": null,
+    "decision": "no-bid",
+    "decision_rationale": "Zero-trust security architecture implementation requiring deep Palo Alto Prisma SASE expertise. While Dr. Ramanathan's team had strong zero-trust credentials, the specific Prisma SASE requirement meant 60% of the work required vendor-certified engineers we did not have. Win probability was below 20% against RSK International who held Palo Alto Platinum Partner status.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 2,
+      "resource_availability": 2,
+      "win_probability": 1,
+      "past_performance": 3,
+      "profitability": 3
+    },
+    "outcome": "no_bid",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": "RSK International",
+    "competitors_identified": [
+      "RSK International",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "Zero-trust architecture framework",
+      "NIST CSF 2.0 compliance methodology"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 15000,
+    "response_team_lead": "Dr. Priya Ramanathan",
+    "engagement_id": null,
+    "lessons_learned": "Build Palo Alto Prisma SASE certification for 8-10 consultants in the cybersecurity practice. Three opportunities in the past year have required this specific vendor certification that we lack. The investment would pay for itself in one engagement."
+  },
+  {
+    "bid_id": "BID-2023-007",
+    "client_id": "CLI-015",
+    "client": "Cascade Power & Utilities",
+    "industry": "energy",
+    "service_lines": [
+      "advisory",
+      "consulting"
+    ],
+    "rfp_received": "2023-09-01",
+    "rfp_due": "2023-10-15",
+    "submitted": "2023-10-12",
+    "deal_value_estimated": 9500000,
+    "our_proposed_price": 8600000,
+    "decision": "go",
+    "decision_rationale": "Grid modernization and NERC CIP compliance program for a regional electric utility. Patricia Hoffman's CEM credential and energy sector compliance track record aligned well. High strategic value for expanding the energy advisory practice beyond upstream E&P.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 4,
+      "resource_availability": 3,
+      "win_probability": 3,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "compliance",
+    "loss_detail": "The RFP required the winning firm to maintain NERC-approved Reliability Coordinator certification, a firm-level credential we did not hold. This was a mandatory pass/fail requirement buried in Appendix C that our proposal team identified only during final review. We submitted with a subcontractor arrangement, but the evaluation committee rejected subcontractor arrangements for the core compliance workstream.",
+    "winner": "Novak Bishop Group",
+    "competitors_identified": [
+      "Novak Bishop Group",
+      "RSK International"
+    ],
+    "our_win_themes": [
+      "Energy sector regulatory compliance expertise",
+      "MeridianAI continuous compliance monitoring",
+      "Grid modernization roadmap methodology"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 125000,
+    "response_team_lead": "Patricia Hoffman",
+    "engagement_id": null,
+    "lessons_learned": "Mandatory firm-level certifications must be identified in the first 48 hours of RFP receipt during the go/no-go assessment. Implement a compliance requirements checklist as the first step of every energy sector RFP review. The $125K pursuit cost was wasted due to a disqualifying requirement we should have caught earlier."
+  },
+  {
+    "bid_id": "BID-2023-008",
+    "client_id": "CLI-016",
+    "client": "Brightway Health Partners",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "rfp_received": "2023-09-20",
+    "rfp_due": "2023-10-30",
+    "submitted": "2023-10-28",
+    "deal_value_estimated": 6200000,
+    "our_proposed_price": 5600000,
+    "decision": "go",
+    "decision_rationale": "Value-based care program design and population health analytics platform for a health insurance plan. Michael Torres's claims processing transformation case study was directly applicable. Raj Krishnamurthy's data analytics expertise added strength to the analytics platform component.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 4,
+      "resource_availability": 4,
+      "win_probability": 3,
+      "past_performance": 4,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Hensley Pratt",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "Claims processing transformation reducing adjudication time from 14 to 3.2 days",
+      "Population health analytics with risk stratification models",
+      "Clean claims rate improvement from 76% to 94% in prior engagement",
+      "HIPAA-compliant data sharing framework"
+    ],
+    "evaluation_scores": {
+      "technical": 90,
+      "price": 84,
+      "past_performance": 91
+    },
+    "pursuit_cost": 85000,
+    "response_team_lead": "Raj Krishnamurthy",
+    "engagement_id": "ENG-2023-016",
+    "lessons_learned": "Payer-side engagements require different clinical vocabulary and stakeholder management than provider-side work. Invest in building a dedicated payer practice sub-team within the healthcare practice to avoid terminology disconnects during orals presentations."
+  },
+  {
+    "bid_id": "BID-2023-009",
+    "client_id": "CLI-017",
+    "client": "TerraForm Industrial Holdings",
+    "industry": "manufacturing",
+    "service_lines": [
+      "tax"
+    ],
+    "rfp_received": "2023-10-15",
+    "rfp_due": "2023-11-20",
+    "submitted": "2023-11-18",
+    "deal_value_estimated": 850000,
+    "our_proposed_price": 780000,
+    "decision": "go",
+    "decision_rationale": "R&D tax credit study for a mid-market industrial manufacturer with significant qualifying activities in process engineering and product development. Rachel Okonkwo's tax provision expertise and our credits & incentives methodology were well-suited.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 4,
+      "resource_availability": 5,
+      "win_probability": 4,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "R&D tax credit methodology with four-part test documentation",
+      "Engineering-qualified review of qualifying activities",
+      "Integration with existing ERP for contemporaneous documentation"
+    ],
+    "evaluation_scores": {
+      "technical": 87,
+      "price": 90,
+      "past_performance": 82
+    },
+    "pursuit_cost": 18000,
+    "response_team_lead": "Rachel Okonkwo",
+    "engagement_id": "ENG-2023-017",
+    "lessons_learned": "R&D tax credit studies for manufacturers benefit from having a Six Sigma-trained consultant interview shop floor engineers. The technical credibility improved documentation quality and identified 22% more qualifying activities than a purely tax-focused approach."
+  },
+  {
+    "bid_id": "BID-2024-001",
+    "client_id": "CLI-018",
+    "client": "Vertex Financial Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2024-01-15",
+    "rfp_due": "2024-02-28",
+    "submitted": "2024-02-26",
+    "deal_value_estimated": 18000000,
+    "our_proposed_price": 16200000,
+    "decision": "go",
+    "decision_rationale": "Digital payments and open banking architecture for a regional bank looking to compete with fintech disruptors. Direct alignment with our core banking modernization case study. Sarah Chen's FedNow/RTP enablement experience was a rare market capability.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 3,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "RSK International"
+    ],
+    "our_win_themes": [
+      "FedNow and RTP enablement delivering sub-second payment processing",
+      "Open banking API architecture with Kong Enterprise gateway",
+      "Core banking case study demonstrating 90% faster API integration time",
+      "Event-driven architecture using Apache Kafka for real-time processing"
+    ],
+    "evaluation_scores": {
+      "technical": 96,
+      "price": 80,
+      "past_performance": 95
+    },
+    "pursuit_cost": 235000,
+    "response_team_lead": "Sarah Chen",
+    "engagement_id": "ENG-2024-018",
+    "lessons_learned": "Regional banks are eager to adopt FedNow but lack internal expertise. Our real-time payments enablement capability from the core banking case study is a powerful differentiator. Package this as a standalone offering for banks in the $10-50B asset range."
+  },
+  {
+    "bid_id": "BID-2024-002",
+    "client_id": "CLI-002",
+    "client": "Lakewood Regional Health System",
+    "industry": "healthcare",
+    "service_lines": [
+      "tax"
+    ],
+    "rfp_received": "2024-02-10",
+    "rfp_due": "2024-03-15",
+    "submitted": "2024-03-13",
+    "deal_value_estimated": 280000,
+    "our_proposed_price": 260000,
+    "decision": "go",
+    "decision_rationale": "Tax-exempt bond compliance review for our existing PMI client. Straightforward follow-on engagement leveraging our deep knowledge of the merged entity's tax structure. Low pursuit cost given existing relationship.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 4,
+      "resource_availability": 5,
+      "win_probability": 5,
+      "past_performance": 5,
+      "profitability": 3
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [],
+    "our_win_themes": [
+      "Deep institutional knowledge of merged entity from PMI engagement",
+      "Healthcare tax-exempt bond compliance specialization",
+      "Existing relationship with CFO and general counsel"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 5000,
+    "response_team_lead": "Rachel Okonkwo",
+    "engagement_id": "ENG-2024-002B",
+    "lessons_learned": "Follow-on tax compliance engagements from large advisory projects have near-100% win rates and minimal pursuit costs. Build a systematic cross-sell pipeline review into every major engagement's quarterly steering committee."
+  },
+  {
+    "bid_id": "BID-2024-003",
+    "client_id": "CLI-019",
+    "client": "Oakmont Wealth Advisors",
+    "industry": "financial_services",
+    "service_lines": [
+      "audit"
+    ],
+    "rfp_received": "2024-03-01",
+    "rfp_due": "2024-04-05",
+    "submitted": "2024-04-03",
+    "deal_value_estimated": 1800000,
+    "our_proposed_price": 1650000,
+    "decision": "go",
+    "decision_rationale": "SEC-registered investment advisor audit with complex alternative investment portfolio. Moderate strategic value but good profitability given standard audit procedures. Alex Petrov had prior wealth management audit experience.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 4,
+      "resource_availability": 5,
+      "win_probability": 3,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "price",
+    "loss_detail": "Proposed $1.65M vs. Calloway Donovan's $1.28M. The client was a cost-conscious RIA that valued efficiency over depth. Calloway offered a lean 8-person team leveraging their proprietary RIA audit template, while our 12-person team was perceived as over-staffed. Client feedback: 'Meridian's proposal was excellent but priced for a Fortune 500, not a $4B AUM RIA.'",
+    "winner": "Calloway Donovan",
+    "competitors_identified": [
+      "Calloway Donovan",
+      "Hensley Pratt"
+    ],
+    "our_win_themes": [
+      "SEC investment advisor compliance expertise",
+      "MeridianAI analytics for alternative investment valuation testing",
+      "Risk-based audit methodology for complex portfolio structures"
+    ],
+    "evaluation_scores": {
+      "technical": 86,
+      "price": 72,
+      "past_performance": 80
+    },
+    "pursuit_cost": 35000,
+    "response_team_lead": "Alex Petrov",
+    "engagement_id": null,
+    "lessons_learned": "Mid-market RIA audits require a right-sized staffing model. Develop a lean audit template for sub-$10B AUM wealth managers using 8-person teams with GDC support. Our standard Fortune 500 staffing model is not competitive in this segment."
+  },
+  {
+    "bid_id": "BID-2024-004",
+    "client_id": "CLI-020",
+    "client": "SolarGrid Renewables",
+    "industry": "energy",
+    "service_lines": [
+      "tax",
+      "advisory"
+    ],
+    "rfp_received": "2024-04-08",
+    "rfp_due": "2024-05-15",
+    "submitted": "2024-05-13",
+    "deal_value_estimated": 2800000,
+    "our_proposed_price": 2500000,
+    "decision": "go",
+    "decision_rationale": "IRA tax credit optimization and ESG reporting advisory for a utility-scale solar developer. Patricia Hoffman's energy sector credentials and our credits & incentives methodology were strong fits. High strategic value as renewable energy is a growth market for the firm.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 4,
+      "resource_availability": 4,
+      "win_probability": 3,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Hensley Pratt",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "IRA Investment Tax Credit and Production Tax Credit optimization",
+      "Scope 1-3 emissions reporting aligned with GHG Protocol",
+      "Energy sector tax provision automation with OneSource integration",
+      "Transferable tax credit structuring advisory"
+    ],
+    "evaluation_scores": {
+      "technical": 89,
+      "price": 86,
+      "past_performance": 84
+    },
+    "pursuit_cost": 45000,
+    "response_team_lead": "Patricia Hoffman",
+    "engagement_id": "ENG-2024-020",
+    "lessons_learned": "IRA tax credit advisory is a rapidly growing market with limited specialized competition. Build a dedicated renewables tax credit team of 10 professionals to capture this segment before competitors invest."
+  },
+  {
+    "bid_id": "BID-2024-005",
+    "client_id": "CLI-006",
+    "client": "Grandview Specialty Retail",
+    "industry": "retail",
+    "service_lines": [
+      "consulting"
+    ],
+    "rfp_received": "2024-05-01",
+    "rfp_due": "2024-06-10",
+    "submitted": "2024-06-08",
+    "deal_value_estimated": 3200000,
+    "our_proposed_price": 2900000,
+    "decision": "go",
+    "decision_rationale": "Inventory optimization and demand-sensing analytics follow-on engagement with our existing retail advisory client. Robert Adeyemi's relationship was strong, and the work was a natural extension of the omnichannel transformation. Raj Krishnamurthy's ML expertise was critical for the demand-sensing component.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 5,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "price",
+    "loss_detail": "Despite our strong existing relationship with Grandview from the omnichannel transformation, the client selected Novak Bishop Group who priced the inventory optimization engagement at $2.1M versus our $2.9M. Novak positioned it as a commodity analytics implementation rather than a strategic consulting engagement. Post-debrief feedback indicated our technical approach scored highest, but the CFO overruled the project team on cost grounds, viewing Phase 2 as more operational than strategic.",
+    "winner": "Novak Bishop Group",
+    "competitors_identified": [
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "Continuation of omnichannel transformation with proven team",
+      "ML demand-sensing model already calibrated to client's SKU hierarchy",
+      "Price elasticity modeling for markdown optimization",
+      "Inventory turns improvement track record (3.9x to 4.7x)"
+    ],
+    "evaluation_scores": {
+      "technical": 92,
+      "price": 68,
+      "past_performance": 95
+    },
+    "pursuit_cost": 22000,
+    "response_team_lead": "Robert Adeyemi",
+    "engagement_id": null,
+    "lessons_learned": "Follow-on engagements should not assume the same pricing tolerance as the initial strategic phase. When scope shifts from strategic transformation to operational optimization, reframe pricing to reflect operational efficiency gains. Consider a fixed-fee model for operational follow-ons to compete on value rather than hourly rates."
+  },
+  {
+    "bid_id": "BID-2024-006",
+    "client_id": "CLI-021",
+    "client": "Keystone Public Schools District",
+    "industry": "public_sector",
+    "service_lines": [
+      "audit"
+    ],
+    "rfp_received": "2024-05-20",
+    "rfp_due": "2024-06-25",
+    "submitted": null,
+    "deal_value_estimated": 380000,
+    "our_proposed_price": null,
+    "decision": "no-bid",
+    "decision_rationale": "Annual financial audit for a K-12 school district. Deal size was below our $500K minimum for public sector audit engagements, and the district's single-entity scope did not align with our group audit methodology strengths. Resource allocation would displace higher-value pursuits in the Q3 pipeline.",
+    "go_no_go_score": {
+      "strategic_alignment": 1,
+      "capability_fit": 3,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 3,
+      "profitability": 1
+    },
+    "outcome": "no_bid",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": "Calloway Donovan",
+    "competitors_identified": [
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [],
+    "evaluation_scores": null,
+    "pursuit_cost": 3000,
+    "response_team_lead": "Maria Santos",
+    "engagement_id": null,
+    "lessons_learned": "Maintain a clear minimum deal size threshold by sector to avoid diluting pursuit resources on sub-scale opportunities. Document the decline professionally with a referral to appropriate regional firms to preserve public sector reputation."
+  },
+  {
+    "bid_id": "BID-2024-007",
+    "client_id": "CLI-022",
+    "client": "Ridgeline Aerospace",
+    "industry": "manufacturing",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2024-06-15",
+    "rfp_due": "2024-07-25",
+    "submitted": "2024-07-23",
+    "deal_value_estimated": 14000000,
+    "our_proposed_price": 12600000,
+    "decision": "go",
+    "decision_rationale": "SAP S/4HANA implementation for an aerospace OEM with 12 manufacturing plants across 5 countries. James O'Sullivan's global aerospace OEM case study with $38M in efficiency gains was a direct proof point. David Kim's SAP expertise strengthened the technical team.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 4,
+      "resource_availability": 4,
+      "win_probability": 3,
+      "past_performance": 4,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "RSK International",
+      "Whitfield & Crane LLP"
+    ],
+    "our_win_themes": [
+      "Global aerospace ERP case study: 6 legacy instances consolidated to single template",
+      "SPL framework adapted for aerospace compliance requirements",
+      "David Kim's 11 full-lifecycle SAP S/4HANA implementations",
+      "GDC Hyderabad SAP FICO center of excellence reducing cost 40%"
+    ],
+    "evaluation_scores": {
+      "technical": 92,
+      "price": 84,
+      "past_performance": 91
+    },
+    "pursuit_cost": 185000,
+    "response_team_lead": "David Kim",
+    "engagement_id": "ENG-2024-022",
+    "lessons_learned": "Aerospace clients require AS9100 quality management system integration within the ERP implementation scope. Including the quality module in the base proposal rather than as a change order improved our credibility with the quality assurance evaluation team."
+  },
+  {
+    "bid_id": "BID-2024-008",
+    "client_id": "CLI-023",
+    "client": "Meridian State University System",
+    "industry": "public_sector",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2024-07-01",
+    "rfp_due": "2024-08-15",
+    "submitted": "2024-08-13",
+    "deal_value_estimated": 7200000,
+    "our_proposed_price": 6500000,
+    "decision": "go",
+    "decision_rationale": "Cloud migration and cybersecurity modernization for a state university system with 8 campuses. Dr. Ramanathan's public sector cloud migration case study demonstrated the exact Azure Government landing zone approach the client required. Thomas Chen's project management experience strengthened the delivery plan.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "RSK International",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "Azure Government landing zone with StateRAMP compliance",
+      "6R application disposition framework for 800+ university applications",
+      "DevSecOps pipeline with compliance-as-code validation",
+      "Workforce cloud certification program (AZ-900, AZ-104)"
+    ],
+    "evaluation_scores": {
+      "technical": 94,
+      "price": 82,
+      "past_performance": 93
+    },
+    "pursuit_cost": 98000,
+    "response_team_lead": "Thomas Chen",
+    "engagement_id": "ENG-2024-023",
+    "lessons_learned": "Higher education cloud migrations face unique FERPA compliance requirements that differ from general state government. Build a FERPA compliance module as an add-on to our standard Azure landing zone template for future higher-ed pursuits."
+  },
+  {
+    "bid_id": "BID-2024-009",
+    "client_id": "CLI-024",
+    "client": "Harbor Point Financial Services",
+    "industry": "financial_services",
+    "service_lines": [
+      "advisory"
+    ],
+    "rfp_received": "2024-08-12",
+    "rfp_due": "2024-09-20",
+    "submitted": "2024-09-18",
+    "deal_value_estimated": 8500000,
+    "our_proposed_price": 7600000,
+    "decision": "go",
+    "decision_rationale": "Basel IV implementation and capital adequacy modeling for a mid-tier bank. Sarah Chen's regulatory compliance expertise and HBR publication on post-Basel IV frameworks positioned us well. Lauren Mitchell's change management capabilities addressed the organizational transformation component.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 4,
+      "resource_availability": 3,
+      "win_probability": 3,
+      "past_performance": 4,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "capability",
+    "loss_detail": "The client required proprietary capital adequacy modeling tools with pre-built Basel IV templates. Whitfield & Crane had invested $12M in developing a dedicated Basel IV SaaS platform ('W&C Capital Manager') that we could not match. Our advisory approach was methodology-strong but lacked the purpose-built tooling the client's board considered essential for ongoing compliance monitoring.",
+    "winner": "Whitfield & Crane LLP",
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Hensley Pratt"
+    ],
+    "our_win_themes": [
+      "Basel IV regulatory compliance framework",
+      "Post-Basel IV world thought leadership",
+      "Enterprise risk management methodology",
+      "Change management for regulatory transformation"
+    ],
+    "evaluation_scores": {
+      "technical": 82,
+      "price": 86,
+      "past_performance": 88
+    },
+    "pursuit_cost": 115000,
+    "response_team_lead": "Lauren Mitchell",
+    "engagement_id": null,
+    "lessons_learned": "Tool-dependent regulatory engagements require purpose-built technology platforms. Evaluate building or acquiring a capital adequacy modeling tool to compete with Whitfield & Crane's $12M investment. In the interim, partner with a regtech vendor to offer an equivalent solution."
+  },
+  {
+    "bid_id": "BID-2024-010",
+    "client_id": "CLI-025",
+    "client": "Crestline Consumer Products",
+    "industry": "retail",
+    "service_lines": [
+      "tax",
+      "advisory"
+    ],
+    "rfp_received": "2024-09-01",
+    "rfp_due": "2024-10-10",
+    "submitted": "2024-10-08",
+    "deal_value_estimated": 1500000,
+    "our_proposed_price": 1350000,
+    "decision": "go",
+    "decision_rationale": "Transfer pricing restructuring and R&D credits optimization for a consumer products company expanding manufacturing to Mexico. Sophia Vasquez's bilingual capabilities and nearshore delivery center knowledge were unique advantages. Maria Santos's internal controls expertise addressed the compliance requirements.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 5,
+      "resource_availability": 5,
+      "win_probability": 4,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Calloway Donovan",
+      "Hensley Pratt"
+    ],
+    "our_win_themes": [
+      "Bilingual team with US-Mexico cross-border tax specialization",
+      "Transfer pricing framework aligned with OECD BEPS 2.0",
+      "Nearshore delivery center in Monterrey for ongoing compliance",
+      "Integrated R&D credit identification for manufacturing processes"
+    ],
+    "evaluation_scores": {
+      "technical": 90,
+      "price": 88,
+      "past_performance": 82
+    },
+    "pursuit_cost": 28000,
+    "response_team_lead": "Sophia Vasquez",
+    "engagement_id": "ENG-2024-025",
+    "lessons_learned": "US-Mexico cross-border tax work is growing rapidly due to nearshoring trends. Our Monterrey delivery center and bilingual team are undermarketed assets. Develop a dedicated nearshoring tax advisory offering."
+  },
+  {
+    "bid_id": "BID-2024-011",
+    "client_id": "CLI-026",
+    "client": "DataForge Analytics",
+    "industry": "technology",
+    "service_lines": [
+      "consulting",
+      "advisory"
+    ],
+    "rfp_received": "2024-11-15",
+    "rfp_due": "2024-12-20",
+    "submitted": null,
+    "deal_value_estimated": 6000000,
+    "our_proposed_price": null,
+    "decision": "no-bid",
+    "decision_rationale": "AI/ML platform engineering engagement requiring 40+ data scientists with specific PyTorch and Kubernetes expertise. While Dr. Ramanathan's practice had strong AI strategy credentials, the execution required hands-on ML engineering talent fully allocated to three concurrent engagements through Q2 2025. Attempting to staff would require pulling key team members from the university cloud migration mid-stream.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 4,
+      "resource_availability": 1,
+      "win_probability": 2,
+      "past_performance": 3,
+      "profitability": 4
+    },
+    "outcome": "no_bid",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": "RSK International",
+    "competitors_identified": [
+      "RSK International",
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "AI/ML center of excellence methodology",
+      "Responsible AI governance framework"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 12000,
+    "response_team_lead": "Dr. Priya Ramanathan",
+    "engagement_id": null,
+    "lessons_learned": "The AI/ML engineering bench is our most critical resource constraint. Hire 15 additional ML engineers in Q1 2025 to avoid declining $5M+ opportunities. Three no-bids in 2023-2024 were driven by the same data science staffing gap."
+  },
+  {
+    "bid_id": "BID-2025-002",
+    "client_id": "CLI-027",
+    "client": "Northstar Regional Hospital",
+    "industry": "healthcare",
+    "service_lines": [
+      "consulting"
+    ],
+    "rfp_received": "2025-02-05",
+    "rfp_due": "2025-03-15",
+    "submitted": "2025-03-12",
+    "deal_value_estimated": 4200000,
+    "our_proposed_price": 3800000,
+    "decision": "go",
+    "decision_rationale": "Revenue cycle transformation for a standalone 450-bed academic hospital. Michael Torres's revenue cycle case study showing claims denial reduction from 12.4% to 9.7% and his HFMA publication on AI-enabled claims management were directly relevant.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 4,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "price",
+    "loss_detail": "Proposed $3.8M vs. Hensley Pratt's $2.9M. Hensley offered a risk/reward pricing model with a base fee of $2.1M and performance bonuses tied to denial rate reduction, capping total fees at $3.4M. The hospital's CFO preferred the risk-sharing structure as the hospital was operating on a 2.1% operating margin. Our standard T&M pricing model could not compete with Hensley's willingness to share downside risk.",
+    "winner": "Hensley Pratt",
+    "competitors_identified": [
+      "Hensley Pratt",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "Healthcare PMI case study with $52M synergy realization",
+      "CAC technology improving coding accuracy from 88% to 96%",
+      "Claims scrubbing engine reducing rejection rate from 18% to 4%",
+      "Shared services center design for revenue cycle functions"
+    ],
+    "evaluation_scores": {
+      "technical": 93,
+      "price": 70,
+      "past_performance": 94
+    },
+    "pursuit_cost": 58000,
+    "response_team_lead": "Michael Torres",
+    "engagement_id": null,
+    "lessons_learned": "Hospitals with thin operating margins increasingly prefer risk/reward pricing models. Develop a standard risk/reward fee template for revenue cycle transformation engagements with base fee at 70% of standard rates and performance bonuses tied to denial rate improvement and days in A/R reduction."
+  },
+  {
+    "bid_id": "BID-2025-003",
+    "client_id": "CLI-003",
+    "client": "TriState Energy Holdings",
+    "industry": "energy",
+    "service_lines": [
+      "audit",
+      "tax"
+    ],
+    "rfp_received": "2025-03-01",
+    "rfp_due": "2025-04-10",
+    "submitted": "2025-04-08",
+    "deal_value_estimated": 2400000,
+    "our_proposed_price": 2200000,
+    "decision": "go",
+    "decision_rationale": "Year 3 integrated audit renewal and expanded tax compliance scope for our existing E&P client. Clean SOX opinion achieved in Year 2, and the CFO explicitly requested Meridian's continued engagement.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 5,
+      "resource_availability": 5,
+      "win_probability": 5,
+      "past_performance": 5,
+      "profitability": 5
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [],
+    "our_win_themes": [
+      "Three-year audit relationship with zero material weaknesses in Year 2",
+      "MeridianAI 100% journal entry testing deployed and optimized",
+      "Tax provision automation fully operational via OneSource",
+      "83% reduction in audit adjustments Year 1 to Year 3"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 5000,
+    "response_team_lead": "Patricia Hoffman",
+    "engagement_id": "ENG-2025-003",
+    "lessons_learned": "Multi-year audit renewals should include a proactive fee reduction component reflecting efficiency gains. Sharing the $420K in audit fee reduction from Year 1 to Year 3 demonstrated partnership and eliminated any incentive for the client to market-test."
+  },
+  {
+    "bid_id": "BID-2025-004",
+    "client_id": "CLI-028",
+    "client": "Greenleaf Organic Foods",
+    "industry": "retail",
+    "service_lines": [
+      "tax",
+      "advisory"
+    ],
+    "rfp_received": "2025-04-15",
+    "rfp_due": "2025-05-20",
+    "submitted": "2025-05-18",
+    "deal_value_estimated": 900000,
+    "our_proposed_price": 820000,
+    "decision": "go",
+    "decision_rationale": "SALT nexus study and supply chain tax optimization for an organic food retailer expanding to 12 new states. Robert Adeyemi's retail practice knowledge and Sophia Vasquez's SALT expertise were a strong combination.",
+    "go_no_go_score": {
+      "strategic_alignment": 3,
+      "capability_fit": 5,
+      "resource_availability": 5,
+      "win_probability": 4,
+      "past_performance": 4,
+      "profitability": 3
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "42-state SALT expertise from national specialty retailer engagement",
+      "Retail industry supply chain tax optimization",
+      "Automated economic nexus tracking integrated with POS systems",
+      "Blended onshore/nearshore delivery for cost efficiency at Tier 3 rate card pricing"
+    ],
+    "evaluation_scores": {
+      "technical": 88,
+      "price": 90,
+      "past_performance": 85
+    },
+    "pursuit_cost": 18000,
+    "response_team_lead": "Robert Adeyemi",
+    "engagement_id": "ENG-2025-028",
+    "lessons_learned": "Fast-growing retailers expanding into new states face simultaneous SALT compliance and supply chain tax optimization needs. Bundling these two services into a single proposal reduced the client's total cost by 15% vs. engaging separate firms, which was a decisive advantage."
+  },
+  {
+    "bid_id": "BID-2025-005",
+    "client_id": "CLI-009",
+    "client": "Heritage Mutual Insurance",
+    "industry": "financial_services",
+    "service_lines": [
+      "consulting"
+    ],
+    "rfp_received": "2025-09-15",
+    "rfp_due": "2025-10-25",
+    "submitted": null,
+    "deal_value_estimated": 11000000,
+    "our_proposed_price": null,
+    "decision": "no-bid",
+    "decision_rationale": "Guidewire InsuranceSuite implementation for our existing data governance client. Despite the strong relationship, this engagement required Guidewire-certified implementation specialists that we did not have. RSK International held Guidewire PartnerConnect Elite status with 200+ certified consultants. Proposing with a subcontractor-heavy team would undermine our quality reputation.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 1,
+      "resource_availability": 1,
+      "win_probability": 1,
+      "past_performance": 5,
+      "profitability": 3
+    },
+    "outcome": "no_bid",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": "RSK International",
+    "competitors_identified": [
+      "RSK International",
+      "Whitfield & Crane LLP"
+    ],
+    "our_win_themes": [],
+    "evaluation_scores": null,
+    "pursuit_cost": 8000,
+    "response_team_lead": "Sarah Chen",
+    "engagement_id": null,
+    "lessons_learned": "Losing a follow-on opportunity at an existing client due to missing platform capabilities is painful but preferable to delivering a subpar implementation. Evaluate a Guidewire practice buildout (20 certified consultants) to capture the $2B+ insurance core systems market."
+  },
+  {
+    "bid_id": "BID-2026-001",
+    "client_id": "CLI-018",
+    "client": "Vertex Financial Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "consulting"
+    ],
+    "rfp_received": "2026-01-08",
+    "rfp_due": "2026-02-12",
+    "submitted": "2026-02-10",
+    "deal_value_estimated": 6500000,
+    "our_proposed_price": 5800000,
+    "decision": "go",
+    "decision_rationale": "API monetization and fintech marketplace platform for our existing digital payments client. Natural follow-on leveraging our Kong Enterprise API gateway implementation and Apache Kafka event streaming architecture.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 5,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "other",
+    "loss_detail": "The bank's board unexpectedly initiated a strategic review process in January 2026 after receiving an unsolicited acquisition offer from a larger regional bank. All discretionary technology investments were frozen pending the outcome of the strategic review. The RFP was formally suspended in February 2026. No winner was selected. Our proposal was the leading candidate per verbal CEO feedback, but the M&A situation forced a complete halt.",
+    "winner": "No award - RFP suspended",
+    "competitors_identified": [
+      "Novak Bishop Group"
+    ],
+    "our_win_themes": [
+      "Existing API gateway and event streaming architecture ownership",
+      "Open banking API marketplace from core banking engagement",
+      "Sub-second payment processing infrastructure already deployed",
+      "Fintech partner integration reducing onboarding from 6 months to 2 weeks"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 42000,
+    "response_team_lead": "Sarah Chen",
+    "engagement_id": null,
+    "lessons_learned": "Monitor M&A intelligence feeds for existing clients to anticipate strategic disruptions to the pursuit pipeline. Building an early-warning system from SEC filings, board composition changes, and banking analyst reports would have flagged the acquisition risk 30 days earlier."
+  },
+  {
+    "bid_id": "BID-2026-002",
+    "client_id": "CLI-005",
+    "client": "Pacific Northwest Transit Authority",
+    "industry": "public_sector",
+    "service_lines": [
+      "advisory",
+      "consulting"
+    ],
+    "rfp_received": "2026-01-20",
+    "rfp_due": "2026-02-28",
+    "submitted": "2026-02-26",
+    "deal_value_estimated": 5200000,
+    "our_proposed_price": 4600000,
+    "decision": "go",
+    "decision_rationale": "AI/ML center of excellence and data analytics platform for our existing cloud migration client. Dr. Ramanathan's successful 1,800-application migration created the cloud foundation, and this engagement builds the analytics layer on top. The agency's CIO specifically requested Meridian.",
+    "go_no_go_score": {
+      "strategic_alignment": 5,
+      "capability_fit": 5,
+      "resource_availability": 4,
+      "win_probability": 5,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "won",
+    "loss_reason": null,
+    "loss_detail": null,
+    "winner": null,
+    "competitors_identified": [
+      "RSK International"
+    ],
+    "our_win_themes": [
+      "Existing Azure Government infrastructure from 30-month cloud migration",
+      "Responsible AI governance framework for government applications",
+      "278 cloud-certified agency staff from prior workforce development program",
+      "DevSecOps pipeline already deployed for secure ML model deployment"
+    ],
+    "evaluation_scores": null,
+    "pursuit_cost": 38000,
+    "response_team_lead": "Dr. Priya Ramanathan",
+    "engagement_id": "ENG-2026-005B",
+    "lessons_learned": "Cloud migration clients are the ideal targets for AI/ML follow-on work because the data and infrastructure prerequisites are already in place. Embed a 'Phase 2 AI Readiness Assessment' into every cloud migration statement of work to create a warm pipeline."
+  },
+  {
+    "bid_id": "BID-2026-003",
+    "client_id": "CLI-012",
+    "client": "Summerfield Consumer Brands",
+    "industry": "retail",
+    "service_lines": [
+      "advisory",
+      "tax"
+    ],
+    "rfp_received": "2026-02-01",
+    "rfp_due": "2026-03-05",
+    "submitted": "2026-03-03",
+    "deal_value_estimated": 2200000,
+    "our_proposed_price": 1950000,
+    "decision": "go",
+    "decision_rationale": "International expansion tax structuring and e-commerce platform advisory for our existing SALT compliance client. Sophia Vasquez's established relationship and our deep understanding of their multi-state nexus landscape positioned us well. The client is expanding into the UK and EU, requiring cross-border tax planning.",
+    "go_no_go_score": {
+      "strategic_alignment": 4,
+      "capability_fit": 4,
+      "resource_availability": 4,
+      "win_probability": 5,
+      "past_performance": 5,
+      "profitability": 4
+    },
+    "outcome": "lost",
+    "loss_reason": "capability",
+    "loss_detail": "While our SALT and US tax capabilities were strong, the UK/EU VAT registration, customs duty optimization, and GDPR compliance requirements demanded deep European regulatory expertise that we lacked. Whitfield & Crane's London office had a dedicated EU market entry practice with 40 professionals covering VAT, customs, and data privacy. The client needed a single provider for both US and EU tax, and Whitfield's global footprint was decisive.",
+    "winner": "Whitfield & Crane LLP",
+    "competitors_identified": [
+      "Whitfield & Crane LLP",
+      "Calloway Donovan"
+    ],
+    "our_win_themes": [
+      "Existing SALT compliance relationship",
+      "International tax planning framework",
+      "Transfer pricing for cross-border e-commerce",
+      "Integrated advisory spanning tax and platform architecture"
+    ],
+    "evaluation_scores": {
+      "technical": 78,
+      "price": 90,
+      "past_performance": 92
+    },
+    "pursuit_cost": 32000,
+    "response_team_lead": "Sophia Vasquez",
+    "engagement_id": null,
+    "lessons_learned": "Our European tax capabilities are a critical gap for serving D2C brands expanding internationally. Either build a 10-person EU tax team in the London office or establish a formal alliance with a European tax boutique to provide seamless transatlantic coverage."
+  }
+]

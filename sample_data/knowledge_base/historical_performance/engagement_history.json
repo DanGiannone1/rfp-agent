@@ -1,0 +1,1978 @@
+[
+  {
+    "engagement_id": "ENG-2022-001",
+    "bid_id": "BID-2022-001",
+    "client_id": "CLI-012",
+    "client": "Atlantic Seaboard Financial Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "audit",
+      "advisory"
+    ],
+    "engagement_type": "integrated_audit",
+    "start_date": "2022-03-15",
+    "end_date": "2023-03-14",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 18,
+      "actual_peak_fte": 21,
+      "key_personnel": [
+        "Sarah Chen",
+        "James O'Sullivan",
+        "David Kim",
+        "Rachel Okonkwo",
+        "Jordan Lee",
+        "Emily Nakamura"
+      ],
+      "staff_changes": "Added 3 IT audit specialists mid-engagement when PCAOB inspection findings required expanded testing of automated controls."
+    },
+    "financials": {
+      "contracted_revenue": 4200000,
+      "actual_revenue": 4680000,
+      "estimated_cost": 2940000,
+      "actual_cost": 3370000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.28,
+      "realization_rate": 0.91,
+      "change_orders": [
+        {
+          "description": "Expanded SOX testing for newly acquired subsidiary",
+          "amount": 380000,
+          "date": "2022-09-12"
+        },
+        {
+          "description": "Crypto asset valuation procedures",
+          "amount": 100000,
+          "date": "2022-11-03"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 34
+    },
+    "scope_changes": "Client acquired a mid-size fintech subsidiary in Q3 2022, requiring expanded SOX scoping and crypto asset valuation procedures not in original engagement letter.",
+    "client_satisfaction": {
+      "nps": 72,
+      "survey_score": 4.3,
+      "feedback": "Meridian handled the mid-year acquisition scope expansion professionally. The team's crypto expertise was stronger than we expected. Minor friction on interim testing timelines but overall a strong first year.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": false,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2023-001"
+      ],
+      "estimated_ltv": 18500000
+    },
+    "lessons_learned": "Crypto asset audit procedures require valuation specialists with DeFi protocol experience, not just traditional fair value experts. Building a dedicated digital asset audit team reduced per-engagement specialist costs by 35% in subsequent years.",
+    "risk_events": [
+      "Acquisition mid-engagement required scope expansion",
+      "PCAOB inspection findings on automated controls"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2022-002",
+    "bid_id": "BID-2022-002",
+    "client_id": "CLI-018",
+    "client": "Greenleaf Energy Partners",
+    "industry": "energy",
+    "service_lines": [
+      "advisory",
+      "tax"
+    ],
+    "engagement_type": "erp_implementation",
+    "start_date": "2022-04-01",
+    "end_date": "2023-09-30",
+    "status": "completed",
+    "planned_duration_months": 14,
+    "actual_duration_months": 18,
+    "staffing": {
+      "planned_fte": 24,
+      "actual_peak_fte": 31,
+      "key_personnel": [
+        "Michael Torres",
+        "Patricia Hoffman",
+        "Alex Petrov",
+        "Maria Santos",
+        "Raj Krishnamurthy",
+        "Marcus Wright",
+        "Derek Williams"
+      ],
+      "staff_changes": "Brought in 4 additional SAP S/4HANA data migration specialists at month 8 when legacy data mapping fell behind schedule. Lost 1 senior consultant to competitor at month 6, replaced within 3 weeks."
+    },
+    "financials": {
+      "contracted_revenue": 8500000,
+      "actual_revenue": 9850000,
+      "estimated_cost": 5950000,
+      "actual_cost": 7580000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.23,
+      "realization_rate": 0.82,
+      "change_orders": [
+        {
+          "description": "Extended data migration phase \u2014 legacy ERP data cleansing",
+          "amount": 480000,
+          "date": "2022-10-15"
+        },
+        {
+          "description": "Additional integration with field service management system",
+          "amount": 350000,
+          "date": "2023-02-20"
+        },
+        {
+          "description": "Post-go-live hypercare extension (2 months)",
+          "amount": 520000,
+          "date": "2023-07-01"
+        }
+      ],
+      "write_offs": 95000,
+      "collections_days_avg": 38
+    },
+    "scope_changes": "Original scope assumed clean legacy data migration from SAP ECC 6.0. Client had 17 years of uncleansed master data across 4 business units with inconsistent chart of accounts. Required full data remediation phase not in original estimate.",
+    "client_satisfaction": {
+      "nps": 55,
+      "survey_score": 3.7,
+      "feedback": "The go-live was ultimately successful and the system is performing well. However, the timeline slippage was frustrating and we felt the original scoping underestimated the data migration complexity. The hypercare team was excellent.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": false,
+      "on_budget": false,
+      "quality_issues": "First UAT cycle failed with 23 critical defects in financial posting logic. Required 6-week remediation before second UAT pass.",
+      "rework_required": true
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2024-002"
+      ],
+      "estimated_ltv": 14000000
+    },
+    "lessons_learned": "SAP Activate methodology underestimated data migration for clients with 15+ year legacy ERP history. Build in 30% contingency for data cleansing and add a mandatory data profiling sprint in the Explore phase. Also, always staff a dedicated data migration lead separately from the functional consultants.",
+    "risk_events": [
+      "Legacy data quality far worse than assessed in due diligence",
+      "Key consultant attrition mid-project",
+      "First UAT cycle failure"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2022-003",
+    "bid_id": "BID-2022-003",
+    "client_id": "CLI-024",
+    "client": "Tri-State Health Network",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "post_merger_integration",
+    "start_date": "2022-06-01",
+    "end_date": "2023-05-31",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 15,
+      "actual_peak_fte": 17,
+      "key_personnel": [
+        "Dr. Priya Ramanathan",
+        "Robert Adeyemi",
+        "Lauren Mitchell",
+        "Sophia Vasquez",
+        "Aisha Patel",
+        "Kwame Asante"
+      ],
+      "staff_changes": "Added clinical informatics SME at month 3 (should have been staffed from day 1). One analyst relocated, replaced with no disruption."
+    },
+    "financials": {
+      "contracted_revenue": 5200000,
+      "actual_revenue": 5200000,
+      "estimated_cost": 3640000,
+      "actual_cost": 3900000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.25,
+      "realization_rate": 0.88,
+      "change_orders": [],
+      "write_offs": 45000,
+      "collections_days_avg": 42
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 68,
+      "survey_score": 4.1,
+      "feedback": "Meridian delivered a comprehensive integration roadmap and the clinical systems consolidation plan was particularly strong. We wish the clinical informatics expertise had been available from kickoff rather than brought in reactively.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": false,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2023-D02"
+      ],
+      "estimated_ltv": 9500000
+    },
+    "lessons_learned": "Healthcare PMI staffing should include clinical informatics SME from day 1, not as needed. Delayed onboarding cost 3 weeks of rework on the EHR consolidation workstream and $45K in absorbed write-offs. Created a standard healthcare PMI staffing template to prevent recurrence.",
+    "risk_events": [
+      "Delayed clinical informatics staffing",
+      "State regulatory approval for license transfer took 6 weeks longer than projected"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2022-004",
+    "bid_id": "BID-2022-004",
+    "client_id": "CLI-031",
+    "client": "Commonwealth of Virginia Department of Transportation",
+    "industry": "public_sector",
+    "service_lines": [
+      "advisory",
+      "tax"
+    ],
+    "engagement_type": "cloud_migration",
+    "start_date": "2022-07-01",
+    "end_date": "2023-12-31",
+    "status": "completed",
+    "planned_duration_months": 15,
+    "actual_duration_months": 18,
+    "staffing": {
+      "planned_fte": 12,
+      "actual_peak_fte": 14,
+      "key_personnel": [
+        "Michael Torres",
+        "James O'Sullivan",
+        "Thomas Chen",
+        "Raj Krishnamurthy",
+        "Jessica Huang",
+        "Derek Williams"
+      ],
+      "staff_changes": "Two team members required additional FedRAMP security clearance processing that delayed onboarding by 5 weeks."
+    },
+    "financials": {
+      "contracted_revenue": 3800000,
+      "actual_revenue": 4100000,
+      "estimated_cost": 2850000,
+      "actual_cost": 3280000,
+      "margin_planned": 0.25,
+      "margin_actual": 0.2,
+      "realization_rate": 0.85,
+      "change_orders": [
+        {
+          "description": "Additional security assessment for FedRAMP High compliance",
+          "amount": 300000,
+          "date": "2023-03-15"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 78
+    },
+    "scope_changes": "FedRAMP High authorization requirements were added after initial scope was set at FedRAMP Moderate. Required additional security control assessment and documentation.",
+    "client_satisfaction": {
+      "nps": 62,
+      "survey_score": 4.0,
+      "feedback": "Solid technical execution on the Azure migration. The team navigated our procurement bureaucracy patiently. Timeline slipped due to security clearance and FedRAMP scope expansion, but those were partly on us. Good partnership.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": false,
+      "on_budget": false,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2024-D06"
+      ],
+      "estimated_ltv": 7200000
+    },
+    "lessons_learned": "Public sector cloud migrations must pre-validate security clearance requirements for all proposed staff during the proposal phase, not after award. Build 6-week clearance processing buffer into all federal/state project plans. FedRAMP scope should always be confirmed at authorization level during discovery, not assumed from RFP language.",
+    "risk_events": [
+      "Security clearance delays",
+      "FedRAMP scope escalation from Moderate to High",
+      "Procurement cycle delays on change order approval"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2022-005",
+    "bid_id": "BID-2022-005",
+    "client_id": "CLI-008",
+    "client": "Pinnacle Manufacturing Corp",
+    "industry": "manufacturing",
+    "service_lines": [
+      "tax"
+    ],
+    "engagement_type": "tax_provision",
+    "start_date": "2022-09-01",
+    "end_date": "2023-08-31",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 8,
+      "actual_peak_fte": 8,
+      "key_personnel": [
+        "Patricia Hoffman",
+        "Maria Santos",
+        "Olivia Brennan"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 1200000,
+      "actual_revenue": 1200000,
+      "estimated_cost": 780000,
+      "actual_cost": 756000,
+      "margin_planned": 0.35,
+      "margin_actual": 0.37,
+      "realization_rate": 0.95,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 31
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 78,
+      "survey_score": 4.5,
+      "feedback": "Excellent ASC 740 work. The team identified $2.3M in previously unrecognized R&D credits and streamlined our quarterly provision process. Maria Santos in particular was outstanding \u2014 responsive and deeply knowledgeable.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2023-D01",
+        "ENG-2024-003"
+      ],
+      "estimated_ltv": 5800000
+    },
+    "lessons_learned": "Manufacturing clients with international operations frequently have unidentified R&D tax credit opportunities in their supply chain engineering functions. Incorporating a credits-and-incentives screening into every tax provision engagement increased average engagement value by 18% through follow-on work.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2023-001",
+    "bid_id": "BID-2023-001",
+    "client_id": "CLI-012",
+    "client": "Atlantic Seaboard Financial Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "audit"
+    ],
+    "engagement_type": "integrated_audit",
+    "start_date": "2023-01-15",
+    "end_date": "2024-01-14",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 20,
+      "actual_peak_fte": 20,
+      "key_personnel": [
+        "Sarah Chen",
+        "James O'Sullivan",
+        "David Kim",
+        "Rachel Okonkwo",
+        "Jordan Lee",
+        "Emily Nakamura",
+        "Aisha Patel"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 4500000,
+      "actual_revenue": 4500000,
+      "estimated_cost": 3060000,
+      "actual_cost": 2970000,
+      "margin_planned": 0.32,
+      "margin_actual": 0.34,
+      "realization_rate": 0.94,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 29
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 82,
+      "survey_score": 4.6,
+      "feedback": "Year 2 was markedly smoother. The team's familiarity with our systems and controls framework eliminated the learning curve. Interim testing was completed ahead of schedule for the first time in five years. Highly satisfied.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Second-year audit engagements consistently outperform on margin when the same core team is retained. Investing in retention bonuses for key staff on marquee audit clients (top 20 by revenue) has a 4:1 ROI through reduced ramp-up costs and improved realization.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2023-002",
+    "bid_id": "BID-2023-002",
+    "client_id": "CLI-041",
+    "client": "NexGen Therapeutics Inc.",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "cybersecurity_assessment",
+    "start_date": "2023-03-01",
+    "end_date": "2023-08-31",
+    "status": "completed",
+    "planned_duration_months": 6,
+    "actual_duration_months": 6,
+    "staffing": {
+      "planned_fte": 10,
+      "actual_peak_fte": 12,
+      "key_personnel": [
+        "Robert Adeyemi",
+        "Thomas Chen",
+        "Lauren Mitchell",
+        "Marcus Wright",
+        "Jessica Huang"
+      ],
+      "staff_changes": "Added 2 HIPAA-specialized penetration testers for the clinical trial data systems assessment."
+    },
+    "financials": {
+      "contracted_revenue": 1800000,
+      "actual_revenue": 1950000,
+      "estimated_cost": 1260000,
+      "actual_cost": 1365000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.3,
+      "realization_rate": 0.92,
+      "change_orders": [
+        {
+          "description": "Extended scope to include clinical trial data management systems",
+          "amount": 150000,
+          "date": "2023-05-10"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 35
+    },
+    "scope_changes": "Client requested inclusion of clinical trial data management systems (Medidata Rave) after initial scope focused only on corporate IT and EHR systems.",
+    "client_satisfaction": {
+      "nps": 75,
+      "survey_score": 4.4,
+      "feedback": "Meridian identified 14 critical vulnerabilities including a misconfigured API gateway exposing PHI. The remediation roadmap was actionable and prioritized. The clinical trial systems add-on was handled quickly. Would engage again.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2024-D08"
+      ],
+      "estimated_ltv": 4200000
+    },
+    "lessons_learned": "Healthcare cybersecurity assessments should always include clinical trial data systems in the initial scoping questionnaire, even when the client's RFP focuses on corporate IT. 60% of our healthcare cyber clients have extended scope to include clinical systems, and proactively including them improves win rate and reduces change order friction.",
+    "risk_events": [
+      "Critical PHI exposure vulnerability discovered requiring immediate client notification"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2023-003",
+    "bid_id": "BID-2023-003",
+    "client_id": "CLI-055",
+    "client": "Pacific Rim Logistics Holdings",
+    "industry": "manufacturing",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "supply_chain_optimization",
+    "start_date": "2023-05-15",
+    "end_date": "2024-02-28",
+    "status": "completed",
+    "planned_duration_months": 9,
+    "actual_duration_months": 9,
+    "staffing": {
+      "planned_fte": 14,
+      "actual_peak_fte": 14,
+      "key_personnel": [
+        "Michael Torres",
+        "Alex Petrov",
+        "Sophia Vasquez",
+        "Kwame Asante",
+        "Derek Williams"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 3200000,
+      "actual_revenue": 3200000,
+      "estimated_cost": 2240000,
+      "actual_cost": 2176000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.32,
+      "realization_rate": 0.93,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 33
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 85,
+      "survey_score": 4.7,
+      "feedback": "Outstanding work. Meridian's supply chain team identified $18M in annual savings through network redesign and carrier optimization. The warehouse simulation modeling was a differentiator we didn't see from other firms. Alex Petrov's logistics expertise is world-class.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2024-D07"
+      ],
+      "estimated_ltv": 8500000
+    },
+    "lessons_learned": "Supply chain optimization engagements that include warehouse simulation modeling (using our Prism Analytics suite) consistently achieve higher client satisfaction and generate more follow-on work. The investment in simulation licenses and training has paid for itself 6x over through increased deal sizes and win rates.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2023-004",
+    "bid_id": "BID-2023-004",
+    "client_id": "CLI-063",
+    "client": "Sovereign Wealth Advisory Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "tax",
+      "advisory"
+    ],
+    "engagement_type": "transfer_pricing",
+    "start_date": "2023-07-01",
+    "end_date": "2024-06-30",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 10,
+      "actual_peak_fte": 11,
+      "key_personnel": [
+        "Patricia Hoffman",
+        "Dr. Priya Ramanathan",
+        "Maria Santos",
+        "Raj Krishnamurthy",
+        "Olivia Brennan"
+      ],
+      "staff_changes": "Added 1 international tax specialist with OECD BEPS expertise at month 4 to handle Pillar Two compliance analysis."
+    },
+    "financials": {
+      "contracted_revenue": 2800000,
+      "actual_revenue": 2800000,
+      "estimated_cost": 1960000,
+      "actual_cost": 1988000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.29,
+      "realization_rate": 0.9,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 36
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 70,
+      "survey_score": 4.2,
+      "feedback": "Meridian's transfer pricing documentation was thorough and defensible. The Pillar Two impact analysis was timely given our board's concerns. We appreciated the proactive approach to identifying exposure across our 12 jurisdictions.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2025-D09"
+      ],
+      "estimated_ltv": 6200000
+    },
+    "lessons_learned": "OECD Pillar Two compliance is generating significant advisory demand from financial services clients with multi-jurisdictional operations. Building a dedicated Pillar Two practice team (rather than staffing ad hoc) reduced delivery time by 40% and improved consistency of global minimum tax impact assessments.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2023-005",
+    "bid_id": "BID-2023-005",
+    "client_id": "CLI-072",
+    "client": "Metro City Transit Authority",
+    "industry": "public_sector",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "data_analytics_transformation",
+    "start_date": "2023-09-01",
+    "end_date": "2024-11-30",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 15,
+    "staffing": {
+      "planned_fte": 16,
+      "actual_peak_fte": 18,
+      "key_personnel": [
+        "Robert Adeyemi",
+        "Dr. Priya Ramanathan",
+        "Thomas Chen",
+        "Lauren Mitchell",
+        "Aisha Patel",
+        "Jessica Huang"
+      ],
+      "staff_changes": "Added 2 data engineers when the legacy data warehouse migration proved more complex than scoped. One junior analyst promoted to senior mid-engagement."
+    },
+    "financials": {
+      "contracted_revenue": 4800000,
+      "actual_revenue": 5300000,
+      "estimated_cost": 3600000,
+      "actual_cost": 4240000,
+      "margin_planned": 0.25,
+      "margin_actual": 0.2,
+      "realization_rate": 0.83,
+      "change_orders": [
+        {
+          "description": "Legacy data warehouse migration and decommissioning",
+          "amount": 350000,
+          "date": "2024-02-15"
+        },
+        {
+          "description": "Additional dashboard development for board reporting",
+          "amount": 150000,
+          "date": "2024-06-01"
+        }
+      ],
+      "write_offs": 75000,
+      "collections_days_avg": 88
+    },
+    "scope_changes": "Legacy Teradata data warehouse had undocumented ETL processes that required reverse engineering. Board requested executive dashboards not in original scope. Timeline extended 3 months.",
+    "client_satisfaction": {
+      "nps": 58,
+      "survey_score": 3.8,
+      "feedback": "The final analytics platform is excellent and our operations team uses it daily. The journey was rocky \u2014 timeline slipped and we had to push for the board dashboards. Public procurement made change orders painful. The team was professional throughout despite the bureaucratic challenges.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": false,
+      "on_budget": false,
+      "quality_issues": "Initial data pipeline had performance issues under peak load (rush hour ridership data). Required architecture rework in month 10.",
+      "rework_required": true
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Public sector data analytics engagements must include a mandatory data archaeology sprint in the first 4 weeks to catalog undocumented legacy ETL processes. The Teradata-to-Snowflake migration underestimated reverse engineering effort by 60%. Also, public sector collections consistently exceed 75 days \u2014 budget cash flow accordingly and factor into pricing.",
+    "risk_events": [
+      "Undocumented legacy ETL processes",
+      "Data pipeline performance failure under load",
+      "Extended public procurement cycle for change orders"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2024-001",
+    "bid_id": "BID-2024-001",
+    "client_id": "CLI-015",
+    "client": "Cascade Retail Holdings",
+    "industry": "retail",
+    "service_lines": [
+      "advisory",
+      "tax"
+    ],
+    "engagement_type": "erp_implementation",
+    "start_date": "2024-02-01",
+    "end_date": "2025-07-31",
+    "status": "completed",
+    "planned_duration_months": 16,
+    "actual_duration_months": 18,
+    "staffing": {
+      "planned_fte": 22,
+      "actual_peak_fte": 26,
+      "key_personnel": [
+        "Michael Torres",
+        "Patricia Hoffman",
+        "Alex Petrov",
+        "Raj Krishnamurthy",
+        "Sophia Vasquez",
+        "Marcus Wright",
+        "Kwame Asante",
+        "Derek Williams"
+      ],
+      "staff_changes": "Added 4 retail-specific SAP consultants for point-of-sale integration. One manager (Raj Krishnamurthy) transitioned to another engagement at month 12, replaced by Lauren Mitchell."
+    },
+    "financials": {
+      "contracted_revenue": 12500000,
+      "actual_revenue": 13800000,
+      "estimated_cost": 8750000,
+      "actual_cost": 10350000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.25,
+      "realization_rate": 0.86,
+      "change_orders": [
+        {
+          "description": "POS integration for 340 retail locations (originally 200)",
+          "amount": 480000,
+          "date": "2024-07-15"
+        },
+        {
+          "description": "Loyalty program data migration from legacy CRM",
+          "amount": 320000,
+          "date": "2024-10-01"
+        },
+        {
+          "description": "Extended parallel run period (1 month)",
+          "amount": 500000,
+          "date": "2025-04-15"
+        }
+      ],
+      "write_offs": 150000,
+      "collections_days_avg": 40
+    },
+    "scope_changes": "Client expanded from 200 to 340 retail locations mid-project after acquiring a regional chain. Loyalty program migration was not in original scope. Parallel run extended by 1 month due to inventory reconciliation discrepancies.",
+    "client_satisfaction": {
+      "nps": 60,
+      "survey_score": 3.9,
+      "feedback": "The ERP is live and stable across all 340 locations. The acquisition mid-project was disruptive but Meridian adapted. The $150K write-off was appropriate given the inventory reconciliation issues during parallel run. We value the partnership but expect tighter cost control going forward.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": false,
+      "on_budget": false,
+      "quality_issues": "Inventory reconciliation discrepancies between SAP and legacy POS system during parallel run. Required 4 weeks of debugging and data correction.",
+      "rework_required": true
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2025-D10"
+      ],
+      "estimated_ltv": 18000000
+    },
+    "lessons_learned": "Retail ERP implementations with POS integration must include a dedicated inventory reconciliation workstream from day 1, staffed with a retail operations SME (not just an SAP functional consultant). The parallel run should be scoped at minimum 2 months for multi-location retail \u2014 1 month is insufficient to catch edge cases in seasonal inventory patterns.",
+    "risk_events": [
+      "Client acquisition expanded scope by 70%",
+      "Inventory reconciliation failures during parallel run",
+      "Key personnel transition mid-engagement"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2024-002",
+    "bid_id": "BID-2024-002",
+    "client_id": "CLI-018",
+    "client": "Greenleaf Energy Partners",
+    "industry": "energy",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "cloud_migration",
+    "start_date": "2024-03-01",
+    "end_date": "2024-12-31",
+    "status": "completed",
+    "planned_duration_months": 10,
+    "actual_duration_months": 10,
+    "staffing": {
+      "planned_fte": 14,
+      "actual_peak_fte": 14,
+      "key_personnel": [
+        "Michael Torres",
+        "Thomas Chen",
+        "Raj Krishnamurthy",
+        "Jessica Huang",
+        "Derek Williams"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 3500000,
+      "actual_revenue": 3500000,
+      "estimated_cost": 2450000,
+      "actual_cost": 2380000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.32,
+      "realization_rate": 0.93,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 32
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 80,
+      "survey_score": 4.5,
+      "feedback": "Night and day improvement from the ERP engagement. The cloud migration was smooth \u2014 clearly Meridian learned from the first project. Thomas Chen's Azure architecture expertise was exactly what we needed. On time, on budget, no drama.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Follow-on engagements with the same client benefit enormously from institutional knowledge retention. Assigning at least 2 team members from the prior engagement (Thomas Chen and Raj Krishnamurthy from ENG-2022-002) reduced discovery phase from 6 weeks to 2 weeks and improved client confidence from the start.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2024-003",
+    "bid_id": "BID-2024-003",
+    "client_id": "CLI-008",
+    "client": "Pinnacle Manufacturing Corp",
+    "industry": "manufacturing",
+    "service_lines": [
+      "tax"
+    ],
+    "engagement_type": "credits_and_incentives",
+    "start_date": "2024-04-01",
+    "end_date": "2024-12-31",
+    "status": "completed",
+    "planned_duration_months": 9,
+    "actual_duration_months": 9,
+    "staffing": {
+      "planned_fte": 6,
+      "actual_peak_fte": 7,
+      "key_personnel": [
+        "Patricia Hoffman",
+        "Maria Santos",
+        "Olivia Brennan",
+        "Aisha Patel"
+      ],
+      "staff_changes": "Added 1 state incentives specialist for month 4-6 to handle multi-state filing requirements."
+    },
+    "financials": {
+      "contracted_revenue": 850000,
+      "actual_revenue": 950000,
+      "estimated_cost": 552500,
+      "actual_cost": 570000,
+      "margin_planned": 0.35,
+      "margin_actual": 0.4,
+      "realization_rate": 0.96,
+      "change_orders": [
+        {
+          "description": "Expanded scope to include state-level R&D credits for 3 additional states",
+          "amount": 100000,
+          "date": "2024-07-20"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 28
+    },
+    "scope_changes": "Client requested expansion to include state-level R&D credits for California, Texas, and Ohio manufacturing facilities after federal credit analysis identified significant state-level opportunities.",
+    "client_satisfaction": {
+      "nps": 88,
+      "survey_score": 4.8,
+      "feedback": "Meridian's credits and incentives team delivered $4.7M in identified credits across federal and state programs. The ROI on this engagement is extraordinary. Maria Santos continues to be an indispensable resource for our tax department. Already planning next year's engagement.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 4500000
+    },
+    "lessons_learned": "Credits and incentives engagements have the highest client satisfaction scores in the firm (avg NPS 82) because of directly quantifiable ROI. The contingent fee model on identified credits aligns incentives perfectly and should be offered as default pricing for all C&I engagements.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2024-004",
+    "bid_id": "BID-2024-004",
+    "client_id": "CLI-089",
+    "client": "TerraVerde Agritech",
+    "industry": "manufacturing",
+    "service_lines": [
+      "audit",
+      "tax"
+    ],
+    "engagement_type": "integrated_audit",
+    "start_date": "2024-06-01",
+    "end_date": "2025-05-31",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 12,
+      "actual_peak_fte": 14,
+      "key_personnel": [
+        "Sarah Chen",
+        "David Kim",
+        "Rachel Okonkwo",
+        "Jordan Lee",
+        "Emily Nakamura"
+      ],
+      "staff_changes": "Added 2 agricultural commodity valuation specialists for biological asset fair value testing (IAS 41)."
+    },
+    "financials": {
+      "contracted_revenue": 2800000,
+      "actual_revenue": 2950000,
+      "estimated_cost": 1960000,
+      "actual_cost": 2124000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.28,
+      "realization_rate": 0.89,
+      "change_orders": [
+        {
+          "description": "Biological asset valuation \u2014 expanded testing for IAS 41 bearer plants",
+          "amount": 150000,
+          "date": "2024-10-01"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 37
+    },
+    "scope_changes": "IAS 41 biological asset valuation required more extensive testing than originally scoped due to client's complex bearer plant portfolio across 3 climate zones.",
+    "client_satisfaction": {
+      "nps": 73,
+      "survey_score": 4.3,
+      "feedback": "Meridian brought agricultural industry expertise that our previous auditor lacked. The IAS 41 work was handled with real depth. We appreciate the team's willingness to visit our facilities in person to understand our operations.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": false,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Agricultural clients with biological assets under IAS 41 require specialized valuation expertise that cannot be staffed from the general audit pool. Maintaining a roster of 3-4 agricultural valuation specialists (even if part-time or contracted) ensures we can serve this niche without scrambling mid-engagement.",
+    "risk_events": [
+      "Bearer plant valuation complexity exceeded initial assessment"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2024-005",
+    "bid_id": "BID-2024-005",
+    "client_id": "CLI-044",
+    "client": "Horizon Digital Health",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "cloud_migration",
+    "start_date": "2024-08-01",
+    "end_date": "2025-10-31",
+    "status": "completed",
+    "planned_duration_months": 14,
+    "actual_duration_months": 15,
+    "staffing": {
+      "planned_fte": 18,
+      "actual_peak_fte": 20,
+      "key_personnel": [
+        "Robert Adeyemi",
+        "Dr. Priya Ramanathan",
+        "Thomas Chen",
+        "Lauren Mitchell",
+        "Marcus Wright",
+        "Jessica Huang"
+      ],
+      "staff_changes": "Added 2 HITRUST-certified cloud security engineers at month 3 for HIPAA-compliant Azure landing zone configuration."
+    },
+    "financials": {
+      "contracted_revenue": 6200000,
+      "actual_revenue": 6480000,
+      "estimated_cost": 4340000,
+      "actual_cost": 4536000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.3,
+      "realization_rate": 0.91,
+      "change_orders": [
+        {
+          "description": "HITRUST CSF certification support for Azure environment",
+          "amount": 280000,
+          "date": "2024-12-01"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 33
+    },
+    "scope_changes": "Client added HITRUST CSF certification requirement for the Azure landing zone, which was not in original scope but is increasingly expected by their hospital system clients.",
+    "client_satisfaction": {
+      "nps": 79,
+      "survey_score": 4.5,
+      "feedback": "Meridian delivered a secure, HITRUST-certified Azure environment that met all HIPAA requirements. The 1-month timeline extension for HITRUST certification was the only hiccup. Thomas Chen and Lauren Mitchell were exceptional throughout. Already discussing Phase 2 analytics work.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": false,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 9000000
+    },
+    "lessons_learned": "Healthcare cloud migrations should proactively include HITRUST CSF certification support in proposals, even when not explicitly requested. 70% of digital health clients have added it as a change order. Including it upfront differentiates our proposals and eliminates mid-engagement scope expansion.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2025-001",
+    "bid_id": "BID-2025-001",
+    "client_id": "CLI-033",
+    "client": "Ironclad Defense Systems",
+    "industry": "manufacturing",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "cybersecurity_assessment",
+    "start_date": "2025-01-15",
+    "end_date": "2025-08-14",
+    "status": "completed",
+    "planned_duration_months": 7,
+    "actual_duration_months": 7,
+    "staffing": {
+      "planned_fte": 12,
+      "actual_peak_fte": 12,
+      "key_personnel": [
+        "Robert Adeyemi",
+        "Thomas Chen",
+        "Lauren Mitchell",
+        "Marcus Wright",
+        "Aisha Patel"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 2200000,
+      "actual_revenue": 2200000,
+      "estimated_cost": 1540000,
+      "actual_cost": 1496000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.32,
+      "realization_rate": 0.94,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 30
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 81,
+      "survey_score": 4.6,
+      "feedback": "Meridian's CMMC assessment was thorough and their remediation roadmap gave us a clear path to Level 3 certification. The team understood defense industrial base requirements without needing hand-holding. Marcus Wright's penetration testing uncovered a critical OT network vulnerability.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Defense industrial base clients increasingly require CMMC Level 3 assessment alongside traditional cybersecurity reviews. Bundling CMMC readiness into cyber assessment proposals for DIB clients has increased average deal size by 25% and positions us for the CMMC remediation follow-on work.",
+    "risk_events": [
+      "Critical OT network vulnerability discovered requiring immediate containment"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2025-002",
+    "bid_id": "BID-2025-002",
+    "client_id": "CLI-052",
+    "client": "BrightPath Insurance Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "audit",
+      "advisory"
+    ],
+    "engagement_type": "integrated_audit",
+    "start_date": "2025-03-01",
+    "end_date": null,
+    "status": "active",
+    "planned_duration_months": 12,
+    "actual_duration_months": null,
+    "staffing": {
+      "planned_fte": 16,
+      "actual_peak_fte": 16,
+      "key_personnel": [
+        "Sarah Chen",
+        "James O'Sullivan",
+        "David Kim",
+        "Rachel Okonkwo",
+        "Jordan Lee",
+        "Aisha Patel"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 3800000,
+      "actual_revenue": 1200000,
+      "estimated_cost": 2660000,
+      "actual_cost": 840000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.3,
+      "realization_rate": 0.92,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 32
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 74,
+      "survey_score": 4.3,
+      "feedback": "Early days but the transition from our previous auditor has been smooth. The planning phase was well-organized and the team's insurance industry knowledge is strong. Impressed by the data analytics approach to claims testing.",
+      "referenceable": false
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Insurance audit transitions benefit from a 90-day pre-engagement knowledge transfer period where we shadow the outgoing auditor's key contacts. This was implemented here and resulted in the smoothest first-year insurance audit onboarding in the practice's history.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2025-003",
+    "bid_id": "BID-2025-003",
+    "client_id": "CLI-078",
+    "client": "Quantum Semiconductor Inc.",
+    "industry": "technology",
+    "service_lines": [
+      "tax",
+      "advisory"
+    ],
+    "engagement_type": "international_tax_restructuring",
+    "start_date": "2025-04-01",
+    "end_date": "2025-12-31",
+    "status": "completed",
+    "planned_duration_months": 9,
+    "actual_duration_months": 9,
+    "staffing": {
+      "planned_fte": 11,
+      "actual_peak_fte": 13,
+      "key_personnel": [
+        "Patricia Hoffman",
+        "Dr. Priya Ramanathan",
+        "Maria Santos",
+        "Raj Krishnamurthy",
+        "Olivia Brennan"
+      ],
+      "staff_changes": "Added 2 OECD Pillar Two specialists for global minimum tax impact modeling across 8 jurisdictions."
+    },
+    "financials": {
+      "contracted_revenue": 2400000,
+      "actual_revenue": 2550000,
+      "estimated_cost": 1680000,
+      "actual_cost": 1785000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.3,
+      "realization_rate": 0.91,
+      "change_orders": [
+        {
+          "description": "Pillar Two top-up tax modeling for 3 additional APAC jurisdictions",
+          "amount": 150000,
+          "date": "2025-08-01"
+        }
+      ],
+      "write_offs": 0,
+      "collections_days_avg": 34
+    },
+    "scope_changes": "Client's APAC expansion into Singapore, Taiwan, and South Korea required additional Pillar Two top-up tax modeling not in original scope.",
+    "client_satisfaction": {
+      "nps": 77,
+      "survey_score": 4.4,
+      "feedback": "Meridian's international tax team helped us restructure our IP holding structure in a way that's both tax-efficient and Pillar Two compliant. The projected annual tax savings of $8.2M were above our expectations. Raj Krishnamurthy's BEPS expertise was invaluable.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Technology clients with semiconductor operations typically have complex IP holding structures across low-tax jurisdictions that are directly impacted by Pillar Two. Pre-building Pillar Two impact models for the top 20 semiconductor jurisdictions reduced analysis time by 50% and allowed us to provide preliminary findings within 3 weeks of engagement start.",
+    "risk_events": [
+      "APAC expansion timeline accelerated requiring rapid scope extension"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2025-004",
+    "bid_id": "BID-2025-004",
+    "client_id": "CLI-091",
+    "client": "Lakewood Regional Medical Center",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "post_merger_integration",
+    "start_date": "2025-06-01",
+    "end_date": null,
+    "status": "active",
+    "planned_duration_months": 18,
+    "actual_duration_months": null,
+    "staffing": {
+      "planned_fte": 20,
+      "actual_peak_fte": 22,
+      "key_personnel": [
+        "Dr. Priya Ramanathan",
+        "Robert Adeyemi",
+        "Lauren Mitchell",
+        "Sophia Vasquez",
+        "Aisha Patel",
+        "Kwame Asante",
+        "Emily Nakamura"
+      ],
+      "staff_changes": "Proactively staffed clinical informatics SME from day 1 based on lessons from ENG-2022-003. Added 2 revenue cycle specialists at month 2 when due diligence revealed billing system complexity."
+    },
+    "financials": {
+      "contracted_revenue": 8500000,
+      "actual_revenue": 3400000,
+      "estimated_cost": 5950000,
+      "actual_cost": 2380000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.3,
+      "realization_rate": 0.9,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 44
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 71,
+      "survey_score": 4.2,
+      "feedback": "Integration planning phase was thorough and the clinical informatics expertise from day 1 was a differentiator. We're entering the execution phase and the team is well-prepared. Cautiously optimistic about the 18-month timeline.",
+      "referenceable": false
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Applying the healthcare PMI staffing template developed after ENG-2022-003 (clinical informatics from day 1, revenue cycle specialists by week 4) has been validated. The planning phase completed 2 weeks ahead of schedule compared to the Tri-State engagement.",
+    "risk_events": [
+      "Billing system complexity exceeded due diligence findings"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2026-001",
+    "bid_id": "BID-2026-001",
+    "client_id": "CLI-098",
+    "client": "Continental Energy Holdings",
+    "industry": "energy",
+    "service_lines": [
+      "audit",
+      "advisory",
+      "tax"
+    ],
+    "engagement_type": "integrated_audit",
+    "start_date": "2026-01-15",
+    "end_date": null,
+    "status": "active",
+    "planned_duration_months": 12,
+    "actual_duration_months": null,
+    "staffing": {
+      "planned_fte": 28,
+      "actual_peak_fte": 28,
+      "key_personnel": [
+        "Sarah Chen",
+        "Michael Torres",
+        "Patricia Hoffman",
+        "David Kim",
+        "Alex Petrov",
+        "Maria Santos",
+        "Jordan Lee",
+        "Marcus Wright"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 7500000,
+      "actual_revenue": 1250000,
+      "estimated_cost": 5250000,
+      "actual_cost": 875000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.3,
+      "realization_rate": 0.92,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 31
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 69,
+      "survey_score": 4.1,
+      "feedback": "Engagement just started but the planning phase has been comprehensive. The multi-service team coordination is impressive \u2014 audit, tax, and advisory working from a unified project plan. Looking forward to the interim testing phase.",
+      "referenceable": false
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Multi-service integrated engagements (audit + tax + advisory) require a unified project governance structure from day 1. Using a single PMO with weekly cross-service standups prevents the siloing that plagued earlier multi-service engagements. This is the firm's largest first-year engagement and serves as the template for the new integrated delivery model.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2023-D01",
+    "bid_id": null,
+    "client_id": "CLI-008",
+    "client": "Pinnacle Manufacturing Corp",
+    "industry": "manufacturing",
+    "service_lines": [
+      "tax"
+    ],
+    "engagement_type": "tax_provision",
+    "start_date": "2023-09-01",
+    "end_date": "2024-03-31",
+    "status": "completed",
+    "planned_duration_months": 7,
+    "actual_duration_months": 7,
+    "staffing": {
+      "planned_fte": 6,
+      "actual_peak_fte": 6,
+      "key_personnel": [
+        "Patricia Hoffman",
+        "Maria Santos",
+        "Olivia Brennan"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 680000,
+      "actual_revenue": 680000,
+      "estimated_cost": 408000,
+      "actual_cost": 394000,
+      "margin_planned": 0.4,
+      "margin_actual": 0.42,
+      "realization_rate": 0.96,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 26
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 82,
+      "survey_score": 4.6,
+      "feedback": "Seamless continuation of the tax provision work. Maria Santos knows our tax structure better than most of our internal team. The quarterly provision process is now down to 3 days from 12 days when we started with Meridian.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [
+        "ENG-2024-003"
+      ],
+      "estimated_ltv": 4200000
+    },
+    "lessons_learned": "Repeat tax provision engagements with the same team consistently achieve 95%+ realization rates. The firm's policy of assigning dedicated tax teams to recurring clients (rather than rotating) is validated \u2014 realization on this engagement was 14 points above the tax practice average.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2023-D02",
+    "bid_id": null,
+    "client_id": "CLI-024",
+    "client": "Tri-State Health Network",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "clinical_systems_consolidation",
+    "start_date": "2023-08-01",
+    "end_date": "2024-07-31",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 14,
+      "actual_peak_fte": 16,
+      "key_personnel": [
+        "Dr. Priya Ramanathan",
+        "Lauren Mitchell",
+        "Sophia Vasquez",
+        "Aisha Patel",
+        "Kwame Asante"
+      ],
+      "staff_changes": "Added 2 Epic EHR integration specialists at month 2 when the target environment was confirmed as Epic (previously uncertain between Epic and Cerner)."
+    },
+    "financials": {
+      "contracted_revenue": 4200000,
+      "actual_revenue": 4200000,
+      "estimated_cost": 2940000,
+      "actual_cost": 3024000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.28,
+      "realization_rate": 0.88,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 39
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 74,
+      "survey_score": 4.3,
+      "feedback": "Meridian delivered on the clinical systems consolidation roadmap from the PMI engagement. The Epic integration was complex but the team handled it well. Having continuity from the original PMI team (Dr. Ramanathan, Lauren Mitchell) was invaluable.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 6000000
+    },
+    "lessons_learned": "Healthcare PMI clients that move to clinical systems consolidation as a follow-on engagement should have the EHR target platform confirmed during the PMI phase, not deferred. The 2-month delay in confirming Epic vs. Cerner wasted discovery effort. Future PMI engagements will include EHR platform selection as a required deliverable.",
+    "risk_events": [
+      "EHR platform decision delayed to month 2"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2023-D03",
+    "bid_id": null,
+    "client_id": "CLI-082",
+    "client": "Heritage Foods International",
+    "industry": "retail",
+    "service_lines": [
+      "audit",
+      "tax"
+    ],
+    "engagement_type": "integrated_audit",
+    "start_date": "2024-03-01",
+    "end_date": "2024-08-15",
+    "status": "terminated",
+    "planned_duration_months": 12,
+    "actual_duration_months": 5,
+    "staffing": {
+      "planned_fte": 14,
+      "actual_peak_fte": 14,
+      "key_personnel": [
+        "Sarah Chen",
+        "James O'Sullivan",
+        "Rachel Okonkwo",
+        "Jordan Lee",
+        "Emily Nakamura"
+      ],
+      "staff_changes": "Full team demobilized at termination."
+    },
+    "financials": {
+      "contracted_revenue": 3200000,
+      "actual_revenue": 1350000,
+      "estimated_cost": 2240000,
+      "actual_cost": 1120000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.17,
+      "realization_rate": 0.76,
+      "change_orders": [],
+      "write_offs": 120000,
+      "collections_days_avg": 125
+    },
+    "scope_changes": "Client was acquired by a competitor (Monarch Foods Group) whose existing auditor (Deloitte) was retained. Heritage Foods disputed interim fees, claiming work product was incomplete at termination.",
+    "client_satisfaction": {
+      "nps": 22,
+      "survey_score": 2.4,
+      "feedback": "The audit team was competent but the engagement was terminated due to our acquisition by Monarch Foods. There was a dispute over interim billing that left a bad taste. We felt Meridian was inflexible on fees for work-in-progress.",
+      "referenceable": false
+    },
+    "delivery_quality": {
+      "on_time": false,
+      "on_budget": false,
+      "quality_issues": "Engagement terminated before completion \u2014 no quality assessment possible for full deliverable.",
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Engagement letters for all audit clients should include a clear termination clause specifying fees owed for work-in-progress based on percentage of completion, with milestone-based billing rather than back-loaded fee structures. The Heritage termination resulted in $120K in write-offs that could have been avoided with proper contractual protections. Also, monitor client M&A activity proactively \u2014 the acquisition rumors were public 3 months before announcement.",
+    "risk_events": [
+      "Client acquired by competitor mid-engagement",
+      "Fee dispute on work-in-progress at termination",
+      "Collections exceeded 120 days requiring escalation to legal"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2024-D04",
+    "bid_id": null,
+    "client_id": "CLI-056",
+    "client": "Vanguard Mutual Savings Bank",
+    "industry": "financial_services",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "regulatory_compliance",
+    "start_date": "2024-01-15",
+    "end_date": "2024-09-30",
+    "status": "completed",
+    "planned_duration_months": 8,
+    "actual_duration_months": 8,
+    "staffing": {
+      "planned_fte": 10,
+      "actual_peak_fte": 12,
+      "key_personnel": [
+        "James O'Sullivan",
+        "Rachel Okonkwo",
+        "Sophia Vasquez",
+        "Aisha Patel",
+        "Olivia Brennan"
+      ],
+      "staff_changes": "Added 2 AML/BSA specialists when scope expanded to include transaction monitoring system assessment."
+    },
+    "financials": {
+      "contracted_revenue": 1800000,
+      "actual_revenue": 2050000,
+      "estimated_cost": 1260000,
+      "actual_cost": 1476000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.28,
+      "realization_rate": 0.87,
+      "change_orders": [
+        {
+          "description": "AML/BSA transaction monitoring system assessment",
+          "amount": 250000,
+          "date": "2024-04-20"
+        }
+      ],
+      "write_offs": 25000,
+      "collections_days_avg": 35
+    },
+    "scope_changes": "Client received an OCC consent order requiring enhanced AML/BSA compliance, triggering urgent scope expansion to include transaction monitoring system assessment and remediation planning.",
+    "client_satisfaction": {
+      "nps": 66,
+      "survey_score": 4.0,
+      "feedback": "Meridian helped us respond to the OCC consent order quickly. The team was flexible when we needed to expand scope urgently. The AML remediation roadmap was well-received by our regulators. Solid work under pressure.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": false,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Community and regional banks under regulatory pressure (consent orders, MRAs) are high-urgency direct award opportunities. Maintaining a rapid-response regulatory compliance team that can mobilize within 2 weeks differentiates us from larger firms with longer staffing lead times. The $25K write-off was a deliberate investment in the relationship.",
+    "risk_events": [
+      "OCC consent order triggered urgent scope expansion"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2024-D05",
+    "bid_id": null,
+    "client_id": "CLI-012",
+    "client": "Atlantic Seaboard Financial Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "data_analytics_transformation",
+    "start_date": "2024-04-01",
+    "end_date": "2024-12-31",
+    "status": "completed",
+    "planned_duration_months": 9,
+    "actual_duration_months": 9,
+    "staffing": {
+      "planned_fte": 12,
+      "actual_peak_fte": 12,
+      "key_personnel": [
+        "Dr. Priya Ramanathan",
+        "Thomas Chen",
+        "Raj Krishnamurthy",
+        "Jessica Huang",
+        "Derek Williams"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 2800000,
+      "actual_revenue": 2800000,
+      "estimated_cost": 1960000,
+      "actual_cost": 1876000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.33,
+      "realization_rate": 0.93,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 28
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 84,
+      "survey_score": 4.7,
+      "feedback": "Meridian's data analytics team transformed our financial crime detection capabilities. The machine learning models for suspicious transaction detection have reduced false positives by 60% while improving detection rates. Dr. Ramanathan's team delivered exactly what they promised.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 8000000
+    },
+    "lessons_learned": "Cross-selling data analytics to existing audit clients works best when the analytics use case is directly adjacent to audit findings. The financial crime detection project originated from observations during the ENG-2023-001 audit. Audit partners should systematically identify analytics opportunities during interim testing and flag them to the advisory practice.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2024-D06",
+    "bid_id": null,
+    "client_id": "CLI-031",
+    "client": "Commonwealth of Virginia Department of Transportation",
+    "industry": "public_sector",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "managed_services",
+    "start_date": "2024-02-01",
+    "end_date": "2025-01-31",
+    "status": "completed",
+    "planned_duration_months": 12,
+    "actual_duration_months": 12,
+    "staffing": {
+      "planned_fte": 6,
+      "actual_peak_fte": 7,
+      "key_personnel": [
+        "Thomas Chen",
+        "Raj Krishnamurthy",
+        "Derek Williams"
+      ],
+      "staff_changes": "Added 1 cloud operations engineer at month 3 for Azure DevOps pipeline management."
+    },
+    "financials": {
+      "contracted_revenue": 1500000,
+      "actual_revenue": 1500000,
+      "estimated_cost": 1050000,
+      "actual_cost": 1080000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.28,
+      "realization_rate": 0.89,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 82
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 64,
+      "survey_score": 4.0,
+      "feedback": "Steady managed services support for our Azure environment. The team keeps the lights on and has been responsive to incidents. We appreciate the continuity from the original migration team. Procurement delays on our end affect payment timing \u2014 that's on us, not Meridian.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Public sector managed services engagements should be priced with an explicit cash flow buffer \u2014 82-day average collections on this engagement strained working capital. Future public sector managed services contracts should include milestone-based pre-payments or retainer structures to smooth cash flow.",
+    "risk_events": [
+      "Payment delays due to state procurement cycles"
+    ]
+  },
+  {
+    "engagement_id": "ENG-2024-D07",
+    "bid_id": null,
+    "client_id": "CLI-055",
+    "client": "Pacific Rim Logistics Holdings",
+    "industry": "manufacturing",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "warehouse_automation",
+    "start_date": "2024-06-01",
+    "end_date": "2025-03-31",
+    "status": "completed",
+    "planned_duration_months": 10,
+    "actual_duration_months": 10,
+    "staffing": {
+      "planned_fte": 10,
+      "actual_peak_fte": 11,
+      "key_personnel": [
+        "Alex Petrov",
+        "Sophia Vasquez",
+        "Kwame Asante",
+        "Marcus Wright"
+      ],
+      "staff_changes": "Added 1 robotics integration specialist at month 4 for automated sortation system design."
+    },
+    "financials": {
+      "contracted_revenue": 2400000,
+      "actual_revenue": 2400000,
+      "estimated_cost": 1680000,
+      "actual_cost": 1656000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.31,
+      "realization_rate": 0.92,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 31
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 79,
+      "survey_score": 4.5,
+      "feedback": "The warehouse automation design built perfectly on the supply chain optimization work from last year. Alex Petrov's team understands our operations inside and out. The automated sortation system design exceeded our throughput targets by 15%.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 6000000
+    },
+    "lessons_learned": "Supply chain optimization clients are prime candidates for warehouse automation follow-on work \u2014 80% conversion rate in the last 3 years. Embedding a warehouse automation assessment into the final deliverable of every supply chain optimization engagement creates a natural pipeline for the next engagement.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2024-D08",
+    "bid_id": null,
+    "client_id": "CLI-041",
+    "client": "NexGen Therapeutics Inc.",
+    "industry": "healthcare",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "security_remediation",
+    "start_date": "2024-01-15",
+    "end_date": "2024-07-31",
+    "status": "completed",
+    "planned_duration_months": 6,
+    "actual_duration_months": 6,
+    "staffing": {
+      "planned_fte": 8,
+      "actual_peak_fte": 9,
+      "key_personnel": [
+        "Robert Adeyemi",
+        "Thomas Chen",
+        "Marcus Wright",
+        "Jessica Huang"
+      ],
+      "staff_changes": "Added 1 identity and access management specialist at month 2 for zero-trust architecture implementation."
+    },
+    "financials": {
+      "contracted_revenue": 1400000,
+      "actual_revenue": 1400000,
+      "estimated_cost": 980000,
+      "actual_cost": 994000,
+      "margin_planned": 0.3,
+      "margin_actual": 0.29,
+      "realization_rate": 0.9,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 33
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 78,
+      "survey_score": 4.5,
+      "feedback": "Meridian remediated all 14 critical vulnerabilities identified in the assessment and implemented a zero-trust architecture for our clinical trial systems. The continuity from the assessment team to the remediation team was seamless. Our CISO is now confident in our security posture.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": false,
+      "follow_on_ids": [],
+      "estimated_ltv": 0
+    },
+    "lessons_learned": "Cybersecurity assessment-to-remediation conversion is 65% when the same team leads both phases. The key is including a preliminary remediation roadmap with effort estimates in the assessment deliverable, so the client can budget and approve the follow-on without a separate procurement cycle.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2025-D09",
+    "bid_id": null,
+    "client_id": "CLI-063",
+    "client": "Sovereign Wealth Advisory Group",
+    "industry": "financial_services",
+    "service_lines": [
+      "tax"
+    ],
+    "engagement_type": "pillar_two_compliance",
+    "start_date": "2025-01-01",
+    "end_date": "2025-09-30",
+    "status": "completed",
+    "planned_duration_months": 9,
+    "actual_duration_months": 9,
+    "staffing": {
+      "planned_fte": 7,
+      "actual_peak_fte": 8,
+      "key_personnel": [
+        "Patricia Hoffman",
+        "Raj Krishnamurthy",
+        "Olivia Brennan"
+      ],
+      "staff_changes": "Added 1 tax technology automation specialist to build automated Pillar Two compliance reporting in their existing tax provision system."
+    },
+    "financials": {
+      "contracted_revenue": 1600000,
+      "actual_revenue": 1600000,
+      "estimated_cost": 1040000,
+      "actual_cost": 1024000,
+      "margin_planned": 0.35,
+      "margin_actual": 0.36,
+      "realization_rate": 0.94,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 30
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 76,
+      "survey_score": 4.4,
+      "feedback": "Excellent follow-on from the transfer pricing work. The automated Pillar Two compliance reporting saved us from hiring 2 additional internal tax staff. Raj Krishnamurthy's deep understanding of our structure from the previous engagement made this efficient.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 3800000
+    },
+    "lessons_learned": "Pillar Two compliance engagements that include tax technology automation as a deliverable (not just advisory) achieve higher margins and stronger client retention. Clients value the 'build, not just advise' approach and it creates a recurring managed services opportunity for annual compliance updates.",
+    "risk_events": []
+  },
+  {
+    "engagement_id": "ENG-2025-D10",
+    "bid_id": null,
+    "client_id": "CLI-015",
+    "client": "Cascade Retail Holdings",
+    "industry": "retail",
+    "service_lines": [
+      "advisory"
+    ],
+    "engagement_type": "analytics_and_reporting",
+    "start_date": "2025-09-01",
+    "end_date": "2026-02-28",
+    "status": "completed",
+    "planned_duration_months": 6,
+    "actual_duration_months": 6,
+    "staffing": {
+      "planned_fte": 8,
+      "actual_peak_fte": 8,
+      "key_personnel": [
+        "Alex Petrov",
+        "Sophia Vasquez",
+        "Derek Williams",
+        "Kwame Asante"
+      ],
+      "staff_changes": null
+    },
+    "financials": {
+      "contracted_revenue": 1200000,
+      "actual_revenue": 1200000,
+      "estimated_cost": 780000,
+      "actual_cost": 756000,
+      "margin_planned": 0.35,
+      "margin_actual": 0.37,
+      "realization_rate": 0.95,
+      "change_orders": [],
+      "write_offs": 0,
+      "collections_days_avg": 34
+    },
+    "scope_changes": null,
+    "client_satisfaction": {
+      "nps": 83,
+      "survey_score": 4.6,
+      "feedback": "Meridian built exactly the analytics layer we needed on top of the SAP deployment. The inventory demand forecasting model has already reduced overstock by 22% in the first quarter. Great follow-on from the ERP work \u2014 the team already knew our data model intimately.",
+      "referenceable": true
+    },
+    "delivery_quality": {
+      "on_time": true,
+      "on_budget": true,
+      "quality_issues": null,
+      "rework_required": false
+    },
+    "follow_on": {
+      "generated": true,
+      "follow_on_ids": [],
+      "estimated_ltv": 5000000
+    },
+    "lessons_learned": "ERP implementation clients should be offered an analytics engagement within 6 months of go-live, while the team's system knowledge is fresh and the client is eager to extract value from their investment. The 6-month window is critical \u2014 beyond that, internal teams build workarounds that are harder to replace.",
+    "risk_events": []
+  }
+]
