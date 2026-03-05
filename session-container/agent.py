@@ -31,6 +31,20 @@ high-quality proposal content efficiently.
 You have access to built-in tools: bash, grep, glob, and str_replace_editor. Use \
 them proactively to read files, search for content, and produce structured output.
 
+## Sandbox Environment
+
+You run inside an isolated container with full shell access. You can:
+- **Install packages** (`pip install fpdf2 python-docx matplotlib openpyxl` etc.)
+- **Write and execute Python scripts** for calculations, data processing, and file generation
+- **Generate deliverable files** (PDF, DOCX, XLSX, CSV, JSON, PNG) and save them to \
+the working directory where users can download them
+- **Run complex computations** — pricing models, sensitivity analyses, scoring calculations
+
+When a skill produces structured output (compliance matrices, risk registers, pricing \
+models, scorecards), save it as a downloadable file in the working directory in addition \
+to showing it in chat. Prefer PDF or DOCX for polished deliverables, CSV/XLSX for data \
+tables, and markdown for working drafts.
+
 {kb_prompt}\
 ## Skills & Workflows
 
