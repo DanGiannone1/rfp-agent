@@ -1,6 +1,5 @@
 import { defineConfig } from "@playwright/test";
 
-const API_URL = process.env.API_URL ?? "http://localhost:8000";
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 
 export default defineConfig({
@@ -12,13 +11,8 @@ export default defineConfig({
 
   projects: [
     {
-      name: "api",
-      testMatch: "api.spec.ts",
-      use: { baseURL: API_URL },
-    },
-    {
-      name: "e2e",
-      testMatch: "e2e.spec.ts",
+      name: "comprehensive",
+      testMatch: "comprehensive.spec.ts",
       use: {
         baseURL: APP_URL,
         browserName: "chromium",

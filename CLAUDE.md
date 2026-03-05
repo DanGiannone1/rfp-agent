@@ -22,11 +22,11 @@ This runs:
 
 ### Testing (Playwright)
 ```bash
-npx playwright test --project=api     # API integration tests
-npx playwright test --project=e2e     # browser E2E tests
-npx playwright test                   # both
+npx playwright test                           # full comprehensive suite (35 tests)
+npx playwright test -g "Session Lifecycle"    # run a single test block
+npx playwright test -g "SSE"                  # run by keyword
 ```
-Tests default to `localhost:8000`/`localhost:3000`. Override with `API_URL`/`APP_URL` env vars for CI.
+Tests default to `localhost:8000`/`localhost:3000`. Override with `API_URL`/`APP_URL` env vars for CI. Tests that require Content Understanding or ADLS skip gracefully when those services are unavailable.
 
 ### Frontend only
 ```bash
@@ -60,6 +60,24 @@ Entra ID via MSAL on frontend, Easy Auth on orchestrator. Disabled locally when 
 ### Persistence (optional)
 CosmosDB stores session metadata + message history. App runs fine without it (`COSMOS_ENDPOINT` unset) — sessions are in-memory only.
 
+### Document processing (optional)
+Uploaded files can be converted to markdown and stored on ADLS Gen2. Both services are optional and independent — the upload flow works unchanged without them.
+
+- **Content Understanding** — converts uploaded documents (PDF, images, Office) to structured markdown using the `prebuilt-layout` analyzer. Uses the same Foundry/Cognitive Services resource as `AZURE_ENDPOINT` (the base URL is derived automatically). Enabled whenever `AZURE_ENDPOINT` is set.
+- **ADLS Gen2** — persists originals at `originals/{session_id}/{filename}` and markdown at `markdown/{session_id}/{filename}.md`. Enabled when `ADLS_ACCOUNT_NAME` is set.
+
+Processing runs as a fire-and-forget background task after the upload is proxied to the session container. The converted markdown is also forwarded to the session container as a separate `/upload` so the agent can reference it. All failures are logged as warnings, never surfaced to the user.
+
+To enable locally: set `ADLS_ACCOUNT_NAME` in `.env` and ensure `az login` has `Storage Blob Data Contributor` on the account. Content Understanding requires `Cognitive Services User` on the Foundry resource.
+
+### Knowledge base (optional)
+Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and exposes a `knowledge_base_retrieve` tool to the agent via MCP. This lets the agent search across all uploaded documents, past proposals, and reference materials.
+
+- **Setup:** Create an Azure AI Search resource (Basic tier), then run `uv run python setup_knowledge_base.py` to create the knowledge source + knowledge base. The indexer auto-processes documents from ADLS.
+- **Agent integration:** The session container connects to the Foundry IQ MCP endpoint when `AZURE_SEARCH_ENDPOINT` is set. The Copilot SDK exposes `knowledge_base_retrieve` as a tool automatically — no custom tool code.
+- **Env vars:** `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_KEY`, `AZURE_SEARCH_KB_NAME` (default: `rfp-knowledge`). Set these in both root `.env` (for the setup script) and the session container environment (for the agent).
+- **Roles:** The search service's managed identity needs `Storage Blob Data Reader` on ADLS and `Cognitive Services User` on the Foundry resource. The app's managed identity needs `Search Index Data Reader` + `Search Service Contributor` on the search service.
+
 ## Key files
 
 - `app.py` — orchestrator endpoints (session CRUD, message streaming, file upload)
@@ -67,6 +85,7 @@ CosmosDB stores session metadata + message history. App runs fine without it (`C
 - `session-container/server.py` — container endpoints (/chat, /status, /upload, /health)
 - `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue
 - `content_processing.py` — optional ADLS upload + Content Understanding markdown conversion
+- `setup_knowledge_base.py` — one-time script to create Foundry IQ knowledge source + knowledge base
 - `cosmos.py` — async CosmosDB client (sessions + messages)
 - `frontend/src/components/Chat.tsx` — main state machine (useReducer), session lifecycle, SSE handling
 - `frontend/src/lib/sse.ts` — SSE stream parser

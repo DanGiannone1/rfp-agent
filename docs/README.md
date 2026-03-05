@@ -13,6 +13,8 @@ RFP Agent automates the analysis phase. Users upload RFP documents and chat with
 - Highlights compliance requirements and flags risks
 - Suggests response strategies and drafts sections on request
 
+Uploaded documents are optionally stored in ADLS Gen2 and converted to structured markdown via Azure Content Understanding, giving the agent a clean text representation alongside the original file.
+
 The agent uses the GitHub Copilot SDK with Azure OpenAI, running in an isolated per-user container with access to shell tools (`bash`, `grep`, `glob`, `str_replace_editor`) for deep document analysis.
 
 ## Prerequisites
@@ -65,9 +67,9 @@ The agent uses the GitHub Copilot SDK with Azure OpenAI, running in an isolated 
 ### Testing
 
 ```bash
-npx playwright test --project=api     # API integration tests
-npx playwright test --project=e2e     # browser E2E tests
-npx playwright test                   # both
+npx playwright test                           # full comprehensive suite (35 tests)
+npx playwright test -g "Session Lifecycle"    # run a single test block
+npx playwright test -g "SSE"                  # run by keyword
 ```
 
 ## Deployment
@@ -102,6 +104,8 @@ Override defaults via environment variables:
 | `PREFIX` | `rfpagent` | Naming prefix for all resources |
 | `LOCATION` | `eastus2` | Azure region |
 | `AZURE_DEPLOYMENT` | `gpt-5-codex` | Azure OpenAI model deployment |
+| `ADLS_ACCOUNT_NAME` | _(unset)_ | ADLS Gen2 storage account for document persistence |
+| `ADLS_FILESYSTEM` | `documents` | ADLS filesystem (container) name |
 
 ## Architecture
 
@@ -111,10 +115,14 @@ Override defaults via environment variables:
 |  (Next.js, :3000) |
 +--------+----------+
          | HTTP + SSE
-+--------v----------+
-|   Orchestrator    |
-| (FastAPI, :8000)  |
-+--------+----------+
++--------v----------+       +-------------------------+
+|   Orchestrator    |------>| ADLS Gen2               |
+| (FastAPI, :8000)  |       | (document storage)      |
++--------+----------+       +-------------------------+
+         |                  +-------------------------+
+         |           ------>| Content Understanding   |
+         |                  | (markdown conversion)   |
+         |                  +-------------------------+
          | HTTP (blocking /chat + polling /status)
 +--------v----------+
 | Session Container |
@@ -129,6 +137,7 @@ Override defaults via environment variables:
 
 ### Data flow
 
+**Chat:**
 1. User sends a message via the frontend
 2. Frontend POSTs to the orchestrator's `/sessions/{id}/messages` endpoint
 3. Orchestrator forwards the prompt to the session container's `/chat` endpoint (blocking HTTP call)
@@ -136,6 +145,14 @@ Override defaults via environment variables:
 5. Status updates (thinking, tool:bash, tool:grep, etc.) are streamed as SSE events to the frontend
 6. When `/chat` completes, the final message is streamed as an SSE event
 7. Frontend renders the response with real-time tool activity indicators
+
+**File upload (when ADLS/Content Understanding enabled):**
+1. User uploads a file via the frontend
+2. Orchestrator proxies the file to the session container's `/upload` endpoint
+3. In the background, orchestrator uploads the original to ADLS Gen2 (`originals/{session_id}/`)
+4. Content Understanding converts the document to markdown using `prebuilt-layout`
+5. The markdown is uploaded to ADLS (`markdown/{session_id}/`) and forwarded to the session container
+6. The agent can now reference both the original file and its markdown conversion
 
 ### Key design decisions
 
@@ -154,6 +171,7 @@ The agent provides analysis, summaries, and draft suggestions. It does **not** a
 ### Data privacy
 
 - All data stays within the user's Azure tenant — documents are processed by Azure OpenAI in the configured region
+- When ADLS is enabled, documents are stored in the user's own storage account with path isolation per session (`originals/{session_id}/`, `markdown/{session_id}/`)
 - Session containers are isolated per-user; one user cannot access another's documents
 - No user data is used for model training
 - No PII is extracted, stored, or transmitted beyond what the user explicitly uploads
