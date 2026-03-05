@@ -60,7 +60,19 @@ Scan for content that should not be in a proposal:
 
 Use `grep` to search for common markers: "TBD", "TODO", "PLACEHOLDER", "DRAFT", "INSERT", "XXX", "???".
 
-### 6. Tone and Quality Review
+### 6. Branding & Formatting Check
+
+Verify the proposal meets Meridian's presentation standards:
+- **Firm name**: "Meridian & Associates LLP" used consistently (not abbreviated or varied)
+- **Boilerplate accuracy**: Firm overview, methodology descriptions match approved language from KB
+- **Formatting consistency**: Heading hierarchy, numbering scheme, table styles are uniform
+- **Visual standards**: Any brand colors, logo placement, or style guidelines are followed
+- **Document structure**: Table of contents (if applicable), page numbers, headers/footers, section breaks
+- **Page limits**: Total page count and per-section limits comply with RFP requirements
+
+Use `knowledge_base_retrieve` to search for "brand guidelines", "style guide", and "proposal formatting" for approved standards.
+
+### 7. Tone and Quality Review
 
 Assess the overall proposal for:
 - **Professionalism**: Appropriate for a Meridian & Associates LLP submission
@@ -71,7 +83,18 @@ Assess the overall proposal for:
 - **Grammar and spelling**: Basic proofreading
 - **Active voice**: Preferred over passive constructions
 
-### 7. Generate Compliance Checklist
+### 8. Executive Review Readiness
+
+Prepare a sign-off checklist for leadership review:
+- **Strategy alignment**: Does the proposal reflect the agreed win themes and positioning?
+- **Pricing approval**: Has the proposed fee been reviewed and approved by the engagement partner?
+- **Commitment accuracy**: Are all commitments (timelines, deliverables, staffing) achievable?
+- **Legal review**: Have any exceptions to terms, representations, or liability clauses been flagged?
+- **Risk acceptance**: Are identified risks acknowledged with appropriate mitigations?
+
+Flag each item as Ready / Needs Review / Blocked and identify the responsible person.
+
+### 9. Generate Compliance Checklist
 
 Compile findings into a structured checklist with pass/fail/warning status.
 
@@ -120,6 +143,16 @@ Compile findings into a structured checklist with pass/fail/warning status.
 | [Placeholder text found] | Section 2, para 3 | High | Replace with final content |
 | [Internal note] | Section 4 | High | Remove before submission |
 
+### Branding & Formatting Compliance
+
+| Requirement | Status | Notes |
+|---|:---:|---|
+| Firm name consistency | PASS/FAIL | |
+| Approved boilerplate used | PASS/WARN | [Deviations noted] |
+| Heading/numbering consistency | PASS/WARN | |
+| Page limits met | PASS/FAIL | [Current: X pages, Limit: Y] |
+| Headers/footers/TOC | PASS/WARN | |
+
 ### Tone & Quality Assessment
 
 | Criterion | Rating | Notes |
@@ -129,6 +162,16 @@ Compile findings into a structured checklist with pass/fail/warning status.
 | Specificity of claims | Good / Fair / Poor | [Notes] |
 | Grammar/spelling | Good / Fair / Poor | [Notes] |
 | Readability | Good / Fair / Poor | [Notes] |
+
+### Executive Review Readiness
+
+| Item | Status | Responsible | Notes |
+|---|:---:|---|---|
+| Strategy alignment | Ready / Needs Review | [Name] | |
+| Pricing approval | Ready / Needs Review | [Name] | |
+| Commitment review | Ready / Needs Review | [Name] | |
+| Legal/terms review | Ready / Needs Review | [Name] | |
+| Risk acceptance | Ready / Needs Review | [Name] | |
 
 ### Action Items (Priority Order)
 

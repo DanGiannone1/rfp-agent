@@ -84,7 +84,7 @@ Foundry IQ (Azure AI Search agentic retrieval) indexes the ADLS container and ex
 - `session_manager.py` — proxies to session containers, manages SSE polling loop, handles auth token forwarding
 - `session-container/server.py` — container endpoints (/chat, /status, /upload, /health)
 - `session-container/agent.py` — `AgentSession` wrapping Copilot SDK with event queue, system prompt, skill_directories config
-- `session-container/skills/` — 7 markdown skill files (bid-no-bid, requirements, strategy, drafting, exec summary, compliance, risk/gap)
+- `session-container/skills/` — 10 markdown skill files (bid-no-bid, requirements, strategy, drafting, exec summary, compliance, risk/gap, pricing analysis, customer intelligence, iterative refinement)
 - `content_processing.py` — optional ADLS upload + Content Understanding markdown conversion
 - `setup_knowledge_base.py` — one-time script to create Foundry IQ knowledge source + knowledge base
 - `index_knowledge_base.py` — uploads sample_data PDFs to ADLS for indexing

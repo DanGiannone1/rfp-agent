@@ -14,14 +14,17 @@ RFP responses are manual, time-consuming, error-prone, and siloed:
 
 ### Solution
 
-AI-powered **RFP Response Accelerator** built on the GitHub Copilot SDK with 7 structured workflow skills and knowledge base integration:
+AI-powered **RFP Response Accelerator** built on the GitHub Copilot SDK with 10 structured workflow skills and knowledge base integration:
 - **Bid/No-Bid Analysis** -- scorecard-driven pursuit decisions across 6 dimensions
 - **Requirements Extraction** -- automated parsing into classified compliance matrices
 - **Response Strategy** -- win themes, competitive positioning, pricing approach
 - **Draft Generation** -- KB-grounded proposal sections with source citations
 - **Executive Summary** -- synthesized 1-2 page summaries reflecting win themes
-- **Compliance Review** -- systematic pre-submission quality checks
+- **Compliance Review** -- systematic pre-submission quality checks with executive sign-off tracking
 - **Risk & Gap Analysis** -- risk registers with severity scoring and mitigations
+- **ROI & Pricing Analysis** -- cost modeling, margin analysis, sensitivity scenarios
+- **Customer Intelligence** -- client briefings with relationship history and personalization guidance
+- **Iterative Refinement** -- cross-section consistency, collateral generation, review tracking
 
 ### Key Metrics
 

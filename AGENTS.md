@@ -69,12 +69,25 @@ structured as: customer problem, our solution, why Meridian, key differentiators
 call to confidence. Must reflect established win themes.
 
 6. **Compliance Review** — Systematic pre-submission check: requirement coverage,
-submission instruction compliance, terminology consistency, sensitive data scan, and
-tone/quality assessment. Produces a pass/fail checklist.
+submission instruction compliance, terminology consistency, sensitive data scan,
+branding/formatting compliance, tone/quality assessment, and executive review readiness.
+Produces a pass/fail checklist with sign-off tracker.
 
 7. **Risk & Gap Analysis** — Identify technical risks, compliance gaps, resource
 constraints, and dependencies. Score severity and likelihood, propose mitigations.
 Produces a risk register.
+
+8. **ROI & Pricing Analysis** — Build bottom-up cost models, analyze margins and
+profitability, run sensitivity scenarios, benchmark against past engagements, and
+recommend competitive price positioning.
+
+9. **Customer Intelligence** — Aggregate all available information about a client
+into a structured briefing: organization profile, relationship history, pain points,
+decision-making insights, strategic value, and personalization recommendations.
+
+10. **Iterative Refinement** — Guide the collaborative editing cycle: cross-section
+consistency checks, section-level improvements, collateral generation (resumes, org
+charts, pricing tables), and review status tracking.
 
 ## Working Approach
 
@@ -103,7 +116,7 @@ unless the user requests otherwise.
 
 ## Skills
 
-The agent loads 7 skill files from `session-container/skills/` via the `skill_directories` configuration. Each skill is a markdown file containing a detailed workflow guide with step-by-step processes, scoring frameworks, and output templates.
+The agent loads 10 skill files from `session-container/skills/` via the `skill_directories` configuration. Each skill is a markdown file containing a detailed workflow guide with step-by-step processes, scoring frameworks, and output templates.
 
 | Skill | File | Trigger | Output |
 |-------|------|---------|--------|
@@ -112,8 +125,11 @@ The agent loads 7 skill files from `session-container/skills/` via the `skill_di
 | Response Strategy | `response-strategy.md` | User asks for "win strategy", "win themes", or "competitive positioning"; follows requirements extraction | Strategy brief with win themes, competitive analysis, pricing approach |
 | Draft Generation | `draft-generation.md` | User asks to "draft", "write", or "generate" a proposal section | Submission-ready proposal prose with KB citations and gap flags |
 | Executive Summary | `executive-summary.md` | User asks for an "executive summary"; typically after other sections are drafted | 1-2 page summary: customer problem, solution, differentiators, call to confidence |
-| Compliance Review | `compliance-review.md` | User asks for "compliance review", "quality check", or "final review"; after all sections drafted | Pass/fail checklist covering requirements, instructions, terminology, tone |
+| Compliance Review | `compliance-review.md` | User asks for "compliance review", "quality check", or "final review"; after all sections drafted | Pass/fail checklist with branding, formatting, tone, and executive sign-off tracker |
 | Risk & Gap Analysis | `risk-gap-analysis.md` | User asks for "risk analysis", "gap analysis", or "risk register" | Risk register with severity/likelihood scores and mitigations |
+| ROI & Pricing Analysis | `pricing-analysis.md` | User asks for "pricing analysis", "cost model", "ROI analysis", or "fee estimate" | Cost model, margin assessment, sensitivity analysis, competitive price positioning |
+| Customer Intelligence | `customer-intelligence.md` | User asks for "customer briefing", "client profile", or "customer intelligence" | Client briefing with relationship history, pain points, strategic value, personalization recommendations |
+| Iterative Refinement | `iterative-refinement.md` | User asks to "refine", "polish", "check consistency", or generate collateral | Cross-section consistency report, collateral generation, review status tracker |
 
 ## Available Tools
 

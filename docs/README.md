@@ -164,7 +164,7 @@ Override defaults via environment variables:
 
 ## Agent Skills
 
-The agent loads 7 structured RFP workflow skills from markdown files in `session-container/skills/` via the Copilot SDK's `skill_directories` configuration. Each skill provides a detailed step-by-step process, scoring frameworks, and output templates that guide the agent through a specific RFP task.
+The agent loads 10 structured RFP workflow skills from markdown files in `session-container/skills/` via the Copilot SDK's `skill_directories` configuration. Each skill provides a detailed step-by-step process, scoring frameworks, and output templates that guide the agent through a specific RFP task.
 
 | Skill | Trigger | Output Format |
 |-------|---------|---------------|
@@ -173,8 +173,11 @@ The agent loads 7 structured RFP workflow skills from markdown files in `session
 | Response Strategy | "Win strategy", "win themes", "competitive positioning" | Strategy brief with themes, competitive analysis, pricing approach |
 | Draft Generation | "Draft section", "write the technical approach" | Submission-ready prose with KB citations |
 | Executive Summary | "Executive summary" (after other sections drafted) | 1-2 page summary: problem, solution, differentiators |
-| Compliance Review | "Compliance review", "quality check", "final review" | Pass/fail checklist (requirements, instructions, terminology, tone) |
+| Compliance Review | "Compliance review", "quality check", "final review" | Pass/fail checklist with branding, formatting, tone, and executive sign-off tracker |
 | Risk & Gap Analysis | "Risk analysis", "gap analysis", "risk register" | Risk register with severity/likelihood scores and mitigations |
+| ROI & Pricing Analysis | "Pricing analysis", "cost model", "fee estimate" | Cost model, margin assessment, sensitivity analysis, price positioning |
+| Customer Intelligence | "Customer briefing", "client profile", "customer intelligence" | Client briefing with relationship history, pain points, personalization recommendations |
+| Iterative Refinement | "Refine", "polish", "check consistency", generate collateral | Cross-section consistency report, collateral generation, review status tracker |
 
 Skills are plain markdown files loaded at session creation time. The Copilot SDK makes them available to the agent as reference material that informs its behavior and output structure for each workflow.
 

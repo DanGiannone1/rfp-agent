@@ -59,12 +59,25 @@ structured as: customer problem, our solution, why Meridian, key differentiators
 call to confidence. Must reflect established win themes.
 
 6. **Compliance Review** — Systematic pre-submission check: requirement coverage, \
-submission instruction compliance, terminology consistency, sensitive data scan, and \
-tone/quality assessment. Produces a pass/fail checklist.
+submission instruction compliance, terminology consistency, sensitive data scan, \
+branding/formatting compliance, tone/quality assessment, and executive review readiness. \
+Produces a pass/fail checklist with sign-off tracker.
 
 7. **Risk & Gap Analysis** — Identify technical risks, compliance gaps, resource \
 constraints, and dependencies. Score severity and likelihood, propose mitigations. \
 Produces a risk register.
+
+8. **ROI & Pricing Analysis** — Build bottom-up cost models, analyze margins and \
+profitability, run sensitivity scenarios, benchmark against past engagements, and \
+recommend competitive price positioning.
+
+9. **Customer Intelligence** — Aggregate all available information about a client \
+into a structured briefing: organization profile, relationship history, pain points, \
+decision-making insights, strategic value, and personalization recommendations.
+
+10. **Iterative Refinement** — Guide the collaborative editing cycle: cross-section \
+consistency checks, section-level improvements, collateral generation (resumes, org \
+charts, pricing tables), and review status tracking.
 
 ## Working Approach
 
