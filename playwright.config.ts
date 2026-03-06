@@ -20,5 +20,15 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
     },
+    {
+      name: "visual",
+      testMatch: "visual-verification.spec.ts",
+      use: {
+        baseURL: APP_URL,
+        browserName: "chromium",
+        headless: true,
+        viewport: { width: 1440, height: 900 },
+      },
+    },
   ],
 });

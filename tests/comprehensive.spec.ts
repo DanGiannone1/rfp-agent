@@ -11,8 +11,13 @@ const API = process.env.API_URL ?? "http://localhost:8000";
 interface SSEEvent {
   type: string;
   content?: string;
-  status?: string;
+  delta?: string;
   message?: string;
+  message_id?: string;
+  thread_id?: string;
+  run_id?: string;
+  tool_call_id?: string;
+  tool_call_name?: string;
   [key: string]: unknown;
 }
 
@@ -113,24 +118,53 @@ async function getHealth(): Promise<any> {
   return res.json();
 }
 
+/**
+ * Navigate through IntakeScreen by uploading a file, then wait for the chat
+ * input to appear (indicating the transition to chat stage).
+ */
+async function navigateToChatViaIntake(
+  page: any,
+  filePath: string,
+): Promise<void> {
+  await page.goto("/");
+  const intakeInput = page.getByTestId("intake-upload-input");
+  await expect(intakeInput).toBeAttached({ timeout: 30_000 });
+  await intakeInput.setInputFiles(filePath);
+  await expect(page.getByTestId("chat-input")).toBeVisible({ timeout: 30_000 });
+}
+
+// Shared temp file used by tests that just need to get past IntakeScreen
+const sharedTmpDir = path.join(__dirname, ".tmp-shared");
+const sharedTmpFile = path.join(sharedTmpDir, "starter.txt");
+
+test.beforeAll(() => {
+  fs.mkdirSync(sharedTmpDir, { recursive: true });
+  fs.writeFileSync(sharedTmpFile, "Starter file for chat access.");
+});
+
+test.afterAll(() => {
+  fs.rmSync(sharedTmpDir, { recursive: true, force: true });
+});
+
 // ---------------------------------------------------------------------------
 // Journey 1: Chat Conversation (Browser, serial)
 // ---------------------------------------------------------------------------
 test.describe.serial("Journey 1: Chat Conversation", () => {
-  test("App loads and session initializes", async ({ page }) => {
+  test("App loads and intake screen appears", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
+    // IntakeScreen should be visible
+    await expect(page.getByTestId("intake-upload-input")).toBeAttached({
       timeout: 30_000,
     });
+  });
+
+  test("Upload transitions to chat", async ({ page }) => {
+    await navigateToChatViaIntake(page, sharedTmpFile);
     await expect(page.getByTestId("chat-input")).toBeEnabled();
-    await expect(page.getByTestId("initializing")).toBeHidden();
   });
 
   test("Send message and receive response", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+    await navigateToChatViaIntake(page, sharedTmpFile);
 
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
@@ -152,10 +186,7 @@ test.describe.serial("Journey 1: Chat Conversation", () => {
   });
 
   test("Multi-turn context preserved", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+    await navigateToChatViaIntake(page, sharedTmpFile);
 
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
@@ -205,91 +236,43 @@ test.describe.serial("Journey 2: Upload Document and Discuss", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("Upload shows in UI and document panel", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
+  test("Upload shows in UI and artifacts panel", async ({ page }) => {
+    await navigateToChatViaIntake(page, tmpFile);
+
+    // Artifacts panel shows the uploaded file on desktop
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
       timeout: 30_000,
-    });
-
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile);
-
-    // File chip visible in input bar
-    await expect(
-      page.locator("form").getByText("rfp-document.txt"),
-    ).toBeVisible();
-
-    await page.getByTestId("send-button").click();
-
-    // Uploaded message appears
-    await expect(page.locator("text=Uploaded").first()).toBeVisible({
-      timeout: 30_000,
-    });
-
-    // Wait for auto-prompt: first wait for streaming to START (input disabled),
-    // then wait for it to FINISH (input re-enabled)
-    const input = page.getByTestId("chat-input");
-    await expect(input).toBeDisabled({ timeout: 30_000 });
-    await expect(input).toBeEnabled({ timeout: 180_000 });
-
-    // Document panel with filename
-    await expect(page.getByTestId("document-panel")).toBeVisible({
-      timeout: 10_000,
     });
     await expect(
       page.getByTestId("document-name").getByText("rfp-document.txt"),
     ).toBeVisible();
 
-    // Get the last assistant message — auto-prompt should reference RFP details
-    const lastAssistant = page
-      .locator('[class*="justify-start"] [class*="prose"]')
-      .last();
-    const reply = await lastAssistant.textContent();
-
-    // Agent should reference specific details from the uploaded RFP
-    const upper = reply!.toUpperCase();
-    const mentionsDetail =
-      upper.includes("2,500,000") ||
-      upper.includes("2.5") ||
-      upper.includes("SEPTEMBER") ||
-      upper.includes("2026") ||
-      upper.includes("DATA PLATFORM") ||
-      upper.includes("SOC 2") ||
-      upper.includes("MIGRATION") ||
-      upper.includes("UPTIME") ||
-      upper.includes("DATABASES");
-    expect(mentionsDetail).toBe(true);
+    // Input is enabled — user drives the conversation
+    const input = page.getByTestId("chat-input");
+    await expect(input).toBeEnabled();
   });
 
-  test("Agent retains file context in follow-up", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+  test("Agent can read uploaded file when asked", async ({ page }) => {
+    await navigateToChatViaIntake(page, tmpFile);
 
-    // Upload the file
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile);
-    await page.getByTestId("send-button").click();
-    await expect(page.locator("text=Uploaded").first()).toBeVisible({
+    // Wait for artifacts panel to confirm upload
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
       timeout: 30_000,
     });
 
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
 
-    // Wait for auto-prompt agent response to complete
-    await expect(input).toBeEnabled({ timeout: 180_000 });
-
-    // Follow-up about compliance
+    // User asks about the document
     await input.fill(
       "What compliance certifications are required according to the document?",
     );
     await send.click();
+    await expect(input).toBeDisabled({ timeout: 30_000 });
     await expect(input).toBeEnabled({ timeout: 180_000 });
 
     const lastAssistant = page
-      .locator('[class*="justify-start"] [class*="prose"]')
+      .locator('.message-row-assistant .prose')
       .last();
     const reply = await lastAssistant.textContent();
 
@@ -363,16 +346,9 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
   test("Conversion badge transitions to done in browser", async ({
     page,
   }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+    await navigateToChatViaIntake(page, tmpFile);
 
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile);
-    await page.getByTestId("send-button").click();
-
-    await expect(page.getByTestId("document-panel")).toBeVisible({
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
       timeout: 10_000,
     });
 
@@ -382,17 +358,10 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
     });
   });
 
-  test("Markdown sibling hidden in document panel", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+  test("Markdown sibling hidden in artifacts panel", async ({ page }) => {
+    await navigateToChatViaIntake(page, tmpFile);
 
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile);
-    await page.getByTestId("send-button").click();
-
-    await expect(page.getByTestId("document-panel")).toBeVisible({
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
       timeout: 10_000,
     });
 
@@ -416,10 +385,7 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
 // ---------------------------------------------------------------------------
 test.describe.serial("Journey 4: Session Isolation", () => {
   test("New chat clears messages", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+    await navigateToChatViaIntake(page, sharedTmpFile);
 
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
@@ -431,21 +397,20 @@ test.describe.serial("Journey 4: Session Isolation", () => {
       page.locator("text=Hello from session isolation test"),
     ).toBeVisible();
 
-    // Click new chat
+    // Click new chat — returns to intake screen
     await page.getByTestId("new-chat-button").click();
-    await expect(input).toBeVisible({ timeout: 30_000 });
 
-    // Old message should be gone
+    // Should be back on intake screen (old message gone)
+    await expect(page.getByTestId("intake-upload-input")).toBeAttached({
+      timeout: 30_000,
+    });
     await expect(
       page.locator("text=Hello from session isolation test"),
     ).toBeHidden();
   });
 
   test("New session has no context from previous", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+    await navigateToChatViaIntake(page, sharedTmpFile);
 
     const input = page.getByTestId("chat-input");
     const send = page.getByTestId("send-button");
@@ -455,9 +420,11 @@ test.describe.serial("Journey 4: Session Isolation", () => {
     await send.click();
     await expect(input).toBeEnabled({ timeout: 180_000 });
 
-    // New chat
+    // New chat → back to intake
     await page.getByTestId("new-chat-button").click();
-    await expect(input).toBeVisible({ timeout: 30_000 });
+
+    // Navigate through intake again
+    await navigateToChatViaIntake(page, sharedTmpFile);
 
     // Second session: ask about previous context
     await input.fill(
@@ -467,15 +434,10 @@ test.describe.serial("Journey 4: Session Isolation", () => {
     await expect(input).toBeEnabled({ timeout: 180_000 });
 
     // Agent should NOT know STARFISH from the previous session.
-    // NOTE: In local dev with a single session container, the agent
-    // singleton may retain context across orchestrator sessions.
-    // This test validates the frontend session reset (messages cleared)
-    // but the backend isolation only works in production (ACA Dynamic Sessions).
     const lastAssistant = page
-      .locator('[class*="justify-start"] [class*="prose"]')
+      .locator('.message-row-assistant .prose')
       .last();
     const reply = await lastAssistant.textContent();
-    // Verify the agent produced a substantive response (not an error)
     expect(reply!.length).toBeGreaterThan(5);
   });
 });
@@ -568,18 +530,18 @@ test.describe("Journey 5: Security and Error Handling", () => {
       ),
     ]);
 
-    // At least one should complete successfully with a done event
-    const r1Done = result1.events.some((e) => e.type === "done");
-    const r2Done = result2.events.some((e) => e.type === "done");
+    // At least one should complete successfully with a RUN_FINISHED event
+    const r1Done = result1.events.some((e) => e.type === "RUN_FINISHED");
+    const r2Done = result2.events.some((e) => e.type === "RUN_FINISHED");
     expect(r1Done || r2Done).toBe(true);
 
     // The other should either also succeed or have an error (busy, timeout, etc.)
     if (!r1Done && result1.events.length > 0) {
-      const hasError = result1.events.some((e) => e.type === "error");
+      const hasError = result1.events.some((e) => e.type === "RUN_ERROR");
       expect(hasError).toBe(true);
     }
     if (!r2Done && result2.events.length > 0) {
-      const hasError = result2.events.some((e) => e.type === "error");
+      const hasError = result2.events.some((e) => e.type === "RUN_ERROR");
       expect(hasError).toBe(true);
     }
   });
@@ -594,9 +556,9 @@ test.describe("Journey 5: Security and Error Handling", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Journey 6: Document Panel UX (Browser)
+// Journey 6: Artifacts Panel UX (Browser)
 // ---------------------------------------------------------------------------
-test.describe.serial("Journey 6: Document Panel UX", () => {
+test.describe.serial("Journey 6: Artifacts Panel UX", () => {
   const tmpDir = path.join(__dirname, ".tmp-journey6");
   const tmpFile1 = path.join(tmpDir, "doc-one.txt");
   const tmpFile2 = path.join(tmpDir, "doc-two.txt");
@@ -611,51 +573,31 @@ test.describe.serial("Journey 6: Document Panel UX", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("Collapse toggle", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+  test("Artifacts panel visible with uploaded file", async ({ page }) => {
+    await navigateToChatViaIntake(page, tmpFile1);
 
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile1);
-    await page.getByTestId("send-button").click();
-
-    await expect(page.getByTestId("document-panel")).toBeVisible({
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
       timeout: 10_000,
     });
 
-    const toggle = page.getByTestId("document-panel-toggle");
-
-    // Collapse
-    await toggle.click();
-    await expect(page.getByTestId("document-item").first()).toBeHidden();
-
-    // Re-expand
-    await toggle.click();
+    // At least one document item visible
     await expect(page.getByTestId("document-item").first()).toBeVisible();
   });
 
   test("Multiple files in panel", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByTestId("chat-input")).toBeVisible({
-      timeout: 30_000,
-    });
+    await navigateToChatViaIntake(page, tmpFile1);
 
-    // Upload first file
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.setInputFiles(tmpFile1);
-    await page.getByTestId("send-button").click();
-    await expect(page.getByTestId("document-panel")).toBeVisible({
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
       timeout: 10_000,
     });
 
-    // Wait for input to be ready again
+    // Wait for input to be ready
     await expect(page.getByTestId("chat-input")).toBeEnabled({
       timeout: 120_000,
     });
 
-    // Upload second file
+    // Upload second file via chat input bar
+    const fileInput = page.locator('input[type="file"]').last();
     await fileInput.setInputFiles(tmpFile2);
     await page.getByTestId("send-button").click();
 

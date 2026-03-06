@@ -1,9 +1,7 @@
-const SESSION_KEY = "rfp_agent_session_id";
+import type { ChatMessage } from "./types";
 
-export function getStoredSessionId(): string | null {
-  if (typeof window === "undefined") return null;
-  return sessionStorage.getItem(SESSION_KEY);
-}
+const SESSION_KEY = "rfp_agent_session_id";
+const MESSAGES_KEY = "rfp_agent_messages";
 
 export function storeSessionId(id: string): void {
   if (typeof window === "undefined") return;
@@ -13,4 +11,11 @@ export function storeSessionId(id: string): void {
 export function clearSessionId(): void {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(MESSAGES_KEY);
+}
+
+export function storeMessages(messages: ChatMessage[]): void {
+  if (typeof window === "undefined") return;
+  const completed = messages.filter((m) => !m.isStreaming);
+  sessionStorage.setItem(MESSAGES_KEY, JSON.stringify(completed));
 }

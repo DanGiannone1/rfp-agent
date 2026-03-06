@@ -10,7 +10,6 @@ import logging
 import os
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
 
 import httpx
 from azure.identity.aio import DefaultAzureCredential
@@ -23,6 +22,20 @@ POOL_MANAGEMENT_ENDPOINT = os.getenv("POOL_MANAGEMENT_ENDPOINT", "")
 
 def _sse_event(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
+
+
+def _agui_error(message: str) -> str:
+    return _sse_event({"type": "RUN_ERROR", "message": message})
+
+
+def _agui_finished() -> str:
+    return _sse_event(
+        {
+            "type": "RUN_FINISHED",
+            "thread_id": str(uuid.uuid4()),
+            "run_id": str(uuid.uuid4()),
+        }
+    )
 
 
 class _SessionPoolAuth(httpx.Auth):
@@ -77,6 +90,9 @@ class SessionManager:
             timeout=httpx.Timeout(connect=10, read=600, write=10, pool=10),
         )
         self._sessions: set[str] = set()
+        # Tracks session IDs explicitly deleted via API so validate_session
+        # doesn't rehydrate them from a generic health probe in local dev.
+        self._deleted_sessions: set[str] = set()
         self._cogservices_credential: DefaultAzureCredential | None = None
         self._cogservices_token: str | None = None
         self._cogservices_expires_on: float = 0
@@ -122,7 +138,17 @@ class SessionManager:
 
     async def create_session(self) -> dict:
         session_id = uuid.uuid4().hex[:16]
-        now = datetime.now(timezone.utc)
+
+        # In local dev (http), reset the shared container so sessions don't
+        # see stale workspace files or agent context from previous sessions.
+        # In production (https / ACA), each session gets a fresh container.
+        if not POOL_MANAGEMENT_ENDPOINT.startswith("https://"):
+            try:
+                reset_url = self._pool_url("/reset", session_id)
+                resp = await self._http.post(reset_url)
+                resp.raise_for_status()
+            except Exception:
+                logger.debug("Reset not available, skipping", exc_info=True)
 
         # Ping health to allocate (warm up) the container
         url = self._pool_url("/health", session_id)
@@ -130,19 +156,41 @@ class SessionManager:
         resp.raise_for_status()
 
         self._sessions.add(session_id)
+        self._deleted_sessions.discard(session_id)
 
         logger.info("Created session %s", session_id)
         return {
             "session_id": session_id,
             "status": "active",
-            "created_at": now.isoformat(),
-            "last_activity_at": now.isoformat(),
         }
 
     async def validate_session(self, session_id: str) -> None:
-        """Ensure session exists. Raises KeyError if not tracked."""
-        if session_id not in self._sessions:
+        """Ensure session exists, probing pool state for orchestrator restarts."""
+        if session_id in self._deleted_sessions:
             raise KeyError(session_id)
+
+        if session_id in self._sessions:
+            return
+
+        url = self._pool_url("/health", session_id)
+        try:
+            resp = await self._http.get(url)
+            resp.raise_for_status()
+        except Exception as exc:
+            raise KeyError(session_id) from exc
+        self._sessions.add(session_id)
+
+    async def delete_session(self, session_id: str) -> None:
+        """Delete session and best-effort reset container context."""
+        reset_url = self._pool_url("/reset", session_id)
+        try:
+            resp = await self._http.post(reset_url)
+            resp.raise_for_status()
+        except Exception:
+            logger.debug("Session reset failed for %s during delete", session_id, exc_info=True)
+        finally:
+            self._sessions.discard(session_id)
+            self._deleted_sessions.add(session_id)
 
     async def send_message(self, session_id: str, prompt: str) -> AsyncGenerator[str, None]:
         """Stream SSE events from the session container to the frontend."""
@@ -156,8 +204,8 @@ class SessionManager:
 
             async with self._http.stream("POST", stream_url, json=chat_body) as resp:
                 if resp.status_code == 409:
-                    yield _sse_event({"type": "error", "message": "Session is busy"})
-                    yield _sse_event({"type": "done"})
+                    yield _agui_error("Session is busy. Wait for the current response to finish and retry.")
+                    yield _agui_finished()
                     return
 
                 if resp.status_code >= 400:
@@ -170,8 +218,8 @@ class SessionManager:
                         "Session container returned %s for %s: %s",
                         resp.status_code, session_id, detail,
                     )
-                    yield _sse_event({"type": "error", "message": f"Session error: {detail}"})
-                    yield _sse_event({"type": "done"})
+                    yield _agui_error(f"Session error: {detail}")
+                    yield _agui_finished()
                     return
 
                 async for line in resp.aiter_lines():
@@ -181,13 +229,17 @@ class SessionManager:
 
         except Exception:
             logger.exception("send_message failed for session %s", session_id)
-            yield _sse_event({"type": "error", "message": "Internal server error"})
-            yield _sse_event({"type": "done"})
+            yield _agui_error("Internal server error")
+            yield _agui_finished()
 
     async def upload_file(self, session_id: str, upload_file: UploadFile) -> dict:
         """Proxy a file upload to the session container, then run CU processing."""
         url = self._pool_url("/upload", session_id)
-        content = await upload_file.read()
+        max_bytes = 50 * 1024 * 1024  # 50 MB — match session container limit
+        content = await upload_file.read(max_bytes + 1)
+        if len(content) > max_bytes:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=413, detail="File too large (50 MB limit)")
         filename = upload_file.filename or "upload"
         content_type = upload_file.content_type or "application/octet-stream"
         files = {"file": (filename, content, content_type)}
@@ -225,17 +277,3 @@ class SessionManager:
         resp = await self._http.get(url)
         resp.raise_for_status()
         return resp.json()
-
-    async def get_session(self, session_id: str) -> dict:
-        """Return minimal session metadata (no persistence)."""
-        if session_id not in self._sessions:
-            raise KeyError(session_id)
-        return {
-            "session_id": session_id,
-            "status": "active",
-            "messages": [],
-        }
-
-    async def delete_session(self, session_id: str) -> None:
-        self._sessions.discard(session_id)
-        logger.info("Deleted session %s", session_id)

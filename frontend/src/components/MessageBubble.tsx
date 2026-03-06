@@ -1,79 +1,109 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
 import { ChatMessage } from "@/lib/types";
 import ToolIndicator from "./ToolIndicator";
+import type { Components } from "react-markdown";
 
 interface MessageBubbleProps {
   message: ChatMessage;
 }
 
+function CodeBlock({ children, ...props }: React.ComponentPropsWithoutRef<"pre">) {
+  const [copied, setCopied] = useState(false);
+
+  const codeChild = Array.isArray(children)
+    ? (children[0] as React.ReactElement<{ className?: string; children?: React.ReactNode }>)
+    : (children as React.ReactElement<{ className?: string; children?: React.ReactNode }>);
+
+  const codeClassName = codeChild?.props?.className || "";
+  const langMatch = codeClassName.match(/language-(\w+)/);
+  const language = langMatch ? langMatch[1] : "text";
+
+  const handleCopy = useCallback(() => {
+    const text = codeChild?.props?.children;
+    if (typeof text === "string") {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    }
+  }, [codeChild]);
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-block-lang">{language}</span>
+        <button type="button" onClick={handleCopy} className="code-block-copy" aria-label="Copy code">
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre {...props}>{children}</pre>
+    </div>
+  );
+}
+
+function TableWrapper({ children, ...props }: React.ComponentPropsWithoutRef<"table">) {
+  return (
+    <div className="table-wrapper">
+      <table {...props}>{children}</table>
+    </div>
+  );
+}
+
+const markdownComponents: Components = {
+  pre: CodeBlock,
+  table: TableWrapper,
+};
+
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === "user";
-  const isThinking =
-    message.isStreaming &&
-    message.content === "" &&
-    message.toolActivity.length === 0;
+  const isThinking = message.isStreaming && message.content === "" && message.toolActivity.length === 0;
 
   const hasTools = message.toolActivity.length > 0;
   const runningTools = message.toolActivity.filter((t) => t.status === "running");
   const doneTools = message.toolActivity.filter((t) => t.status === "done");
-  const [toolsExpanded, setToolsExpanded] = useState(true);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
+  const showToolHeader = hasTools;
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm transition-all duration-200 ${
-          isUser
-            ? "accent-gradient text-white shadow-lg shadow-indigo-500/10"
-            : "bg-surface text-zinc-100 ring-1 ring-white/[0.06] shadow-sm"
-        }`}
-      >
-        {/* Tool activity section */}
-        {hasTools && (
+    <article className={`message-row ${isUser ? "message-row-user" : "message-row-assistant"}`} data-testid={isUser ? "user-message" : "assistant-message"}>
+      {!isUser && (
+        <div className="message-avatar message-avatar-assistant">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m12 2 2.4 5.1L20 9.2l-4 3.8.9 5.8L12 16.3 7.1 18.8 8 13 4 9.2l5.6-2.1z" />
+          </svg>
+        </div>
+      )}
+
+      <div className={`message-body ${isUser ? "message-body-user" : "message-body-assistant"}`}>
+        {showToolHeader && (
           <div className="mb-3">
-            {/* Toggle header for tool activity */}
             <button
               type="button"
               onClick={() => setToolsExpanded(!toolsExpanded)}
-              className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-zinc-500 transition-colors hover:text-zinc-400"
+              className="tool-toggle"
               aria-expanded={toolsExpanded}
               aria-label={toolsExpanded ? "Collapse tool activity" : "Expand tool activity"}
             >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className={`transition-transform duration-200 ${toolsExpanded ? "rotate-90" : ""}`}
-              >
-                <polyline points="9 18 15 12 9 6" />
+              <span className="tool-toggle-indicator">✦</span>
+              <span>
+                {toolsExpanded ? "Hide thinking" : "Show thinking"}
+                {runningTools.length > 0 && <span className="text-app-muted"> · Live</span>}
+                {runningTools.length === 0 && doneTools.length > 0 && <span className="text-app-muted"> · Complete</span>}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`ml-auto transition-transform ${toolsExpanded ? "rotate-180" : ""}`}>
+                <polyline points="6 9 12 15 18 9" />
               </svg>
-              {runningTools.length > 0 ? (
-                <span>
-                  {runningTools.length} tool{runningTools.length !== 1 ? "s" : ""} running
-                  {doneTools.length > 0 && ` / ${doneTools.length} done`}
-                </span>
-              ) : (
-                <span>{doneTools.length} tool{doneTools.length !== 1 ? "s" : ""} used</span>
-              )}
             </button>
 
-            {/* Collapsible tool list */}
-            <div
-              className="tool-activity-list"
-              data-collapsed={!toolsExpanded}
-            >
+            <div className="tool-activity-list" data-collapsed={!toolsExpanded}>
               <div>
-                <div className="flex flex-wrap gap-1.5">
-                  {message.toolActivity.map((ta, i) => (
-                    <ToolIndicator key={`${ta.tool}-${i}`} activity={ta} />
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {message.toolActivity.map((ta) => (
+                    <ToolIndicator key={ta.toolCallId} activity={ta} />
                   ))}
                 </div>
               </div>
@@ -81,37 +111,24 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           </div>
         )}
 
-        {/* Thinking indicator */}
         {isThinking ? (
-          <div className="flex items-center gap-3 py-1" role="status" aria-label="Agent is thinking">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-indigo-400 animate-typing-dot" />
-              <span className="h-2 w-2 rounded-full bg-indigo-400 animate-typing-dot [animation-delay:0.2s]" />
-              <span className="h-2 w-2 rounded-full bg-indigo-400 animate-typing-dot [animation-delay:0.4s]" />
-            </div>
-            <span className="text-sm text-zinc-500">Thinking...</span>
+          <div className="thinking-row" data-testid="thinking-indicator" role="status" aria-label="Agent is thinking">
+            <span className="thinking-label">Thinking</span>
+            <span className="thinking-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
           </div>
         ) : (
-          <div className="prose prose-sm max-w-none prose-p:my-1 prose-pre:my-2 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-ul:my-1 prose-ol:my-1">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <div className="prose prose-message">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]} components={markdownComponents}>
               {message.content}
             </ReactMarkdown>
-            {/* Streaming cursor */}
-            {message.isStreaming && message.content !== "" && (
-              <span className="inline-flex items-center gap-0.5 ml-0.5 align-baseline" aria-hidden="true">
-                <span className="inline-block h-4 w-0.5 rounded-full bg-indigo-400 animate-cursor-blink" />
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Timestamp */}
-        {message.timestamp && !message.isStreaming && (
-          <div className="mt-2 text-[10px] text-zinc-600">
-            {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {message.isStreaming && message.content !== "" && <span className="streaming-cursor" aria-hidden="true" />}
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }

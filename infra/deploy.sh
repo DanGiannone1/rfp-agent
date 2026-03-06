@@ -189,7 +189,7 @@ echo ">>> Creating session pool..."
 # Get the environment ID
 ENV_ID=$(az containerapp env show --name "$ENV_NAME" --resource-group "$RG" --query id -o tsv)
 
-az containerapp sessionpool create \
+if ! az containerapp sessionpool create \
     --name "$SESSION_POOL_NAME" \
     --resource-group "$RG" \
     --location "$LOCATION" \
@@ -201,16 +201,33 @@ az containerapp sessionpool create \
     --target-port 8080 \
     --cooldown-period 600 \
     --network-status EgressEnabled \
-    --max-sessions 50 \
-    --ready-sessions 2 \
-    --cpu 0.5 --memory 1Gi \
+    --max-sessions 10 \
+    --ready-sessions 1 \
+    --cpu 1.0 --memory 2Gi \
     --env-vars \
         "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
         "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
         "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
         "AZURE_SEARCH_KEY=$SEARCH_KEY" \
         "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
-    -o none
+        "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
+        "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
+    -o none 2>/dev/null; then
+    echo "    Session pool exists, updating..."
+    az containerapp sessionpool update \
+        --name "$SESSION_POOL_NAME" \
+        --resource-group "$RG" \
+        --image "$SESSION_IMAGE" \
+        --env-vars \
+            "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
+            "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
+            "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
+            "AZURE_SEARCH_KEY=$SEARCH_KEY" \
+            "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
+            "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
+            "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
+        -o none
+fi
 
 POOL_ENDPOINT=$(az containerapp sessionpool show \
     --name "$SESSION_POOL_NAME" \
@@ -246,7 +263,7 @@ az acr build \
 echo ">>> Deploying orchestrator container app..."
 ORCHESTRATOR_IMAGE="$ACR_LOGIN_SERVER/rfp-orchestrator:latest"
 
-az containerapp create \
+if ! az containerapp create \
     --name "$APP_NAME" \
     --resource-group "$RG" \
     --environment "$ENV_NAME" \
@@ -265,7 +282,21 @@ az containerapp create \
         "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
         "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
         "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
-    -o none
+    -o none 2>/dev/null; then
+    echo "    Orchestrator app exists, updating..."
+    az containerapp update \
+        --name "$APP_NAME" \
+        --resource-group "$RG" \
+        --image "$ORCHESTRATOR_IMAGE" \
+        --set-env-vars \
+            "POOL_MANAGEMENT_ENDPOINT=$POOL_ENDPOINT" \
+            "COSMOS_ENDPOINT=$COSMOS_ENDPOINT" \
+            "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
+            "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
+            "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
+            "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
+        -o none
+fi
 
 APP_URL=$(az containerapp show \
     --name "$APP_NAME" \
@@ -363,7 +394,7 @@ az acr build \
 echo ">>> Deploying frontend container app..."
 FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:latest"
 
-az containerapp create \
+if ! az containerapp create \
     --name "$FRONTEND_NAME" \
     --resource-group "$RG" \
     --environment "$ENV_NAME" \
@@ -375,7 +406,14 @@ az containerapp create \
     --min-replicas 1 \
     --max-replicas 3 \
     --cpu 0.25 --memory 0.5Gi \
-    -o none
+    -o none 2>/dev/null; then
+    echo "    Frontend app exists, updating..."
+    az containerapp update \
+        --name "$FRONTEND_NAME" \
+        --resource-group "$RG" \
+        --image "$FRONTEND_IMAGE" \
+        -o none
+fi
 
 FRONTEND_URL=$(az containerapp show \
     --name "$FRONTEND_NAME" \

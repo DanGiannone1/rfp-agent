@@ -1,4 +1,4 @@
-import { SSEEvent } from "./types";
+import { AGUIEvent } from "./types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -7,7 +7,7 @@ export async function* streamSSE(
   prompt: string,
   signal: AbortSignal,
   sessionId: string,
-): AsyncGenerator<SSEEvent> {
+): AsyncGenerator<AGUIEvent> {
   const url = `${API_BASE}/sessions/${sessionId}/messages`;
 
   const res = await fetch(url, {
@@ -18,11 +18,15 @@ export async function* streamSSE(
   });
 
   if (!res.ok) {
-    yield { type: "error", message: `HTTP ${res.status}: ${res.statusText}` };
+    yield { type: "RUN_ERROR", message: `HTTP ${res.status}: ${res.statusText}` };
     return;
   }
 
-  const reader = res.body!.getReader();
+  if (!res.body) {
+    yield { type: "RUN_ERROR", message: "Empty response body" } as AGUIEvent;
+    return;
+  }
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
@@ -40,7 +44,7 @@ export async function* streamSSE(
       if (!trimmed.startsWith("data: ")) continue;
       const data = trimmed.slice(6);
       try {
-        const event = JSON.parse(data) as SSEEvent;
+        const event = JSON.parse(data) as AGUIEvent;
         yield event;
       } catch {
         // skip malformed lines
@@ -52,7 +56,7 @@ export async function* streamSSE(
   if (buffer.trim().startsWith("data: ")) {
     const data = buffer.trim().slice(6);
     try {
-      const event = JSON.parse(data) as SSEEvent;
+      const event = JSON.parse(data) as AGUIEvent;
       yield event;
     } catch {
       // skip

@@ -5,21 +5,7 @@ const API_BASE =
 
 export interface SessionMetadata {
   session_id: string;
-  working_dir: string;
   status: string;
-  created_at: string;
-  last_activity_at: string;
-}
-
-export interface SessionWithMessages extends SessionMetadata {
-  messages: Array<{
-    session_id: string;
-    role: "user" | "assistant";
-    content: string;
-    tool_activity: Array<{ tool: string; status: "running" | "done" }>;
-    timestamp: string;
-    turn_index: number;
-  }>;
 }
 
 export async function createSession(): Promise<SessionMetadata> {
@@ -30,22 +16,6 @@ export async function createSession(): Promise<SessionMetadata> {
   });
   if (!res.ok) throw new Error(`Failed to create session: ${res.status}`);
   return res.json();
-}
-
-export async function getSession(
-  sessionId: string,
-): Promise<SessionWithMessages> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}`);
-  if (!res.ok) throw new Error(`Failed to get session: ${res.status}`);
-  return res.json();
-}
-
-export async function deleteSession(sessionId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-    method: "DELETE",
-  });
-  if (!res.ok && res.status !== 404)
-    throw new Error(`Failed to delete session: ${res.status}`);
 }
 
 export async function uploadFile(

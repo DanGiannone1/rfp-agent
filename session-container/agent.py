@@ -1,17 +1,28 @@
 """AgentSession wrapping the GitHub Copilot SDK with an event queue.
 
-Provides both streaming (async generator) and blocking (collect) interfaces
-for running agent turns against Azure OpenAI.
+Provides a streaming async generator interface for running agent turns
+against Azure OpenAI.  Emits AG-UI protocol events.
 """
 
 import asyncio
-import json
 import os
 import sys
+import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
-from azure.identity import DefaultAzureCredential
+from ag_ui.core.events import (
+    BaseEvent,
+    RunErrorEvent,
+    RunFinishedEvent,
+    RunStartedEvent,
+    TextMessageContentEvent,
+    TextMessageEndEvent,
+    TextMessageStartEvent,
+    ToolCallEndEvent,
+    ToolCallStartEvent,
+)
+from azure.identity.aio import DefaultAzureCredential
 from dotenv import load_dotenv
 
 from copilot import CopilotClient
@@ -54,6 +65,10 @@ uploaded, use the `convert_document` tool to convert it to markdown for analysis
 The full suite of RFP workflow tools — from bid/no-bid analysis through compliance \
 review — becomes available after conversion. Start by asking the user to drag and \
 drop or attach their RFP file.
+
+If the user sends a simple greeting (for example "hi" or "hello"), respond naturally \
+and briefly first. Do not mention missing files unless the user asks to start analysis \
+or asks what to do next.
 
 ## Document Conversion
 
@@ -113,7 +128,8 @@ charts, pricing tables), and review status tracking.
 ## Working Approach
 
 - **Start by orienting**: List files in the working directory to understand available \
-materials before diving into analysis.
+materials before diving into analysis. Skip this for casual greetings and other \
+small-talk turns.
 - **Be structured**: Use markdown tables, numbered lists, and clear headings. Follow \
 the output templates from your skill guides.
 - **Be thorough but concise**: Every paragraph should earn its place. Prefer specifics \
@@ -166,9 +182,9 @@ rarely surfaces everything relevant.
 """
 
 
-def _sse_event(data: dict) -> str:
-    """Format a dict as an SSE data line."""
-    return f"data: {json.dumps(data)}\n\n"
+def _sse_event(event: BaseEvent) -> str:
+    """Format an AG-UI event as an SSE data line."""
+    return f"data: {event.model_dump_json(exclude_none=True)}\n\n"
 
 
 class AgentSession:
@@ -177,38 +193,41 @@ class AgentSession:
     Usage::
 
         async with AgentSession(working_dir) as session:
-            # Streaming (for CLI):
             async for event in session.send("hello"):
                 print(event)
-
-            # Blocking (for server):
-            result = await session.send_and_collect("hello")
-            print(result["content"])
     """
 
-    def __init__(self, working_dir: str):
+    def __init__(self, working_dir: str, token: str | None = None):
         self._working_dir = working_dir
+        self._initial_token = token
         self._client: CopilotClient | None = None
         self._session = None
         self._unsubscribe = None
-        self._queue: asyncio.Queue[dict | None] = asyncio.Queue()
+        self._queue: asyncio.Queue[BaseEvent | None] = asyncio.Queue()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._tool_names: dict[str, str] = {}
         self._status: str = "idle"
+        self._credential: DefaultAzureCredential | None = None
+
+        # AG-UI state tracked per turn
+        self._thread_id: str = str(uuid.uuid4())
+        self._run_id: str = ""
+        self._current_message_id: str = ""
+        self._message_started: bool = False
 
     @property
     def status(self) -> str:
         """Current activity: 'idle', 'thinking', 'tool:<name>', or 'error'."""
         return self._status
 
-    async def __aenter__(self, token: str | None = None) -> "AgentSession":
+    async def __aenter__(self) -> "AgentSession":
+        token = self._initial_token or os.getenv("AZURE_OPENAI_TOKEN")
         if not token:
-            token = os.getenv("AZURE_OPENAI_TOKEN")
-        if not token:
-            credential = DefaultAzureCredential()
-            token = credential.get_token(
+            self._credential = DefaultAzureCredential()
+            tok = await self._credential.get_token(
                 "https://cognitiveservices.azure.com/.default"
-            ).token
+            )
+            token = tok.token
 
         self._client = CopilotClient(
             {"cli_args": ["--allow-all-tools", "--allow-all-paths"]}
@@ -290,64 +309,111 @@ class AgentSession:
             await self._session.destroy()
         if self._client:
             await self._client.stop()
+        if self._credential:
+            await self._credential.close()
+
+    def _enqueue(self, event: BaseEvent) -> None:
+        """Thread-safe enqueue of an AG-UI event."""
+        self._loop.call_soon_threadsafe(self._queue.put_nowait, event)
 
     def _on_event(self, event) -> None:
         """Push events into the async queue from the SDK's internal thread."""
-        item = None
 
         if event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
             self._status = "thinking"
             delta = getattr(event.data, "delta_content", None) or ""
-            if delta:
-                item = {"type": "delta", "content": delta}
+            if not delta:
+                return
+
+            # Emit TextMessageStartEvent on first delta
+            if not self._message_started:
+                self._current_message_id = str(uuid.uuid4())
+                self._message_started = True
+                self._enqueue(TextMessageStartEvent(
+                    message_id=self._current_message_id,
+                    role="assistant",
+                ))
+
+            self._enqueue(TextMessageContentEvent(
+                message_id=self._current_message_id,
+                delta=delta,
+            ))
 
         elif event.type == SessionEventType.ASSISTANT_MESSAGE:
-            content = getattr(event.data, "content", None) or ""
-            if content:
-                item = {"type": "message", "content": content}
+            # End the current text message
+            if self._message_started:
+                self._enqueue(TextMessageEndEvent(
+                    message_id=self._current_message_id,
+                ))
+                self._message_started = False
 
         elif event.type == SessionEventType.TOOL_EXECUTION_START:
             tool = getattr(event.data, "tool_name", None) or "unknown"
-            call_id = getattr(event.data, "tool_call_id", None)
-            if call_id:
-                self._tool_names[call_id] = tool
+            call_id = getattr(event.data, "tool_call_id", None) or str(uuid.uuid4())
+            self._tool_names[call_id] = tool
+            # Internal SDK tools — track them but don't surface to the frontend
+            if tool in ("report_intent",):
+                return
             self._status = f"tool:{tool}"
-            item = {"type": "tool_start", "tool": tool}
+            self._enqueue(ToolCallStartEvent(
+                tool_call_id=call_id,
+                tool_call_name=tool,
+                parent_message_id=self._current_message_id or None,
+            ))
 
         elif event.type == SessionEventType.TOOL_EXECUTION_COMPLETE:
             call_id = getattr(event.data, "tool_call_id", None)
+            if not call_id:
+                # Recover the UUID assigned at start by matching on tool name
+                tool_name_hint = getattr(event.data, "tool_name", None)
+                if tool_name_hint:
+                    call_id = next(
+                        (k for k, v in self._tool_names.items() if v == tool_name_hint),
+                        None,
+                    )
             tool = self._tool_names.pop(call_id, None) if call_id else None
             tool = tool or getattr(event.data, "tool_name", None) or "unknown"
+            # Suppress end event for internal tools that were filtered at start
+            if tool in ("report_intent",):
+                return
             self._status = "thinking"
-            item = {"type": "tool_end", "tool": tool}
+            if call_id:
+                self._enqueue(ToolCallEndEvent(tool_call_id=call_id))
 
         elif event.type == SessionEventType.SESSION_IDLE:
             self._status = "idle"
-            self._loop.call_soon_threadsafe(
-                self._queue.put_nowait, {"type": "done"}
-            )
+            self._enqueue(RunFinishedEvent(
+                thread_id=self._thread_id,
+                run_id=self._run_id,
+            ))
             self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
             return
 
         elif event.type == SessionEventType.SESSION_ERROR:
             self._status = "error"
             msg = getattr(event.data, "message", None) or "Unknown error"
-            self._loop.call_soon_threadsafe(
-                self._queue.put_nowait, {"type": "error", "message": msg}
-            )
+            self._enqueue(RunErrorEvent(message=msg))
             self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
             return
 
-        if item:
-            self._loop.call_soon_threadsafe(self._queue.put_nowait, item)
-
     async def send(self, prompt: str) -> AsyncGenerator[str, None]:
-        """Send a prompt and yield SSE-formatted events until the session is idle."""
+        """Send a prompt and yield SSE-formatted AG-UI events until the session is idle."""
         # Drain any stale items from a previous turn
         while not self._queue.empty():
             self._queue.get_nowait()
 
+        # Reset per-turn state
+        self._run_id = str(uuid.uuid4())
+        self._current_message_id = ""
+        self._message_started = False
         self._status = "thinking"
+
+        # Emit RunStartedEvent
+        yield _sse_event(RunStartedEvent(
+            thread_id=self._thread_id,
+            run_id=self._run_id,
+        ))
+
         await self._session.send({"prompt": prompt})
 
         while True:
@@ -356,41 +422,8 @@ class AgentSession:
                 break
             yield _sse_event(item)
 
-    async def send_and_collect(self, prompt: str) -> dict:
-        """Send a prompt, block until done, return the full result.
-
-        Returns {"content": str, "tool_activity": list[dict]}.
-        Raises RuntimeError on agent error.
-        """
-        content = ""
-        tool_activity = []
-
-        async for sse_line in self.send(prompt):
-            text = sse_line.strip()
-            if not text.startswith("data: "):
-                continue
-            event = json.loads(text[6:])
-            etype = event.get("type")
-            if etype == "delta":
-                content += event.get("content", "")
-            elif etype == "tool_start":
-                tool_activity.append({
-                    "tool": event.get("tool", "unknown"),
-                    "status": "running",
-                })
-            elif etype == "tool_end":
-                for ta in tool_activity:
-                    if ta["tool"] == event.get("tool") and ta["status"] == "running":
-                        ta["status"] = "done"
-                        break
-            elif etype == "error":
-                raise RuntimeError(event.get("message", "Unknown error"))
-
-        return {"content": content, "tool_activity": tool_activity}
-
-
 async def run_analysis(prompt: str, working_dir: str) -> AsyncGenerator[str, None]:
-    """Run a single-turn RFP analysis, yielding SSE-formatted JSON events.
+    """Run a single-turn RFP analysis, yielding SSE-formatted AG-UI events.
 
     Convenience wrapper used by the CLI one-shot mode.
     """
@@ -399,4 +432,4 @@ async def run_analysis(prompt: str, working_dir: str) -> AsyncGenerator[str, Non
             async for event in session.send(prompt):
                 yield event
     except Exception as exc:
-        yield _sse_event({"type": "error", "message": str(exc)})
+        yield _sse_event(RunErrorEvent(message=str(exc)))

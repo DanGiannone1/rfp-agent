@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Session container for RFP agent — one instance per user"
 requires-python = ">=3.12"
 dependencies = [
+    "ag-ui-protocol>=0.1.13",
     "azure-ai-contentunderstanding>=1.0.0",
     "azure-identity>=1.25.2",
     "azure-storage-file-datalake>=12.23.0",

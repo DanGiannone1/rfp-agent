@@ -1,11 +1,13 @@
-export type SSEEvent =
-  | { type: "delta"; content: string }
-  | { type: "message"; content: string }
-  | { type: "status"; status: string }
-  | { type: "tool_start"; tool: string }
-  | { type: "tool_end"; tool: string }
-  | { type: "done" }
-  | { type: "error"; message: string };
+export type AGUIEvent =
+  | { type: "RUN_STARTED"; thread_id: string; run_id: string }
+  | { type: "TEXT_MESSAGE_START"; message_id: string; role: string }
+  | { type: "TEXT_MESSAGE_CONTENT"; message_id: string; delta: string }
+  | { type: "TEXT_MESSAGE_END"; message_id: string }
+  | { type: "TOOL_CALL_START"; tool_call_id: string; tool_call_name: string; parent_message_id?: string }
+  | { type: "TOOL_CALL_ARGS"; tool_call_id: string; delta: string }
+  | { type: "TOOL_CALL_END"; tool_call_id: string }
+  | { type: "RUN_FINISHED"; thread_id: string; run_id: string }
+  | { type: "RUN_ERROR"; message: string };
 
 export interface ChatMessage {
   id: string;
@@ -13,12 +15,13 @@ export interface ChatMessage {
   content: string;
   isStreaming: boolean;
   toolActivity: ToolActivity[];
-  timestamp?: string;
 }
 
 export interface ToolActivity {
   tool: string;
+  toolCallId: string;
   status: "running" | "done";
+  args?: string;
 }
 
 export interface FileInfo {
