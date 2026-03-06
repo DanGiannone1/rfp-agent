@@ -29,4 +29,5 @@ export interface FileInfo {
   size: number;
   modified_at: string;
   has_markdown: boolean;
+  origin?: "uploaded" | "generated";
 }

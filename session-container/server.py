@@ -12,7 +12,9 @@ Endpoints:
 """
 
 import asyncio
+import json
 import logging
+import mimetypes
 import os
 import uuid
 
@@ -27,6 +29,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 WORKSPACE = os.getenv("WORKSPACE", "/workspace")
+UPLOAD_MANIFEST = ".uploaded_files.json"
 
 app = FastAPI(title="RFP Session")
 
@@ -144,6 +147,9 @@ async def upload(file: UploadFile) -> dict:
             f.write(chunk)
 
     logger.info("Uploaded %s (%d bytes)", safe_name, bytes_written)
+    uploaded = _read_uploaded_manifest()
+    uploaded.add(safe_name)
+    _write_uploaded_manifest(uploaded)
     return {"path": real_dest, "filename": safe_name, "size": bytes_written}
 
 
@@ -157,9 +163,12 @@ async def list_files() -> dict:
     if not workspace.exists():
         return {"files": []}
 
+    uploaded = _read_uploaded_manifest()
     files = []
     for entry in sorted(workspace.iterdir()):
         if not entry.is_file():
+            continue
+        if entry.name == UPLOAD_MANIFEST:
             continue
         stat = entry.stat()
         md_sibling = workspace / f"{entry.name}.md"
@@ -168,9 +177,47 @@ async def list_files() -> dict:
             "size": stat.st_size,
             "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
             "has_markdown": md_sibling.exists(),
+            "origin": "uploaded" if entry.name in uploaded else "generated",
         })
 
     return {"files": files}
+
+
+@app.get("/files/content")
+async def file_content(filename: str) -> dict:
+    """Return UTF-8 text content for a workspace file."""
+    from pathlib import Path
+
+    if not filename:
+        raise HTTPException(status_code=400, detail="filename is required")
+
+    workspace = Path(WORKSPACE).resolve()
+    target = (workspace / filename).resolve()
+
+    if workspace not in target.parents and target != workspace:
+        raise HTTPException(status_code=400, detail="Invalid file path")
+    if not target.exists() or not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Keep payload bounded for in-app canvas rendering.
+    max_bytes = 2 * 1024 * 1024
+    size = target.stat().st_size
+    if size > max_bytes:
+        raise HTTPException(status_code=413, detail="File too large to preview in canvas")
+
+    raw = target.read_bytes()
+    try:
+        content = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=415, detail="Binary file preview is not supported")
+
+    mime_type = mimetypes.guess_type(target.name)[0] or "text/plain"
+    return {
+        "filename": target.name,
+        "size": size,
+        "mime_type": mime_type,
+        "content": content,
+    }
 
 
 @app.post("/reset")
@@ -203,3 +250,25 @@ async def reset() -> dict:
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+def _manifest_path() -> str:
+    return os.path.join(WORKSPACE, UPLOAD_MANIFEST)
+
+
+def _read_uploaded_manifest() -> set[str]:
+    path = _manifest_path()
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return set()
+    names = data.get("uploaded_files", [])
+    return {n for n in names if isinstance(n, str)}
+
+
+def _write_uploaded_manifest(names: set[str]) -> None:
+    path = _manifest_path()
+    payload = {"uploaded_files": sorted(names)}
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f)

@@ -152,7 +152,7 @@ export default function IntakeScreen({
         )}
 
         <div className="mt-5 flex justify-end">
-          {(sessionError || sessionState === "error" || preparing) && (
+          {(sessionError || sessionState === "error") && (
             <button
               type="button"
               data-testid="intake-retry-button"

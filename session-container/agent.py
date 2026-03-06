@@ -19,6 +19,7 @@ from ag_ui.core.events import (
     TextMessageContentEvent,
     TextMessageEndEvent,
     TextMessageStartEvent,
+    ToolCallArgsEvent,
     ToolCallEndEvent,
     ToolCallStartEvent,
 )
@@ -149,6 +150,8 @@ bold for emphasis.
 - When generating proposal content, produce submission-ready prose (not bullet outlines) \
 unless the user requests otherwise.
 - Flag items needing human review with clear action items.
+- Do not expose internal file system details in user-facing responses. Reference files by \
+filename only, and avoid absolute paths or mentions of workspace directories.
 """
 
 KB_PROMPT_SECTION = """\
@@ -360,6 +363,15 @@ class AgentSession:
                 tool_call_name=tool,
                 parent_message_id=self._current_message_id or None,
             ))
+            # Forward arguments so the frontend can show human-readable context
+            args = getattr(event.data, "arguments", None)
+            if args:
+                import json as _json
+                args_str = args if isinstance(args, str) else _json.dumps(args)
+                self._enqueue(ToolCallArgsEvent(
+                    tool_call_id=call_id,
+                    delta=args_str,
+                ))
 
         elif event.type == SessionEventType.TOOL_EXECUTION_COMPLETE:
             call_id = getattr(event.data, "tool_call_id", None)

@@ -20,6 +20,22 @@ function toolLabel(name: string): string {
   return labels[name] || name;
 }
 
+function toolContext(name: string, args: string | undefined): string | null {
+  if (!args) return null;
+  try {
+    const p = JSON.parse(args);
+    switch (name) {
+      case "convert_document": return p.filename || null;
+      case "grep": return p.pattern ? `"${String(p.pattern).slice(0, 40)}"` : null;
+      case "glob": return p.pattern || null;
+      case "bash": return typeof p.command === "string" ? p.command.slice(0, 50) : null;
+      case "knowledge_base_retrieve": return p.query ? `"${String(p.query).slice(0, 50)}"` : null;
+      case "str_replace_editor": return p.path || null;
+      default: return null;
+    }
+  } catch { return null; }
+}
+
 export default function AgentActivityBar({ isStreaming, toolActivity }: AgentActivityBarProps) {
   const running = toolActivity.filter((t) => t.status === "running");
   const completed = toolActivity.filter((t) => t.status === "done");
@@ -68,18 +84,20 @@ export default function AgentActivityBar({ isStreaming, toolActivity }: AgentAct
           <div className="space-y-1">
             {visibleItems.map((item) => {
               const isRunning = item.status === "running";
+              const ctx = toolContext(item.tool, item.args);
               return (
-                <div key={item.toolCallId} className="flex items-center gap-2 text-xs text-app-muted">
+                <div key={item.toolCallId} className="flex min-w-0 items-center gap-2 text-xs text-app-muted">
                   {isRunning ? (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="animate-spin text-brand">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 animate-spin text-brand">
                       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                     </svg>
                   ) : (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-300">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-300">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   )}
-                  <span>{toolLabel(item.tool)}</span>
+                  <span className="shrink-0">{toolLabel(item.tool)}</span>
+                  {ctx && <span className="truncate text-app-muted/70">{ctx}</span>}
                 </div>
               );
             })}

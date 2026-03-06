@@ -455,6 +455,59 @@ body {
   border-radius: 0 0.5rem 0.5rem 0;
 }
 
+/* Canvas-specific prose variant — document reading mode */
+.prose-canvas {
+  font-size: 0.9rem;
+  line-height: 1.8;
+}
+
+.prose-canvas h1 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #f4f7ff;
+  margin-top: 0;
+  margin-bottom: 0.6em;
+  letter-spacing: -0.015em;
+}
+
+.prose-canvas h2 {
+  font-size: 1.1rem;
+  font-weight: 650;
+  color: #e8efff;
+  margin-top: 1.4em;
+  margin-bottom: 0.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.prose-canvas h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #d8e3ff;
+  margin-top: 1.1em;
+  margin-bottom: 0.3em;
+}
+
+.prose-canvas p,
+.prose-canvas li {
+  color: #cdd8f0;
+}
+
+.prose-canvas ul,
+.prose-canvas ol {
+  padding-left: 1.4em;
+}
+
+.prose-canvas li {
+  margin: 0.25em 0;
+}
+
+.prose-canvas hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.4em 0;
+}
+
 /* Highlight.js tweaks */
 .hljs {
   color: #dbe8ff;

@@ -42,3 +42,23 @@ export async function listFiles(
   if (!res.ok) throw new Error(`Failed to list files: ${res.status}`);
   return res.json();
 }
+
+export interface FileContentResponse {
+  filename: string;
+  size: number;
+  mime_type: string;
+  content: string;
+}
+
+export async function getFileContent(
+  sessionId: string,
+  filename: string,
+): Promise<FileContentResponse> {
+  const params = new URLSearchParams({ filename });
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files/content?${params.toString()}`);
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Failed to load file content (${res.status}): ${detail}`);
+  }
+  return res.json();
+}

@@ -277,3 +277,10 @@ class SessionManager:
         resp = await self._http.get(url)
         resp.raise_for_status()
         return resp.json()
+
+    async def get_file_content(self, session_id: str, filename: str) -> dict:
+        """Proxy GET /files/content to the session container."""
+        url = self._pool_url("/files/content", session_id)
+        resp = await self._http.get(url, params={"filename": filename})
+        resp.raise_for_status()
+        return resp.json()

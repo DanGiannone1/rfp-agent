@@ -8,9 +8,8 @@ interface ArtifactsPanelProps {
   generatedFiles: FileInfo[];
   loading?: boolean;
   onAskFile?: (filename: string) => void;
+  onOpenFile?: (filename: string) => void;
   disableActions?: boolean;
-  onAnalyzeUploaded?: () => void;
-  onSummarizeArtifacts?: () => void;
 }
 
 export default function ArtifactsPanel({
@@ -18,9 +17,8 @@ export default function ArtifactsPanel({
   generatedFiles,
   loading = false,
   onAskFile,
+  onOpenFile,
   disableActions = false,
-  onAnalyzeUploaded,
-  onSummarizeArtifacts,
 }: ArtifactsPanelProps) {
   return (
     <aside data-testid="artifacts-panel" className="hidden w-80 shrink-0 border-l border-white/10 bg-black/25 p-4 lg:flex lg:flex-col lg:gap-4">
@@ -38,17 +36,15 @@ export default function ArtifactsPanel({
             {uploadedFiles.length}
           </span>
         </div>
-        {uploadedFiles.length > 0 && (
-          <button
-            type="button"
-            onClick={onAnalyzeUploaded}
-            disabled={disableActions}
-            className="interactive-control mb-2 w-full rounded-lg border border-white/14 bg-white/[0.04] px-2 py-1.5 text-left text-[11px] text-app-muted-strong disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            Analyze uploaded docs
-          </button>
-        )}
-        <DocumentsList files={uploadedFiles} loading={loading} onAskFile={onAskFile} disableActions={disableActions} />
+        <DocumentsList
+          files={uploadedFiles}
+          loading={loading}
+          onAskFile={onAskFile}
+          onOpenFile={onOpenFile}
+          disableActions={disableActions}
+          kind="uploaded"
+          emptyLabel="No source documents uploaded."
+        />
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-3">
@@ -58,16 +54,6 @@ export default function ArtifactsPanel({
             {generatedFiles.length}
           </span>
         </div>
-        {generatedFiles.length > 0 && (
-          <button
-            type="button"
-            onClick={onSummarizeArtifacts}
-            disabled={disableActions}
-            className="interactive-control mb-2 w-full rounded-lg border border-white/14 bg-white/[0.04] px-2 py-1.5 text-left text-[11px] text-app-muted-strong disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            Summarize generated artifacts
-          </button>
-        )}
         {loading ? (
           <DocumentsList files={[]} loading />
         ) : generatedFiles.length === 0 ? (
@@ -75,7 +61,7 @@ export default function ArtifactsPanel({
             No generated artifacts yet.
           </div>
         ) : (
-          <DocumentsList files={generatedFiles} onAskFile={onAskFile} disableActions={disableActions} />
+          <DocumentsList files={generatedFiles} onOpenFile={onOpenFile} disableActions={disableActions} kind="generated" />
         )}
       </section>
     </aside>

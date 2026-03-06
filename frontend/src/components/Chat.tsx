@@ -3,7 +3,7 @@
 import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from "react";
 import { AGUIEvent, ChatMessage, FileInfo } from "@/lib/types";
 import { streamSSE } from "@/lib/sse";
-import { createSession, listFiles, uploadFile } from "@/lib/api";
+import { createSession, getFileContent, listFiles, uploadFile } from "@/lib/api";
 import { clearSessionId, storeSessionId, storeMessages } from "@/lib/session";
 import MessageList from "./MessageList";
 import InputBar from "./InputBar";
@@ -11,6 +11,7 @@ import IntakeScreen from "./IntakeScreen";
 import DocumentsDrawer from "./DocumentsDrawer";
 import ArtifactsPanel from "./ArtifactsPanel";
 import AgentActivityBar from "./AgentActivityBar";
+import ArtifactCanvas from "./ArtifactCanvas";
 
 type ChatStage = "intake" | "chat";
 
@@ -306,7 +307,13 @@ export default function Chat() {
   const [serverFiles, setServerFiles] = useState<FileInfo[]>([]);
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+  const [artifactContent, setArtifactContent] = useState<string>("");
+  const [artifactMimeType, setArtifactMimeType] = useState<string | undefined>();
+  const [artifactLoading, setArtifactLoading] = useState(false);
+  const [artifactError, setArtifactError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const lastAutoOpenedGenerated = useRef<string | null>(null);
   const files = useMemo(() => mergeVisibleFiles(serverFiles, pendingFiles), [serverFiles, pendingFiles]);
   const latestAssistantMessage = useMemo(
     () => [...state.messages].reverse().find((m) => m.role === "assistant") || null,
@@ -316,8 +323,19 @@ export default function Chat() {
     () => new Set([...uploadedFileNames, ...pendingFiles.map((f) => f.filename)]),
     [uploadedFileNames, pendingFiles],
   );
-  const uploadedFiles = useMemo(() => files.filter((f) => uploadedNameSet.has(f.filename)), [files, uploadedNameSet]);
-  const generatedFiles = useMemo(() => files.filter((f) => !uploadedNameSet.has(f.filename)), [files, uploadedNameSet]);
+  const hasOriginMetadata = useMemo(() => files.some((f) => f.origin === "uploaded" || f.origin === "generated"), [files]);
+  const uploadedFiles = useMemo(
+    () => hasOriginMetadata
+      ? files.filter((f) => f.origin === "uploaded")
+      : files.filter((f) => uploadedNameSet.has(f.filename)),
+    [files, hasOriginMetadata, uploadedNameSet],
+  );
+  const generatedFiles = useMemo(
+    () => hasOriginMetadata
+      ? files.filter((f) => f.origin === "generated")
+      : files.filter((f) => !uploadedNameSet.has(f.filename)),
+    [files, hasOriginMetadata, uploadedNameSet],
+  );
   const filesLoading = !hasFetchedFiles && pendingFiles.length === 0;
 
   const addPendingFile = useCallback((file: File) => {
@@ -482,6 +500,12 @@ export default function Chat() {
     setHasFetchedFiles(false);
     setUploadedFileNames([]);
     setDocumentsOpen(false);
+    setSelectedArtifact(null);
+    setArtifactContent("");
+    setArtifactMimeType(undefined);
+    setArtifactError(null);
+    setArtifactLoading(false);
+    lastAutoOpenedGenerated.current = null;
     dispatch({ type: "RESET_FOR_NEW_CHAT" });
 
     await startSession();
@@ -495,7 +519,7 @@ export default function Chat() {
     dispatch({ type: "APPEND_ASSISTANT", content: "_Generation stopped by user._" });
   }, [state.isStreaming]);
 
-  function handleAGUIEvent(event: AGUIEvent) {
+  const handleAGUIEvent = useCallback((event: AGUIEvent) => {
     switch (event.type) {
       case "RUN_STARTED":
         dispatch({ type: "RUN_STARTED", runId: event.run_id });
@@ -520,12 +544,24 @@ export default function Chat() {
         break;
       case "RUN_FINISHED":
         dispatch({ type: "DONE" });
+        dispatch({ type: "FILES_CHANGED" });
+        if (state.sessionId) {
+          const sid = state.sessionId;
+          void refreshFiles(sid).catch(() => {});
+          setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
+        }
         break;
       case "RUN_ERROR":
         dispatch({ type: "ERROR", message: event.message || "Something went wrong while generating the response. Please retry." });
+        dispatch({ type: "FILES_CHANGED" });
+        if (state.sessionId) {
+          const sid = state.sessionId;
+          void refreshFiles(sid).catch(() => {});
+          setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
+        }
         break;
     }
-  }
+  }, [refreshFiles, state.sessionId]);
 
   const handleSend = useCallback(
     async (content: string) => {
@@ -550,7 +586,7 @@ export default function Chat() {
         abortRef.current = null;
       }
     },
-    [state.sessionId, state.isStreaming],
+    [handleAGUIEvent, state.sessionId, state.isStreaming],
   );
 
   const handleChatUpload = useCallback(
@@ -590,17 +626,31 @@ export default function Chat() {
     [state.isStreaming, handleSend],
   );
 
-  const handleAnalyzeUploaded = useCallback(() => {
-    if (state.isStreaming || uploadedFiles.length === 0) return;
-    const names = uploadedFiles.map((f) => `"${f.filename}"`).join(", ");
-    void handleSend(`Analyze the uploaded documents ${names}. Provide key requirements, risks, and next actions in a concise matrix.`);
-  }, [state.isStreaming, uploadedFiles, handleSend]);
+  const handleOpenFile = useCallback(async (filename: string) => {
+    if (!state.sessionId) return;
+    setSelectedArtifact(filename);
+    setArtifactLoading(true);
+    setArtifactError(null);
+    setArtifactContent("");
+    try {
+      const data = await getFileContent(state.sessionId, filename);
+      setArtifactContent(data.content);
+      setArtifactMimeType(data.mime_type);
+    } catch (err) {
+      setArtifactMimeType(undefined);
+      setArtifactError(friendlyError(err, "Could not load artifact content."));
+    } finally {
+      setArtifactLoading(false);
+    }
+  }, [state.sessionId]);
 
-  const handleSummarizeArtifacts = useCallback(() => {
-    if (state.isStreaming || generatedFiles.length === 0) return;
-    const names = generatedFiles.map((f) => `"${f.filename}"`).join(", ");
-    void handleSend(`Summarize generated artifacts ${names}. Explain what each file is for and what should be reviewed by humans.`);
-  }, [state.isStreaming, generatedFiles, handleSend]);
+  useEffect(() => {
+    if (state.isStreaming || generatedFiles.length === 0 || selectedArtifact) return;
+    const newest = generatedFiles[0]?.filename;
+    if (!newest || lastAutoOpenedGenerated.current === newest) return;
+    lastAutoOpenedGenerated.current = newest;
+    void handleOpenFile(newest);
+  }, [generatedFiles, state.isStreaming, selectedArtifact, handleOpenFile]);
 
   const agentWorking = state.isStreaming || isChatUploading;
 
@@ -672,21 +722,32 @@ export default function Chat() {
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1">
-        <div className="flex min-h-0 flex-1 flex-col">
-          <AgentActivityBar
-            isStreaming={state.isStreaming}
-            toolActivity={latestAssistantMessage?.toolActivity || []}
-          />
-          <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
+        <div className="flex min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <AgentActivityBar
+              isStreaming={state.isStreaming}
+              toolActivity={latestAssistantMessage?.toolActivity || []}
+            />
+            <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
 
-          <InputBar
-            onSend={handleSend}
-            onUpload={handleChatUpload}
-            disabled={state.isStreaming}
-            isStreaming={state.isStreaming}
-            onStop={handleStop}
-            isUploadingFile={isChatUploading}
-            uploadingFileName={chatUploadName}
+            <InputBar
+              onSend={handleSend}
+              onUpload={handleChatUpload}
+              disabled={state.isStreaming}
+              isStreaming={state.isStreaming}
+              onStop={handleStop}
+              isUploadingFile={isChatUploading}
+              uploadingFileName={chatUploadName}
+            />
+          </div>
+
+          <ArtifactCanvas
+            filename={selectedArtifact}
+            mimeType={artifactMimeType}
+            content={artifactContent}
+            loading={artifactLoading}
+            error={artifactError}
+            onClose={() => setSelectedArtifact(null)}
           />
         </div>
 
@@ -695,9 +756,8 @@ export default function Chat() {
           generatedFiles={generatedFiles}
           loading={filesLoading}
           onAskFile={handleAskAboutFile}
+          onOpenFile={handleOpenFile}
           disableActions={state.isStreaming}
-          onAnalyzeUploaded={handleAnalyzeUploaded}
-          onSummarizeArtifacts={handleSummarizeArtifacts}
         />
       </div>
 
@@ -707,9 +767,8 @@ export default function Chat() {
         generatedFiles={generatedFiles}
         loading={filesLoading}
         onAskFile={handleAskAboutFile}
+        onOpenFile={handleOpenFile}
         disableActions={state.isStreaming}
-        onAnalyzeUploaded={handleAnalyzeUploaded}
-        onSummarizeArtifacts={handleSummarizeArtifacts}
         onClose={() => setDocumentsOpen(false)}
       />
     </div>

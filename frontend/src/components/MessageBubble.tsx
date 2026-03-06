@@ -90,9 +90,9 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             >
               <span className="tool-toggle-indicator">✦</span>
               <span>
-                {toolsExpanded ? "Hide thinking" : "Show thinking"}
-                {runningTools.length > 0 && <span className="text-app-muted"> · Live</span>}
-                {runningTools.length === 0 && doneTools.length > 0 && <span className="text-app-muted"> · Complete</span>}
+                {toolsExpanded ? "Hide steps" : `${doneTools.length + runningTools.length} step${doneTools.length + runningTools.length === 1 ? "" : "s"}`}
+                {runningTools.length > 0 && <span className="text-app-muted"> · Running</span>}
+                {runningTools.length === 0 && doneTools.length > 0 && <span className="text-app-muted"> · Done</span>}
               </span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`ml-auto transition-transform ${toolsExpanded ? "rotate-180" : ""}`}>
                 <polyline points="6 9 12 15 18 9" />

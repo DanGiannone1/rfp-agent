@@ -142,6 +142,28 @@ async def list_files(session_id: str) -> dict:
         raise
 
 
+@app.get("/sessions/{session_id}/files/content")
+async def get_file_content(session_id: str, filename: str) -> dict:
+    """Get text content for a workspace file."""
+    try:
+        await session_manager.validate_session(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    try:
+        return await session_manager.get_file_content(session_id, filename)
+    except Exception as exc:
+        import httpx
+        if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
+            detail = exc.response.text
+            try:
+                detail = exc.response.json().get("detail", detail)
+            except Exception:
+                pass
+            raise HTTPException(status_code=exc.response.status_code, detail=detail)
+        raise
+
+
 @app.post("/sessions/{session_id}/upload")
 async def upload_file(session_id: str, file: UploadFile) -> dict:
     """Upload a document to a session's workspace."""
