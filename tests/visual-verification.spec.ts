@@ -96,20 +96,29 @@ test.describe("Visual Verification", () => {
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
 
     // Wait for session to be ready (the upload drop zone should be clickable)
-    // Retry with page reload if session doesn't become ready (HMR can disrupt init)
-    for (let attempt = 0; attempt < 3; attempt++) {
+    // Handle retry button if session creation fails (pool exhaustion)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const retryBtn = page.locator('[data-testid="intake-retry-button"]');
+      const retryVisible = await retryBtn.isVisible().catch(() => false);
+      if (retryVisible) {
+        console.log(`  Session failed, clicking retry (attempt ${attempt + 1})`);
+        await retryBtn.click();
+        await page.waitForTimeout(3_000);
+        continue;
+      }
       try {
         await page.waitForFunction(() => {
           const el = document.querySelector('[aria-label="Upload RFP file"]');
           return el && el.getAttribute("aria-disabled") === "false";
-        }, { timeout: 20_000 });
+        }, { timeout: 15_000 });
         break;
       } catch {
         console.log(`  Session not ready after attempt ${attempt + 1}, reloading...`);
-        if (attempt < 2) {
+        if (attempt < 4) {
           await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+          await page.waitForTimeout(2_000);
         } else {
-          throw new Error("Session did not become ready after 3 attempts");
+          throw new Error("Session did not become ready after 5 attempts");
         }
       }
     }
@@ -252,13 +261,31 @@ test.describe("Visual Verification", () => {
     page.on("dialog", (dialog) => dialog.accept());
     await page.locator('[data-testid="new-chat-button"]').click();
 
-    // Wait for IntakeScreen to appear
+    // Wait for IntakeScreen to appear and session to be ready (with retry handling)
     await page.locator('[data-testid="intake-upload-input"]').waitFor({ state: "attached", timeout: 30_000 });
-    // Wait for session to be ready
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[aria-label="Upload RFP file"]');
-      return el && el.getAttribute("aria-disabled") === "false";
-    }, { timeout: 30_000 });
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const retryBtn = page.locator('[data-testid="intake-retry-button"]');
+      const retryVisible = await retryBtn.isVisible().catch(() => false);
+      if (retryVisible) {
+        console.log(`  New chat session failed, clicking retry (attempt ${attempt + 1})`);
+        await retryBtn.click();
+        await page.waitForTimeout(3_000);
+        continue;
+      }
+      try {
+        await page.waitForFunction(() => {
+          const el = document.querySelector('[aria-label="Upload RFP file"]');
+          return el && el.getAttribute("aria-disabled") === "false";
+        }, { timeout: 15_000 });
+        break;
+      } catch {
+        if (attempt < 4) {
+          await page.waitForTimeout(2_000);
+        } else {
+          throw new Error("New chat session did not become ready after 5 attempts");
+        }
+      }
+    }
 
     await page.screenshot({ path: screenshot("08-new-chat-intake.png"), fullPage: true });
 

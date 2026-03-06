@@ -131,22 +131,33 @@ async function navigateToChatViaIntake(
   filePath: string,
 ): Promise<void> {
   // Navigate and wait for IntakeScreen to render
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // Check if retry button appeared (session creation failed)
+    const retryBtn = page.getByTestId("intake-retry-button");
+    const retryVisible = await retryBtn.isVisible().catch(() => false);
+    if (retryVisible) {
+      console.log(`  Session failed, clicking retry (attempt ${attempt + 1})`);
+      await retryBtn.click();
+      await page.waitForTimeout(3_000);
+      continue;
+    }
     try {
       await page.waitForFunction(
         () => {
           const el = document.querySelector('[aria-label="Upload RFP file"]');
           return el && el.getAttribute("aria-disabled") === "false";
         },
-        { timeout: 20_000 },
+        { timeout: 15_000 },
       );
       break;
     } catch {
-      if (attempt < 2) {
+      if (attempt < 4) {
+        // Reload and try again
         await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+        await page.waitForTimeout(2_000);
       } else {
-        throw new Error("Session did not become ready after 3 attempts");
+        throw new Error("Session did not become ready after 5 attempts");
       }
     }
   }
