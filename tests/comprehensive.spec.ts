@@ -52,15 +52,19 @@ async function readSSEStream(res: Response): Promise<string> {
 }
 
 async function createSessionViaAPI(): Promise<string> {
-  const res = await fetch(`${API}/sessions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
-  });
-  if (res.status !== 201)
-    throw new Error(`create session failed: ${res.status}`);
-  const body = await res.json();
-  return body.session_id;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(`${API}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    if (res.status === 201) {
+      const body = await res.json();
+      return body.session_id;
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 5_000));
+  }
+  throw new Error("create session failed after 3 attempts");
 }
 
 async function deleteSessionViaAPI(sid: string): Promise<void> {
