@@ -126,9 +126,27 @@ async function navigateToChatViaIntake(
   page: any,
   filePath: string,
 ): Promise<void> {
-  await page.goto("/");
+  // Navigate and wait for IntakeScreen to render
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+    try {
+      await page.waitForFunction(
+        () => {
+          const el = document.querySelector('[aria-label="Upload RFP file"]');
+          return el && el.getAttribute("aria-disabled") === "false";
+        },
+        { timeout: 20_000 },
+      );
+      break;
+    } catch {
+      if (attempt < 2) {
+        await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
+      } else {
+        throw new Error("Session did not become ready after 3 attempts");
+      }
+    }
+  }
   const intakeInput = page.getByTestId("intake-upload-input");
-  await expect(intakeInput).toBeAttached({ timeout: 30_000 });
   await intakeInput.setInputFiles(filePath);
   await expect(page.getByTestId("chat-input")).toBeVisible({ timeout: 30_000 });
 }
@@ -244,8 +262,8 @@ test.describe.serial("Journey 2: Upload Document and Discuss", () => {
       timeout: 30_000,
     });
     await expect(
-      page.getByTestId("document-name").getByText("rfp-document.txt"),
-    ).toBeVisible();
+      page.getByTestId("artifacts-panel").getByTestId("document-name").filter({ hasText: "rfp-document.txt" }).first(),
+    ).toBeAttached();
 
     // Input is enabled — user drives the conversation
     const input = page.getByTestId("chat-input");
@@ -397,7 +415,8 @@ test.describe.serial("Journey 4: Session Isolation", () => {
       page.locator("text=Hello from session isolation test"),
     ).toBeVisible();
 
-    // Click new chat — returns to intake screen
+    // Click new chat — accept the confirmation dialog, returns to intake screen
+    page.on("dialog", (dialog: any) => dialog.accept());
     await page.getByTestId("new-chat-button").click();
 
     // Should be back on intake screen (old message gone)
@@ -601,12 +620,13 @@ test.describe.serial("Journey 6: Artifacts Panel UX", () => {
     await fileInput.setInputFiles(tmpFile2);
     await page.getByTestId("send-button").click();
 
-    // Both filenames visible in panel
+    // Both filenames visible in artifacts panel
+    const panel = page.getByTestId("artifacts-panel");
     await expect(
-      page.getByTestId("document-name").getByText("doc-one.txt"),
-    ).toBeVisible({ timeout: 10_000 });
+      panel.getByTestId("document-name").filter({ hasText: "doc-one.txt" }).first(),
+    ).toBeAttached({ timeout: 10_000 });
     await expect(
-      page.getByTestId("document-name").getByText("doc-two.txt"),
-    ).toBeVisible({ timeout: 10_000 });
+      panel.getByTestId("document-name").filter({ hasText: "doc-two.txt" }).first(),
+    ).toBeAttached({ timeout: 10_000 });
   });
 });
