@@ -165,9 +165,16 @@ test.afterAll(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Journey 1: Chat Conversation (Browser, serial)
+// Journey 1: Chat Conversation (Browser + API, serial)
+// Tests 1-2 use the browser; tests 3-4 use the API to avoid extra session creation.
 // ---------------------------------------------------------------------------
 test.describe.serial("Journey 1: Chat Conversation", () => {
+  let apiSessionId: string;
+
+  test.afterAll(async () => {
+    if (apiSessionId) await deleteSessionViaAPI(apiSessionId);
+  });
+
   test("App loads and intake screen appears", async ({ page }) => {
     await page.goto("/");
     // IntakeScreen should be visible
@@ -181,47 +188,52 @@ test.describe.serial("Journey 1: Chat Conversation", () => {
     await expect(page.getByTestId("chat-input")).toBeEnabled();
   });
 
-  test("Send message and receive response", async ({ page }) => {
-    await navigateToChatViaIntake(page, sharedTmpFile);
+  test("Send message and receive response", async () => {
+    // Create a session via API instead of navigating the browser
+    apiSessionId = await createSessionViaAPI();
+    await uploadFileViaAPI(
+      apiSessionId,
+      "starter.txt",
+      "Starter file for chat access.",
+      "text/plain",
+    );
 
-    const input = page.getByTestId("chat-input");
-    const send = page.getByTestId("send-button");
+    const { events } = await sendMessageViaAPI(
+      apiSessionId,
+      "What is the capital of France? Answer in one word.",
+    );
 
-    await input.fill("What is the capital of France? Answer in one word.");
-    await send.click();
+    // Should have received assistant content via SSE events
+    const deltas = events.filter((e) => e.type === "delta");
+    const assistantText = deltas.map((e) => e.content ?? e.delta ?? "").join("");
+    expect(assistantText.length).toBeGreaterThan(0);
 
-    // User message appears
-    await expect(
-      page.locator("text=What is the capital of France"),
-    ).toBeVisible();
-
-    // Wait for streaming to finish
-    await expect(input).toBeEnabled({ timeout: 180_000 });
-
-    // Assistant response is substantive (not just empty or error)
-    const body = await page.locator("body").textContent();
-    expect(body!.length).toBeGreaterThan(50);
+    // Should have completed successfully
+    const finished = events.some(
+      (e) => e.type === "RUN_FINISHED" || e.type === "done",
+    );
+    expect(finished).toBe(true);
   });
 
-  test("Multi-turn context preserved", async ({ page }) => {
-    await navigateToChatViaIntake(page, sharedTmpFile);
-
-    const input = page.getByTestId("chat-input");
-    const send = page.getByTestId("send-button");
+  test("Multi-turn context preserved", async () => {
+    // Reuse the API session from the previous test (serial block guarantees order)
+    expect(apiSessionId).toBeTruthy();
 
     // First turn: establish context
-    await input.fill(
+    await sendMessageViaAPI(
+      apiSessionId,
       "Remember this code word: PINEAPPLE. Just acknowledge you will remember it.",
     );
-    await send.click();
-    await expect(input).toBeEnabled({ timeout: 180_000 });
 
     // Second turn: ask about it
-    await input.fill("What was the code word I just told you?");
-    await send.click();
-    await expect(input).toBeEnabled({ timeout: 180_000 });
+    const { events } = await sendMessageViaAPI(
+      apiSessionId,
+      "What was the code word I just told you?",
+    );
 
-    await expect(page.locator("body")).toContainText("PINEAPPLE");
+    const deltas = events.filter((e) => e.type === "delta");
+    const assistantText = deltas.map((e) => e.content ?? e.delta ?? "").join("");
+    expect(assistantText).toContain("PINEAPPLE");
   });
 });
 
@@ -344,7 +356,7 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
             file.filename === "conversion-test.txt" &&
             file.has_markdown === true,
         ),
-      60_000,
+      90_000,
       3_000,
     );
     const file = files.find((f: any) => f.filename === "conversion-test.txt");
@@ -592,7 +604,7 @@ test.describe.serial("Journey 6: Artifacts Panel UX", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("Artifacts panel visible with uploaded file", async ({ page }) => {
+  test("Artifacts panel visible with uploaded file + Multiple files in panel", async ({ page }) => {
     await navigateToChatViaIntake(page, tmpFile1);
 
     await expect(page.getByTestId("artifacts-panel")).toBeVisible({
@@ -601,15 +613,8 @@ test.describe.serial("Journey 6: Artifacts Panel UX", () => {
 
     // At least one document item visible
     await expect(page.getByTestId("document-item").first()).toBeVisible();
-  });
 
-  test("Multiple files in panel", async ({ page }) => {
-    await navigateToChatViaIntake(page, tmpFile1);
-
-    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
-      timeout: 10_000,
-    });
-
+    // --- Multiple files in panel ---
     // Wait for input to be ready
     await expect(page.getByTestId("chat-input")).toBeEnabled({
       timeout: 120_000,

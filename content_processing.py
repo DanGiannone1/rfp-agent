@@ -110,12 +110,22 @@ class ContentProcessor:
             f"originals/{session_id}/{filename}", file_bytes, content_type
         )
 
-        # 2. Convert to markdown via Content Understanding
-        try:
-            markdown = await self._analyze_document(file_bytes)
-        except Exception:
-            logger.warning("Content Understanding failed for %s", filename, exc_info=True)
-            markdown = None
+        # 2. Convert to markdown
+        # Text-based files don't need CU — use content directly as markdown
+        TEXT_PREFIXES = ("text/", "application/json", "application/xml", "application/csv")
+        is_text = any(content_type.startswith(prefix) for prefix in TEXT_PREFIXES)
+        if is_text:
+            try:
+                markdown = file_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                markdown = None
+        else:
+            # Binary file — convert via Content Understanding
+            try:
+                markdown = await self._analyze_document(file_bytes)
+            except Exception:
+                logger.warning("Content Understanding failed for %s", filename, exc_info=True)
+                markdown = None
 
         if markdown is None:
             result["error"] = "Content Understanding failed to produce markdown"
