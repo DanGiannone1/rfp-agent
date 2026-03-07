@@ -30,7 +30,7 @@ class ContentProcessor:
 
     @property
     def enabled(self) -> bool:
-        return bool(self._adls_account and self._cu_endpoint)
+        return self._filesystem_client is not None and self._cu_client is not None
 
     @staticmethod
     def _derive_cu_endpoint() -> str | None:
@@ -53,11 +53,14 @@ class ContentProcessor:
         return None
 
     async def initialize(self) -> None:
-        if not self.enabled:
+        if not (self._adls_account and self._cu_endpoint):
             logger.info("Content processing disabled (ADLS or CU endpoint not configured)")
             return
 
-        self._credential = DefaultAzureCredential()
+        managed_identity_client_id = os.getenv("AZURE_CLIENT_ID")
+        self._credential = DefaultAzureCredential(
+            managed_identity_client_id=managed_identity_client_id or None
+        )
 
         from azure.storage.filedatalake.aio import DataLakeServiceClient
 

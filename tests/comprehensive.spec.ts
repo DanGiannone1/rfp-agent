@@ -130,7 +130,11 @@ async function navigateToChatViaIntake(
   page: any,
   filePath: string,
 ): Promise<void> {
-  // Navigate and wait for IntakeScreen to render
+  // Navigate first so we have a valid origin, then clear sessionStorage
+  // to ensure intake always starts fresh (avoids RESTORE_SESSION setting
+  // stage:"chat" on reload when handleNewChat already stored a new session).
+  await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.evaluate(() => sessionStorage.clear());
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
   for (let attempt = 0; attempt < 5; attempt++) {
     // Check if retry button appeared (session creation failed)
@@ -336,87 +340,64 @@ test.describe.serial("Journey 2: Upload Document and Discuss", () => {
 // ---------------------------------------------------------------------------
 test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
   let sessionId: string;
-  const tmpDir = path.join(__dirname, ".tmp-journey3");
-  const tmpFile = path.join(tmpDir, "conversion-test.txt");
+  // Use a real PDF from sample_data to exercise the full CU pipeline.
+  // Text files bypass Content Understanding entirely — they are decoded as UTF-8 directly.
+  const pdfFile = path.join(__dirname, "../sample_data/MD_RFP_SUBSET.pdf");
+  const pdfName = "MD_RFP_SUBSET.pdf";
 
   test.beforeAll(async () => {
     sessionId = await createSessionViaAPI();
-    fs.mkdirSync(tmpDir, { recursive: true });
-    fs.writeFileSync(
-      tmpFile,
-      "Conversion pipeline test document with budget $1M for cloud migration by Q3 2026.",
-    );
+    if (!fs.existsSync(pdfFile)) {
+      throw new Error(`Sample PDF not found at ${pdfFile}. Journey 3 requires a real PDF to exercise CU.`);
+    }
   });
 
   test.afterAll(async () => {
     if (sessionId) await deleteSessionViaAPI(sessionId);
-    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  test("Upload triggers markdown conversion", async () => {
-    const res = await uploadFileViaAPI(
-      sessionId,
-      "conversion-test.txt",
-      "Conversion pipeline test document with budget $1M for cloud migration by Q3 2026.",
-      "text/plain",
-    );
+  test("PDF upload triggers Content Understanding markdown conversion", async () => {
+    const pdfBytes = fs.readFileSync(pdfFile);
+    const res = await uploadFileViaAPI(sessionId, pdfName, pdfBytes, "application/pdf");
     expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.markdown_ready).toBe(true);
 
-    // Poll until has_markdown becomes true — fail if it doesn't within 60s
+    // Poll until has_markdown appears on the file listing
     const files = await pollFiles(
       sessionId,
-      (f) =>
-        f.some(
-          (file: any) =>
-            file.filename === "conversion-test.txt" &&
-            file.has_markdown === true,
-        ),
-      90_000,
+      (f) => f.some((file: any) => file.filename === pdfName && file.has_markdown === true),
+      120_000,
       3_000,
     );
-    const file = files.find((f: any) => f.filename === "conversion-test.txt");
+    const file = files.find((f: any) => f.filename === pdfName);
     expect(file.has_markdown).toBe(true);
   });
 
   test("Markdown content is non-trivial", async () => {
     const res = await fetch(`${API}/sessions/${sessionId}/files`);
     const body = await res.json();
-    const mdFile = body.files.find(
-      (f: any) => f.filename === "conversion-test.txt.md",
-    );
+    const mdFile = body.files.find((f: any) => f.filename === `${pdfName}.md`);
     expect(mdFile).toBeTruthy();
-    expect(mdFile.size).toBeGreaterThan(10);
+    // CU should produce substantial markdown from a real PDF (>1 KB)
+    expect(mdFile.size).toBeGreaterThan(1000);
   });
 
-  test("Conversion badge transitions to done in browser", async ({
-    page,
-  }) => {
-    await navigateToChatViaIntake(page, tmpFile);
+  test("Conversion badge transitions to done in browser", async ({ page }) => {
+    await navigateToChatViaIntake(page, pdfFile);
 
-    await expect(page.getByTestId("artifacts-panel")).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(page.getByTestId("artifacts-panel")).toBeVisible({ timeout: 10_000 });
 
-    // Wait for conversion-done badge — fail if it stays pending
-    await expect(page.getByTestId("conversion-done").first()).toBeVisible({
-      timeout: 90_000,
-    });
+    // CU can take up to 90s for a large PDF — allow 2 minutes total
+    await expect(page.getByTestId("conversion-done").first()).toBeVisible({ timeout: 120_000 });
   });
 
   test("Markdown sibling hidden in artifacts panel", async () => {
-    // Use API to check that /files endpoint doesn't expose .md siblings directly
     const res = await fetch(`${API}/sessions/${sessionId}/files`);
     const body = await res.json();
-    // The .md file should exist but should be filtered by the frontend (normalizeFileList)
-    // Verify that a .txt.md file exists (conversion worked) but is a separate file
-    const mdFile = body.files.find(
-      (f: any) => f.filename === "conversion-test.txt.md",
-    );
+    const mdFile = body.files.find((f: any) => f.filename === `${pdfName}.md`);
     expect(mdFile).toBeTruthy();
-    // The original .txt should also exist
-    const origFile = body.files.find(
-      (f: any) => f.filename === "conversion-test.txt",
-    );
+    const origFile = body.files.find((f: any) => f.filename === pdfName);
     expect(origFile).toBeTruthy();
     expect(origFile.has_markdown).toBe(true);
   });
