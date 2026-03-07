@@ -160,6 +160,10 @@ When the user provides edits or feedback:
 3. [Next action]
 ```
 
+### 7. Save Output
+
+Save the refinement status report to the working directory as `refinement_status.md` so the user can track progress and it appears in the artifacts panel. Update this file each time the user provides feedback or sections are approved.
+
 ## Tools to Use
 
 - **grep**: Search across all proposal files for terminology, names, dates, amounts, and win theme keywords to verify consistency

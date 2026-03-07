@@ -1,15 +1,14 @@
-# Requirements Extraction & Compliance Matrix
+# Requirements Extraction
 
 ## Purpose
 
-Parse an RFP into discrete, actionable requirements. Classify each requirement by priority, build a compliance matrix, flag ambiguities, and map requirements to response outline sections.
+Parse an RFP into discrete, actionable requirements. Classify each by priority, build a traceability matrix, flag ambiguities, and map requirements to response outline sections.
 
 ## When to Use
 
-- User asks to "extract requirements", "build a compliance matrix", or "parse the RFP"
-- As a foundational step before drafting a response
-- When the user needs to understand what the RFP is actually asking for
-- When assessing whether Meridian & Associates LLP can comply with all requirements
+- User asks to "extract requirements", "build a requirements matrix", or "parse the RFP"
+- As a foundational step before drafting a response or running bid/no-bid analysis
+- When the team needs to understand exactly what the RFP is asking for
 
 ## Step-by-Step Process
 
@@ -48,20 +47,7 @@ For each requirement, determine:
 - **Preferred (P)**: Desired but not disqualifying — uses "should", "preferred", "desired", "ideally"
 - **Informational (I)**: Context or background — no compliance needed
 
-### 4. Search Knowledge Base for Capability Evidence
-
-Use `knowledge_base_retrieve` to understand what Meridian can actually demonstrate before assigning compliance status. Useful things to search for include certifications and accreditations relevant to the RFP, past performance in the engagement's service area and industry, personnel qualifications for likely key roles, and quality control or independence documentation. The evidence you find here should inform your compliance assessments and supporting notes in the matrix.
-
-### 5. Assess Compliance Status
-
-Using what you know about Meridian's capabilities (from the KB and the RFP context), mark each requirement:
-- **Comply (C)**: Meridian can fully meet this requirement
-- **Partial Comply (PC)**: Can partially meet; note the gap
-- **Exception (E)**: Cannot meet; will propose alternative approach
-- **N/A**: Not applicable to Meridian's proposed solution
-- **TBD**: Needs further investigation
-
-### 6. Flag Ambiguities
+### 4. Flag Ambiguities
 
 Identify requirements that are:
 - Vague or open to interpretation
@@ -69,45 +55,31 @@ Identify requirements that are:
 - Missing key details (quantities, timelines, standards)
 - Unusually restrictive (may be wired for a specific vendor)
 
-### 7. Map to Response Outline
+### 5. Map to Response Outline
 
 Suggest which response section each requirement should be addressed in, creating a traceability matrix between RFP requirements and proposal sections.
 
 ## Output Format
 
 ```markdown
-## Requirements Analysis
+## Requirements Extraction
 
 **RFP:** [Title / Number]
-**Total Requirements Extracted:** [Count]
+**Total Requirements:** [Count]
 **Mandatory:** [Count] | **Preferred:** [Count] | **Informational:** [Count]
-
-### Compliance Summary
-- Comply: [Count] ([Percentage]%)
-- Partial Comply: [Count]
-- Exception: [Count]
-- TBD: [Count]
 
 ### Requirements Matrix
 
-| ID | Source | Category | Requirement | Priority | Compliance | Response Section | Notes |
-|---|---|---|---|:---:|:---:|---|---|
-| REQ-001 | S2.1, p4 | Technical | [Requirement text] | M | C | Technical Approach | |
-| REQ-002 | S2.3, p6 | Staffing | [Requirement text] | M | PC | Key Personnel | Gap: [detail] |
-| REQ-003 | S3.1, p8 | Experience | [Requirement text] | P | C | Past Performance | |
+| ID | Section | Page | Category | Priority | Requirement |
+|---|---|---|---|:---:|---|
+| REQ-001 | 2.1 | 4 | Technical | M | [Requirement text] |
+| REQ-002 | 2.3 | 6 | Staffing | M | [Requirement text] |
+| REQ-003 | 3.1 | 8 | Experience | P | [Requirement text] |
 
 ### Ambiguities & Clarification Questions
 
-1. **REQ-XXX** (Section X.X): [Description of ambiguity and suggested clarification question]
-2. **REQ-XXX** (Section X.X): [Description of ambiguity]
-
-### High-Risk Requirements
-
-Requirements where compliance is uncertain or gaps exist:
-
-| ID | Requirement | Risk | Suggested Mitigation |
-|---|---|---|---|
-| REQ-XXX | [Text] | [Risk description] | [Mitigation approach] |
+1. **REQ-XXX** (Section X.X, p.X): [Description of ambiguity and suggested clarification question]
+2. **REQ-XXX** (Section X.X, p.X): [Description of ambiguity]
 
 ### Suggested Response Outline
 
@@ -121,9 +93,12 @@ Requirements where compliance is uncertain or gaps exist:
 [etc.]
 ```
 
+### 6. Save Output
+
+Save the requirements matrix to the working directory as `requirements_matrix.md` so the user can download it and it appears in the artifacts panel. Downstream skills (compliance review, draft generation, response strategy) will reference this file.
+
 ## Tools to Use
 
-- **knowledge_base_retrieve**: Search for evidence of firm capabilities, past performance, certifications, and personnel qualifications — run this in Step 4 before assessing any compliance statuses
 - **bash / str_replace_editor**: Read RFP document sections thoroughly
-- **grep**: Search for compliance-critical keywords ("shall", "must", "required", "mandatory", "certif")
-- **glob**: Find all related RFP documents and attachments
+- **grep**: Search for requirement keywords ("shall", "must", "required", "mandatory", "certif")
+- **glob**: Find all related RFP documents, attachments, and exhibits

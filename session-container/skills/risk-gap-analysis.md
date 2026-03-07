@@ -155,7 +155,7 @@ Separate out gaps that need immediate action:
 
 ## Tools to Use
 
-- **knowledge_base_retrieve**: Search for lessons learned, past risk mitigations, teaming history, capability evidence, and personnel qualifications to assess gaps — run before scoring any risk
+- **knowledge_base_retrieve**: Search for lessons learned, past risk mitigations, teaming history, capability evidence, and personnel qualifications to assess gaps — use where applicable to validate or refine scores, particularly for capability gaps and personnel risks
 - **bash / glob**: Read RFP terms and conditions, scope documents, and all proposal materials
 - **str_replace_editor**: Examine specific contractual clauses, requirement details, and drafted content
 - **grep**: Search for risk indicators ("penalty", "liquidated damages", "termination", "liability", "warranty", "indemnif", "insurance", "bond")

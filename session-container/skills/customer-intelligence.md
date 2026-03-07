@@ -145,6 +145,10 @@ Based on all gathered intelligence, recommend:
 - [Recommended actions to fill gaps before submission]
 ```
 
+### 7. Save Output
+
+Save the briefing to the working directory as `customer_intelligence.md` so the user can download it and it appears in the artifacts panel.
+
 ## Tools to Use
 
 - **knowledge_base_retrieve**: Primary tool — search for client name, past engagements, proposals, personnel, case studies, and industry references. Run at least 5-6 varied queries for thorough coverage.

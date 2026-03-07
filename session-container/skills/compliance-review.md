@@ -98,6 +98,15 @@ Flag each item as Ready / Needs Review / Blocked and identify the responsible pe
 
 Compile findings into a structured checklist with pass/fail/warning status.
 
+### 9b. Verify Claims Against Knowledge Base
+
+Before finalizing, use `knowledge_base_retrieve` to spot-check key claims in the drafted proposal:
+- Any cited past performance metrics or client outcomes — confirm they appear in KB records
+- Personnel qualifications and certifications referenced — verify they match KB personnel files
+- Firm credentials, registrations, or accreditations mentioned — confirm they are current per KB compliance docs
+
+Flag any claim that cannot be verified in the KB as needing human confirmation before submission.
+
 ### 10. Save Output
 
 Save the compliance review report to the working directory as `compliance_review.md` so the user can download it and it appears in the artifacts panel.
@@ -190,4 +199,4 @@ Save the compliance review report to the working directory as `compliance_review
 - **grep**: Primary tool — search for requirement keywords across all drafted sections; scan for placeholder text, sensitive data markers, and inconsistencies
 - **bash / glob**: List and read all proposal files and RFP documents
 - **str_replace_editor**: Read specific sections for detailed review
-- **knowledge_base_retrieve**: Verify claims against actual past performance data, personnel qualifications, and firm credentials
+- **knowledge_base_retrieve**: Verify that specific claims in the proposal — past performance metrics, personnel qualifications, certifications, case study outcomes — are accurate and traceable to real KB records. Also check approved brand guidelines and firm language for branding compliance.

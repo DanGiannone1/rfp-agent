@@ -15,9 +15,9 @@ Generate polished draft content for individual proposal sections by combining kn
 
 ### 1. Understand the Section Scope
 
-Determine what this section must cover:
-- Which RFP requirements map to this section (reference the compliance matrix if available)
-- Evaluation criteria relevant to this section
+Read the RFP directly to determine what this section must cover — don't rely solely on the requirements matrix. Extract:
+- Which RFP requirements map to this section (cross-reference the matrix if one exists)
+- Evaluation criteria relevant to this section and their relative weights
 - Page limits or format constraints
 - Any specific instructions from the RFP (e.g., "describe your methodology in no more than 5 pages")
 
@@ -60,7 +60,11 @@ Compose the section following these principles:
 
 At the end of the draft, list the KB sources referenced so the user can verify and trace content origin.
 
-### 6. Flag Gaps
+### 6. Save Output
+
+Save the completed draft to the working directory as `[section_name]_draft.md` (e.g., `technical_approach_draft.md`, `past_performance_draft.md`) so the user can download it and it appears in the artifacts panel.
+
+### 7. Flag Gaps
 
 Note any areas where:
 - KB materials were insufficient and original content was generated
