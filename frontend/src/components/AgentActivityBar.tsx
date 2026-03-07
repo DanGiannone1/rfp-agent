@@ -9,15 +9,17 @@ interface AgentActivityBarProps {
 }
 
 function toolLabel(name: string): string {
+  const normalized = name.includes("-") ? name.substring(name.indexOf("-") + 1) : name;
   const labels: Record<string, string> = {
     bash: "Running command",
     grep: "Searching workspace",
     glob: "Finding files",
+    view: "Reading file",
     str_replace_editor: "Editing file",
     convert_document: "Converting document",
     knowledge_base_retrieve: "Searching knowledge base",
   };
-  return labels[name] || name;
+  return labels[normalized] || labels[name] || normalized;
 }
 
 function toolContext(name: string, args: string | undefined): string | null {

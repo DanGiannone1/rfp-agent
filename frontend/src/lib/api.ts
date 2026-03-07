@@ -21,7 +21,7 @@ export async function createSession(): Promise<SessionMetadata> {
 export async function uploadFile(
   sessionId: string,
   file: File,
-): Promise<{ path: string; filename: string; size: number }> {
+): Promise<{ path: string; filename: string; size: number; markdown_ready: boolean }> {
   const form = new FormData();
   form.append("file", file);
   const res = await fetch(`${API_BASE}/sessions/${sessionId}/upload`, {

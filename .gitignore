@@ -218,3 +218,7 @@ workspace/
 frontend/node_modules/
 frontend/.next/
 !frontend/src/lib/
+
+# Dev artifacts
+screenshots/
+sweep-results/

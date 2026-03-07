@@ -6,7 +6,6 @@ against Azure OpenAI.  Emits AG-UI protocol events.
 
 import asyncio
 import os
-import sys
 import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
@@ -47,37 +46,27 @@ them proactively to read files, search for content, and produce structured outpu
 ## Sandbox Environment
 
 You run inside an isolated container with full shell access. You can:
-- **Install packages** (`pip install fpdf2 python-docx matplotlib openpyxl` etc.)
-- **Write and execute Python scripts** for calculations, data processing, and file generation
-- **Generate deliverable files** (PDF, DOCX, XLSX, CSV, JSON, PNG) and save them to \
-the working directory where users can download them
+- **Write and execute Python scripts** for calculations, data processing, and structured output
+- **Generate deliverable files** and save them to the working directory where users can download them
 - **Run complex computations** — pricing models, sensitivity analyses, scoring calculations
 
 When a skill produces structured output (compliance matrices, risk registers, pricing \
-models, scorecards), save it as a downloadable file in the working directory in addition \
-to showing it in chat. Prefer PDF or DOCX for polished deliverables, CSV/XLSX for data \
-tables, and markdown for working drafts.
+models, scorecards), save it as a file in the working directory in addition to showing \
+it in chat. Use **markdown (.md) for all narrative deliverables** (executive summaries, \
+strategy briefs, compliance reviews), **CSV for scored matrices and data tables**, and \
+**JSON for structured data**. Do not attempt to install packages or generate binary \
+formats (DOCX, PDF, XLSX) — the workspace renderer displays markdown and CSV natively.
 
 ## Getting Started
 
-When the workspace has no uploaded documents (or only default files), greet the user \
-warmly and guide them to upload their RFP document as the first step. Once an RFP is \
-uploaded, use the `convert_document` tool to convert it to markdown for analysis. \
-The full suite of RFP workflow tools — from bid/no-bid analysis through compliance \
-review — becomes available after conversion. Start by asking the user to drag and \
-drop or attach their RFP file.
+When the user sends their first message, RFP documents have already been uploaded and \
+converted to markdown — you will find a `.md` file in the working directory alongside \
+the original. Start by listing files to orient yourself, then read the markdown to \
+understand the opportunity before responding.
 
 If the user sends a simple greeting (for example "hi" or "hello"), respond naturally \
 and briefly first. Do not mention missing files unless the user asks to start analysis \
 or asks what to do next.
-
-## Document Conversion
-
-You have a `convert_document` tool that converts uploaded documents (PDF, images, \
-Office files) to structured markdown using Azure Content Understanding. When a user \
-uploads a file, call `convert_document` with the filename to produce a `.md` version \
-in the working directory. The tool is idempotent — it skips conversion if the markdown \
-file already exists. After conversion, read the markdown file to analyze the content.
 
 ## Skills & Workflows
 
@@ -250,6 +239,15 @@ class AgentSession:
                 "## Skills & Workflows",
                 KB_PROMPT_SECTION + "## Skills & Workflows",
             )
+        else:
+            # Skill guides reference knowledge_base_retrieve throughout — tell the agent
+            # the tool is unavailable so it doesn't attempt to call it.
+            system_prompt += (
+                "\n\n## Tool Availability\n\n"
+                "The `knowledge_base_retrieve` tool is **not available** in this session. "
+                "When skill guides instruct you to search the knowledge base, substitute "
+                "with manual review of files in the working directory using bash, grep, and glob."
+            )
 
         session_config = {
             "model": os.environ["AZURE_DEPLOYMENT"],
@@ -271,20 +269,7 @@ class AgentSession:
         }
 
         # MCP servers
-        mcp_servers = {
-            "document_converter": {
-                "type": "stdio",
-                "command": sys.executable,
-                "args": [str(Path(__file__).parent / "tools" / "convert_document.py")],
-                "tools": ["convert_document"],
-                "env": {
-                    "AZURE_ENDPOINT": os.environ.get("AZURE_ENDPOINT", ""),
-                    "ADLS_ACCOUNT_NAME": os.getenv("ADLS_ACCOUNT_NAME", ""),
-                    "ADLS_FILESYSTEM": os.getenv("ADLS_FILESYSTEM", "documents"),
-                    "WORKSPACE": self._working_dir,
-                },
-            },
-        }
+        mcp_servers: dict = {}
 
         # Add Foundry IQ knowledge base via MCP (optional)
         if kb_enabled:

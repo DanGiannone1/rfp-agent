@@ -4,6 +4,7 @@ Both ADLS_ACCOUNT_NAME and AZURE_ENDPOINT must be set for processing to be enabl
 When either is missing the processor reports ``enabled = False`` and callers should skip it.
 """
 
+import asyncio
 import logging
 import os
 from collections.abc import Awaitable, Callable
@@ -168,13 +169,14 @@ class ContentProcessor:
         """Convert document bytes to markdown via Content Understanding.
 
         Returns the markdown string, or None if no content was produced.
-        Raises on transport / API errors (caller is expected to catch).
+        Raises on transport / API errors or timeout (caller is expected to catch).
         """
         poller = await self._cu_client.begin_analyze_binary(
             analyzer_id="prebuilt-layout",
             binary_input=file_bytes,
         )
-        result = await poller.result()
+        # Hard cap: CU can take 60-90s for large PDFs but should never exceed 3 minutes.
+        result = await asyncio.wait_for(poller.result(), timeout=180.0)
         if result.contents:
             return result.contents[0].markdown
         return None

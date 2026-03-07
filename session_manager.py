@@ -8,6 +8,7 @@ container's /chat/stream endpoint and passes events through to the frontend.
 import json
 import logging
 import os
+import re
 import uuid
 from collections.abc import AsyncGenerator
 
@@ -18,6 +19,9 @@ from fastapi import UploadFile
 logger = logging.getLogger(__name__)
 
 POOL_MANAGEMENT_ENDPOINT = os.getenv("POOL_MANAGEMENT_ENDPOINT", "")
+
+# Session IDs are created as uuid4().hex[:16] — exactly 16 lowercase hex chars
+_SESSION_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 
 
 def _sse_event(data: dict) -> str:
@@ -172,6 +176,11 @@ class SessionManager:
         if session_id in self._sessions:
             return
 
+        # Reject malformed IDs before probing — in local dev the health endpoint
+        # always returns 200 regardless of identifier, so any ID would pass.
+        if not _SESSION_ID_RE.match(session_id):
+            raise KeyError(session_id)
+
         url = self._pool_url("/health", session_id)
         try:
             resp = await self._http.get(url)
@@ -247,28 +256,37 @@ class SessionManager:
         resp.raise_for_status()
         result = resp.json()
 
-        # Content processing: ADLS upload + Content Understanding markdown conversion
-        if self._content_processor and self._content_processor.enabled:
-            async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
-                """Upload the converted markdown to the session container."""
-                md_url = self._pool_url("/upload", session_id)
-                md_files = {"file": (md_filename, md_bytes, "text/markdown")}
-                md_resp = await self._http.post(md_url, files=md_files)
-                md_resp.raise_for_status()
-
-            proc = await self._content_processor.process_document(
-                session_id=session_id,
-                filename=filename,
-                file_bytes=content,
-                content_type=content_type,
-                forward_markdown_fn=forward_markdown,
+        # Content processing: ADLS upload + Content Understanding markdown conversion.
+        # Both are required — there is no fallback path without CU.
+        if not (self._content_processor and self._content_processor.enabled):
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=503,
+                detail="Document processing is not available. Azure Content Understanding and ADLS must be configured.",
             )
-            result["markdown_ready"] = proc["markdown_forwarded"]
-            if proc.get("error"):
-                result["processing_error"] = proc["error"]
-        else:
-            result["markdown_ready"] = False
 
+        async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
+            """Upload the converted markdown to the session container."""
+            md_url = self._pool_url("/upload", session_id)
+            md_files = {"file": (md_filename, md_bytes, "text/markdown")}
+            md_resp = await self._http.post(md_url, files=md_files)
+            md_resp.raise_for_status()
+
+        proc = await self._content_processor.process_document(
+            session_id=session_id,
+            filename=filename,
+            file_bytes=content,
+            content_type=content_type,
+            forward_markdown_fn=forward_markdown,
+        )
+        if not proc["markdown_forwarded"]:
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=500,
+                detail=proc.get("error") or "Document conversion failed. Please try again.",
+            )
+
+        result["markdown_ready"] = True
         return result
 
     async def list_files(self, session_id: str) -> dict:

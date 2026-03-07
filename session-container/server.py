@@ -36,6 +36,7 @@ app = FastAPI(title="RFP Session")
 # ── Module-level singleton ────────────────────────────────────────────────
 _session: AgentSession | None = None
 _lock = asyncio.Lock()
+_manifest_lock = asyncio.Lock()
 
 
 async def _get_or_create_session(token: str | None = None) -> AgentSession:
@@ -147,9 +148,14 @@ async def upload(file: UploadFile) -> dict:
             f.write(chunk)
 
     logger.info("Uploaded %s (%d bytes)", safe_name, bytes_written)
-    uploaded = _read_uploaded_manifest()
-    uploaded.add(safe_name)
-    _write_uploaded_manifest(uploaded)
+    async with _manifest_lock:
+        uploaded = _read_uploaded_manifest()
+        uploaded.add(safe_name)
+        try:
+            _write_uploaded_manifest(uploaded)
+        except Exception:
+            # File is on disk — manifest failure is non-fatal; origin will default to "generated"
+            logger.warning("Failed to update upload manifest for %s", safe_name, exc_info=True)
     return {"path": real_dest, "filename": safe_name, "size": bytes_written}
 
 

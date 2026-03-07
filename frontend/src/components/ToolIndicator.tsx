@@ -5,10 +5,13 @@ interface ToolIndicatorProps {
 }
 
 function toolLabel(name: string): string {
+  // MCP tools may arrive as "server-toolname" — normalize to just the tool part
+  const normalized = name.includes("-") ? name.substring(name.indexOf("-") + 1) : name;
   const labels: Record<string, string> = {
     search: "Searching",
     read_file: "Reading file",
     write_file: "Writing file",
+    view: "Reading file",
     analyze: "Analyzing",
     summarize: "Summarizing",
     extract: "Extracting",
@@ -20,7 +23,7 @@ function toolLabel(name: string): string {
     convert_document: "Converting document",
     knowledge_base_retrieve: "Searching knowledge base",
   };
-  return labels[name] || name;
+  return labels[normalized] || labels[name] || normalized;
 }
 
 function toolContext(name: string, args: string | undefined): string | null {

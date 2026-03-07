@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 interface IntakeScreenProps {
   sessionState: "preparing" | "ready" | "error";
-  uploadState: "idle" | "uploading" | "processing";
+  uploadState: "idle" | "uploading";
   selectedFileName: string | null;
   uploadError: string | null;
   sessionError: string | null;
@@ -39,8 +39,7 @@ export default function IntakeScreen({
   const preparing = sessionState === "preparing";
   const ready = sessionState === "ready";
   const uploading = uploadState === "uploading";
-  const processing = uploadState === "processing";
-  const busy = preparing || uploading || processing;
+  const busy = preparing || uploading;
 
   async function pickAndUpload(file: File | null) {
     if (!file) return;
@@ -126,13 +125,13 @@ export default function IntakeScreen({
           </div>
 
           <h2 className="text-lg font-medium">
-            {preparing ? "Preparing your session..." : uploading ? "Uploading file..." : processing ? "Processing file..." : "Drop an RFP file here"}
+            {preparing ? "Preparing your session..." : uploading ? "Converting document..." : "Drop an RFP file here"}
           </h2>
           <p className="mt-2 text-sm text-app-muted">
             {preparing
               ? "This usually takes a few seconds."
-              : uploading || processing
-                ? selectedFileName || "Working..."
+              : uploading
+                ? selectedFileName ? `Processing ${selectedFileName}` : "Uploading and extracting content..."
                 : "or click to choose from your device"}
           </p>
         </div>
