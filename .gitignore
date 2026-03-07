@@ -213,6 +213,7 @@ playwright-report/
 
 # RFP agent workspace
 workspace/
+workspace-debug/
 
 # Frontend
 frontend/node_modules/
@@ -222,3 +223,9 @@ frontend/.next/
 # Dev artifacts
 screenshots/
 sweep-results/
+
+# uv local cache
+.uv-cache/
+
+# Claude Code local settings
+.claude/

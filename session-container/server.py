@@ -19,7 +19,7 @@ import os
 import uuid
 
 from ag_ui.core.events import RunErrorEvent, RunFinishedEvent
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -64,13 +64,15 @@ async def _destroy_session_locked() -> None:
 # ── Request models ────────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     prompt: str
-    token: str | None = None
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
 @app.post("/chat/stream")
-async def chat_stream(req: ChatRequest) -> StreamingResponse:
+async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     """Run a full agent turn, streaming SSE events as they happen."""
+    # Token forwarded from the orchestrator via header (never in the body).
+    token = request.headers.get("X-Cogservices-Token") or None
+
     try:
         chat_timeout = int(os.getenv("CHAT_TIMEOUT_SECONDS", "300"))
     except ValueError:
@@ -81,7 +83,7 @@ async def chat_stream(req: ChatRequest) -> StreamingResponse:
         run_id = str(uuid.uuid4())
         try:
             async with _lock:
-                session = await _get_or_create_session(token=req.token)
+                session = await _get_or_create_session(token=token)
                 async with asyncio.timeout(chat_timeout):
                     async for event in session.send(req.prompt):
                         yield event

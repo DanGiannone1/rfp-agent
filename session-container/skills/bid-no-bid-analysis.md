@@ -26,7 +26,7 @@ Use `bash` or `glob` to list files in the working directory. Read the RFP docume
 
 ### 2. Search Knowledge Base for Precedent
 
-Use `knowledge_base_retrieve` (if available) to find:
+Use `knowledge_base_retrieve` to find:
 - Past proposals for the same client or similar engagements
 - Win/loss history in this service area
 - Relevant personnel qualifications and availability

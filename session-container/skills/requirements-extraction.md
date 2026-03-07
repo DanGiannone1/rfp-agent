@@ -48,16 +48,20 @@ For each requirement, determine:
 - **Preferred (P)**: Desired but not disqualifying — uses "should", "preferred", "desired", "ideally"
 - **Informational (I)**: Context or background — no compliance needed
 
-### 4. Assess Compliance Status
+### 4. Search Knowledge Base for Capability Evidence
 
-Use `knowledge_base_retrieve` to search for evidence of capability. Mark each requirement:
+Use `knowledge_base_retrieve` to understand what Meridian can actually demonstrate before assigning compliance status. Useful things to search for include certifications and accreditations relevant to the RFP, past performance in the engagement's service area and industry, personnel qualifications for likely key roles, and quality control or independence documentation. The evidence you find here should inform your compliance assessments and supporting notes in the matrix.
+
+### 5. Assess Compliance Status
+
+Using what you know about Meridian's capabilities (from the KB and the RFP context), mark each requirement:
 - **Comply (C)**: Meridian can fully meet this requirement
 - **Partial Comply (PC)**: Can partially meet; note the gap
 - **Exception (E)**: Cannot meet; will propose alternative approach
 - **N/A**: Not applicable to Meridian's proposed solution
 - **TBD**: Needs further investigation
 
-### 5. Flag Ambiguities
+### 6. Flag Ambiguities
 
 Identify requirements that are:
 - Vague or open to interpretation
@@ -65,7 +69,7 @@ Identify requirements that are:
 - Missing key details (quantities, timelines, standards)
 - Unusually restrictive (may be wired for a specific vendor)
 
-### 6. Map to Response Outline
+### 7. Map to Response Outline
 
 Suggest which response section each requirement should be addressed in, creating a traceability matrix between RFP requirements and proposal sections.
 
@@ -119,7 +123,7 @@ Requirements where compliance is uncertain or gaps exist:
 
 ## Tools to Use
 
+- **knowledge_base_retrieve**: Search for evidence of firm capabilities, past performance, certifications, and personnel qualifications — run this in Step 4 before assessing any compliance statuses
 - **bash / str_replace_editor**: Read RFP document sections thoroughly
 - **grep**: Search for compliance-critical keywords ("shall", "must", "required", "mandatory", "certif")
 - **glob**: Find all related RFP documents and attachments
-- **knowledge_base_retrieve**: Search for evidence of firm capabilities, past performance, certifications, and personnel qualifications to assess compliance status

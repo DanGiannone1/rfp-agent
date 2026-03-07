@@ -1,0 +1,84 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  ACR: rfpagentacr.azurecr.io
+  RESOURCE_GROUP: rfpagent-rg
+
+jobs:
+  build:
+    name: Build container images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build session container
+        run: |
+          az acr build \
+            --registry rfpagentacr \
+            --image rfp-session:${{ github.sha }} \
+            --image rfp-session:latest \
+            --file session-container/Dockerfile \
+            session-container/
+
+      - name: Build orchestrator
+        run: |
+          az acr build \
+            --registry rfpagentacr \
+            --image rfp-orchestrator:${{ github.sha }} \
+            --image rfp-orchestrator:latest \
+            --file Dockerfile \
+            .
+
+      - name: Build frontend
+        run: |
+          az acr build \
+            --registry rfpagentacr \
+            --image rfp-frontend:${{ github.sha }} \
+            --image rfp-frontend:latest \
+            --file frontend/Dockerfile \
+            --build-arg "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" \
+            frontend/
+
+  deploy:
+    name: Deploy to Azure Container Apps
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update session pool
+        run: |
+          az containerapp sessionpool update \
+            --name rfpagent-sessions \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR }}/rfp-session:${{ github.sha }} \
+            --cooldown-period 300 \
+            --max-sessions 20 \
+            --ready-sessions 5
+
+      - name: Update orchestrator
+        run: |
+          az containerapp update \
+            --name rfpagent-app \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR }}/rfp-orchestrator:${{ github.sha }}
+
+      - name: Update frontend
+        run: |
+          az containerapp update \
+            --name rfpagent-frontend \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR }}/rfp-frontend:${{ github.sha }}

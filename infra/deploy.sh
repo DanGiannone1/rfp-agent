@@ -10,6 +10,13 @@
 #   ./infra/deploy.sh                          # uses defaults
 #   LOCATION=westus2 ./infra/deploy.sh         # override location
 #
+# Entra ID / Easy Auth setup is NOT handled here — it's a one-time manual
+# step. Pass the values as env vars to bake them into the frontend image:
+#
+#   ENTRA_TENANT_ID=<tenant>
+#   ENTRA_CLIENT_ID=<app-id>
+#   ENTRA_REDIRECT_URI=https://<frontend-url>   # auto-derived if omitted
+#
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────
@@ -27,6 +34,18 @@ AZURE_DEPLOYMENT="${AZURE_DEPLOYMENT:-gpt-5-codex}"
 COSMOS_ENDPOINT="${COSMOS_ENDPOINT:-}"
 ADLS_ACCOUNT_NAME="${ADLS_ACCOUNT_NAME:-${PREFIX}adls}"
 ADLS_FILESYSTEM="${ADLS_FILESYSTEM:-documents}"
+
+# Optional: restrict ingress to a specific IP (e.g. your office/home IP).
+# Leave blank to allow all traffic.
+ALLOWED_IP="${ALLOWED_IP:-}"
+
+# Optional: Entra ID / Easy Auth. Set all three to enable Easy Auth on the
+# orchestrator and bake auth config into the frontend. Leave blank to skip.
+# ENTRA_CLIENT_SECRET comes from the app registration's client credentials.
+ENTRA_TENANT_ID="${ENTRA_TENANT_ID:-}"
+ENTRA_CLIENT_ID="${ENTRA_CLIENT_ID:-}"
+ENTRA_CLIENT_SECRET="${ENTRA_CLIENT_SECRET:-}"
+ENTRA_REDIRECT_URI="${ENTRA_REDIRECT_URI:-}"  # auto-derived from frontend URL if blank
 
 echo "=== RFP Agent Deployment ==="
 echo "Resource Group:  $RG"
@@ -142,11 +161,6 @@ az search service create \
     -o none
 
 SEARCH_ENDPOINT="https://${SEARCH_NAME}.search.windows.net"
-SEARCH_KEY=$(az search admin-key show \
-    --service-name "$SEARCH_NAME" \
-    --resource-group "$RG" \
-    --query primaryKey -o tsv)
-
 echo "    Search endpoint: $SEARCH_ENDPOINT"
 
 # Grant Search roles to the managed identity
@@ -199,16 +213,15 @@ if ! az containerapp sessionpool create \
     --registry-server "$ACR_LOGIN_SERVER" \
     --registry-identity "$IDENTITY_ID" \
     --target-port 8080 \
-    --cooldown-period 600 \
+    --cooldown-period 300 \
     --network-status EgressEnabled \
-    --max-sessions 10 \
-    --ready-sessions 1 \
+    --max-sessions 20 \
+    --ready-sessions 5 \
     --cpu 1.0 --memory 2Gi \
     --env-vars \
         "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
         "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
         "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
-        "AZURE_SEARCH_KEY=$SEARCH_KEY" \
         "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
         "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
         "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
@@ -218,11 +231,13 @@ if ! az containerapp sessionpool create \
         --name "$SESSION_POOL_NAME" \
         --resource-group "$RG" \
         --image "$SESSION_IMAGE" \
+        --cooldown-period 300 \
+        --max-sessions 20 \
+        --ready-sessions 5 \
         --env-vars \
             "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
             "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
             "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
-            "AZURE_SEARCH_KEY=$SEARCH_KEY" \
             "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
             "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
             "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
@@ -305,94 +320,55 @@ APP_URL=$(az containerapp show \
 
 echo "    App URL: https://$APP_URL"
 
-# ── 11. Entra ID — Backend App Registration ─────────────────────────────
-echo ">>> Creating backend Entra ID app registration..."
-TENANT_ID=$(az account show --query tenantId -o tsv)
-
-BACKEND_APP_ID=$(az ad app create \
-    --display-name "${PREFIX}-orchestrator" \
-    --sign-in-audience AzureADMyOrg \
-    --query appId -o tsv)
-
-# Create service principal (idempotent — ignores "already exists" errors)
-az ad sp create --id "$BACKEND_APP_ID" 2>/dev/null || true
-
-END_DATE=$(date -u -d "+29 days" '+%Y-%m-%dT%H:%M:%SZ')  # tenant policy caps at 30 days
-BACKEND_SECRET=$(az ad app credential reset \
-    --id "$BACKEND_APP_ID" \
-    --display-name "easy-auth" \
-    --end-date "$END_DATE" \
-    --query password -o tsv)
-
-echo "    Backend App ID: $BACKEND_APP_ID"
-
-# Expose an API scope (Application ID URI + user_impersonation)
-echo ">>> Configuring backend API scope..."
-az ad app update --id "$BACKEND_APP_ID" \
-    --identifier-uris "api://$BACKEND_APP_ID"
-
-# Add oauth2PermissionScopes via MS Graph REST API (idempotent — skip if scope exists)
-APP_OBJECT_ID=$(az ad app show --id "$BACKEND_APP_ID" --query id -o tsv)
-EXISTING_SCOPE=$(az rest --method GET \
-    --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJECT_ID" \
-    --query "api.oauth2PermissionScopes[?value=='user_impersonation'].id" -o tsv)
-
-if [ -z "$EXISTING_SCOPE" ]; then
-    SCOPE_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
-    az rest --method PATCH \
-        --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJECT_ID" \
-        --headers "Content-Type=application/json" \
-        --body "{
-            \"api\": {
-                \"oauth2PermissionScopes\": [{
-                    \"adminConsentDescription\": \"Allow the app to access the RFP Agent API on behalf of the signed-in user\",
-                    \"adminConsentDisplayName\": \"Access RFP Agent\",
-                    \"id\": \"$SCOPE_ID\",
-                    \"isEnabled\": true,
-                    \"type\": \"User\",
-                    \"userConsentDescription\": \"Allow the app to access the RFP Agent API on your behalf\",
-                    \"userConsentDisplayName\": \"Access RFP Agent\",
-                    \"value\": \"user_impersonation\"
-                }]
-            }
-        }" \
+# ── 11. Easy Auth (optional) ─────────────────────────────────────────────
+# Requires ENTRA_TENANT_ID, ENTRA_CLIENT_ID, and ENTRA_CLIENT_SECRET to be set.
+# The app registration itself must be created manually — this step only
+# configures Easy Auth on the container app using the existing registration.
+if [ -n "$ENTRA_TENANT_ID" ] && [ -n "$ENTRA_CLIENT_ID" ] && [ -n "$ENTRA_CLIENT_SECRET" ]; then
+    echo ">>> Configuring Easy Auth on orchestrator..."
+    # Store the client secret in the container app's secret store so it is
+    # never passed as a CLI flag (which would expose it in process listings).
+    az containerapp secret set \
+        --name "$APP_NAME" --resource-group "$RG" \
+        --secrets "entra-client-secret=$ENTRA_CLIENT_SECRET" \
         -o none
-    SCOPE_ID="$SCOPE_ID"
+    az containerapp auth microsoft update \
+        --name "$APP_NAME" --resource-group "$RG" \
+        --client-id "$ENTRA_CLIENT_ID" \
+        --client-secret-setting-name "entra-client-secret" \
+        --issuer "https://login.microsoftonline.com/$ENTRA_TENANT_ID/v2.0" \
+        --yes \
+        -o none
+    az containerapp auth update \
+        --name "$APP_NAME" --resource-group "$RG" \
+        --unauthenticated-client-action Return401 \
+        -o none
+    echo "    Easy Auth enabled."
 else
-    echo "    Scope already exists, skipping."
-    SCOPE_ID="$EXISTING_SCOPE"
+    echo ">>> Skipping Easy Auth (ENTRA_TENANT_ID / ENTRA_CLIENT_ID / ENTRA_CLIENT_SECRET not set)."
 fi
 
-# ── 12. Entra ID — Enable Easy Auth on Orchestrator ─────────────────────
-echo ">>> Enabling Easy Auth on orchestrator..."
-az containerapp auth microsoft update \
-    --name "$APP_NAME" --resource-group "$RG" \
-    --client-id "$BACKEND_APP_ID" \
-    --client-secret "$BACKEND_SECRET" \
-    --issuer "https://login.microsoftonline.com/$TENANT_ID/v2.0" \
-    --yes \
-    -o none
-
-az containerapp auth update \
-    --name "$APP_NAME" --resource-group "$RG" \
-    --unauthenticated-client-action Return401 \
-    -o none
-
-# ── 13. Build & Push Frontend Image (first pass — no auth) ───────────────
-# Deploy frontend first to get the URL, then add SPA redirect URIs
-# to the backend app registration (single app reg approach).
+# ── 12. Build & Push Frontend Image ─────────────────────────────────────
 echo ">>> Building frontend image..."
+FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:latest"
+
+# Derive redirect URI from frontend URL if not explicitly provided
+FRONTEND_URL_PREVIEW="${FRONTEND_NAME}.$(az containerapp env show --name "$ENV_NAME" --resource-group "$RG" --query "properties.defaultDomain" -o tsv)"
+RESOLVED_REDIRECT_URI="${ENTRA_REDIRECT_URI:-https://$FRONTEND_URL_PREVIEW}"
+
 az acr build \
     --registry "$ACR_NAME" \
     --image "rfp-frontend:latest" \
     --file frontend/Dockerfile \
     --build-arg "NEXT_PUBLIC_API_URL=https://$APP_URL" \
+    --build-arg "NEXT_PUBLIC_ENTRA_TENANT_ID=${ENTRA_TENANT_ID}" \
+    --build-arg "NEXT_PUBLIC_ENTRA_BACKEND_CLIENT_ID=${ENTRA_CLIENT_ID}" \
+    --build-arg "NEXT_PUBLIC_ENTRA_REDIRECT_URI=${RESOLVED_REDIRECT_URI}" \
     frontend/ \
     -o none
 
-# ── 14. Deploy Frontend as Container App ────────────────────────────────
+# ── 12. Deploy Frontend as Container App ────────────────────────────────
 echo ">>> Deploying frontend container app..."
-FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:latest"
 
 if ! az containerapp create \
     --name "$FRONTEND_NAME" \
@@ -422,45 +398,7 @@ FRONTEND_URL=$(az containerapp show \
 
 echo "    Frontend URL: https://$FRONTEND_URL"
 
-# ── 15. Add SPA redirect URIs to backend app registration ─────────────
-# Single app reg: the frontend uses the backend app ID as its MSAL client.
-# Only openid/profile scopes are requested — always pre-consented, no admin
-# consent required even in locked-down tenants.
-echo ">>> Adding SPA redirect URIs to backend app registration..."
-az rest --method PATCH \
-    --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJECT_ID" \
-    --headers "Content-Type=application/json" \
-    --body "{
-        \"spa\": {
-            \"redirectUris\": [
-                \"https://$FRONTEND_URL\",
-                \"http://localhost:3000\"
-            ]
-        }
-    }" \
-    -o none
-
-# ── 16. Rebuild Frontend with Auth Config ────────────────────────────────
-echo ">>> Rebuilding frontend with Entra ID config..."
-az acr build \
-    --registry "$ACR_NAME" \
-    --image "rfp-frontend:latest" \
-    --file frontend/Dockerfile \
-    --build-arg "NEXT_PUBLIC_API_URL=https://$APP_URL" \
-    --build-arg "NEXT_PUBLIC_ENTRA_TENANT_ID=$TENANT_ID" \
-    --build-arg "NEXT_PUBLIC_ENTRA_BACKEND_CLIENT_ID=$BACKEND_APP_ID" \
-    --build-arg "NEXT_PUBLIC_ENTRA_REDIRECT_URI=https://$FRONTEND_URL" \
-    frontend/ \
-    -o none
-
-# Update the frontend container app with the new image
-az containerapp update \
-    --name "$FRONTEND_NAME" \
-    --resource-group "$RG" \
-    --image "$FRONTEND_IMAGE" \
-    -o none
-
-# ── 17. Update orchestrator CORS with frontend URL ─────────────────────
+# ── 13. Update orchestrator CORS with frontend URL ─────────────────────
 echo ">>> Updating orchestrator CORS..."
 az containerapp update \
     --name "$APP_NAME" \
@@ -479,7 +417,27 @@ az containerapp ingress cors enable \
     --allow-credentials true \
     -o none
 
-# ── 18. Summary ──────────────────────────────────────────────────────────
+# ── 14. IP Restrictions ──────────────────────────────────────────────────
+if [ -n "$ALLOWED_IP" ]; then
+    echo ">>> Restricting ingress to $ALLOWED_IP..."
+    az containerapp ingress access-restriction set \
+        --name "$APP_NAME" --resource-group "$RG" \
+        --rule-name "allow-my-ip" \
+        --ip-address "$ALLOWED_IP" \
+        --action Allow \
+        -o none
+    az containerapp ingress access-restriction set \
+        --name "$FRONTEND_NAME" --resource-group "$RG" \
+        --rule-name "allow-my-ip" \
+        --ip-address "$ALLOWED_IP" \
+        --action Allow \
+        -o none
+    echo "    IP restriction set."
+else
+    echo ">>> Skipping IP restriction (ALLOWED_IP not set)."
+fi
+
+# ── 15. Summary ─────────────────────────────────────────────────────────
 echo ""
 echo "=== Deployment Complete ==="
 echo ""
@@ -492,9 +450,14 @@ echo "AI Search (knowledge base):"
 echo "  Endpoint:               $SEARCH_ENDPOINT"
 echo "  KB Name:                rfp-knowledge"
 echo ""
+if [ -n "$ENTRA_TENANT_ID" ]; then
 echo "Entra ID (auth):"
-echo "  App Registration:       $BACKEND_APP_ID (single app reg, SPA + Easy Auth)"
-echo "  Tenant ID:              $TENANT_ID"
+echo "  Tenant ID:              $ENTRA_TENANT_ID"
+echo "  Client ID:              $ENTRA_CLIENT_ID"
+echo "  Redirect URI:           $RESOLVED_REDIRECT_URI"
+else
+echo "Entra ID: not configured (pass ENTRA_TENANT_ID / ENTRA_CLIENT_ID to enable)"
+fi
 echo ""
 echo "Next step: run 'uv run python setup_knowledge_base.py' to create the knowledge base."
 echo ""

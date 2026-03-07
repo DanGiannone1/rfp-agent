@@ -150,6 +150,20 @@ wheels = [
 ]
 
 [[package]]
+name = "azure-ai-contentunderstanding"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1c/14/fe44c6a2a1a2cd68ad4f1850760d6fdbd42d1cd91f90d1b14b3c9c629d05/azure_ai_contentunderstanding-1.0.0.tar.gz", hash = "sha256:a6dc75096c83d588f0cb73d343e39f6ce2809b5b943fe8515512cfb57c1aa843", size = 211054, upload-time = "2026-02-28T02:17:53.648Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/cb/4de43cb4942ec0b90e474d16ee18cf552696eae67c99dc4146f3df4724af/azure_ai_contentunderstanding-1.0.0-py3-none-any.whl", hash = "sha256:e3522b54ed41b65720ac9f286bbd31a37604ba38921d2956a5b830630ff2cb60", size = 101130, upload-time = "2026-02-28T02:17:54.942Z" },
+]
+
+[[package]]
 name = "azure-common"
 version = "1.1.28"
 source = { registry = "https://pypi.org/simple" }
@@ -1021,6 +1035,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "azure-ai-contentunderstanding" },
     { name = "azure-identity" },
     { name = "azure-search-documents" },
     { name = "azure-storage-file-datalake" },
@@ -1034,6 +1049,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.11.0" },
+    { name = "azure-ai-contentunderstanding", specifier = ">=1.0.0" },
     { name = "azure-identity", specifier = ">=1.25.2" },
     { name = "azure-search-documents", specifier = ">=11.7.0b2" },
     { name = "azure-storage-file-datalake", specifier = ">=12.23.0" },

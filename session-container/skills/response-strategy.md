@@ -136,7 +136,7 @@ For each evaluator audience (technical, management, procurement), define:
 
 ## Tools to Use
 
+- **knowledge_base_retrieve**: Search for past proposals to similar clients, case studies, win/loss data, competitive intelligence, approved differentiators, and relationship history — search before developing win themes or competitive positioning
 - **bash / str_replace_editor**: Read RFP evaluation criteria, scope, and background sections
 - **grep**: Search for evaluation weighting, scoring methodology, incumbent references
-- **knowledge_base_retrieve**: Search for past proposals to similar clients, case studies, win/loss data, competitive intelligence, and approved differentiators
 - **glob**: Find all RFP-related documents including amendments and Q&A

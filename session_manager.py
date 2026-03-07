@@ -208,10 +208,11 @@ class SessionManager:
 
             cogservices_token = await self._get_cogservices_token()
             chat_body = {"prompt": prompt}
+            headers = {}
             if cogservices_token:
-                chat_body["token"] = cogservices_token
+                headers["X-Cogservices-Token"] = cogservices_token
 
-            async with self._http.stream("POST", stream_url, json=chat_body) as resp:
+            async with self._http.stream("POST", stream_url, json=chat_body, headers=headers) as resp:
                 if resp.status_code == 409:
                     yield _agui_error("Session is busy. Wait for the current response to finish and retry.")
                     yield _agui_finished()

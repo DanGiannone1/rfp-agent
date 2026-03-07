@@ -8,6 +8,13 @@ export interface SessionMetadata {
   status: string;
 }
 
+export async function getSession(sessionId: string): Promise<SessionMetadata | null> {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Session check failed: ${res.status}`);
+  return res.json();
+}
+
 export async function createSession(): Promise<SessionMetadata> {
   const res = await fetch(`${API_BASE}/sessions`, {
     method: "POST",
