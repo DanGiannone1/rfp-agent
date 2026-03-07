@@ -84,7 +84,7 @@ For each medium-and-above risk, propose:
 
 ### 6. Save Output
 
-Save the risk register to the working directory as `risk_register.csv` (using the Risk Register table from the output format) so the user can download it and it appears in the artifacts panel. Save the full narrative report as `risk_gap_analysis.md`.
+Save the risk register to the working directory as `risk_register.csv` with these columns in order: `ID, Category, Risk Description, Likelihood, Severity, Score, Level, Mitigation Strategy, Owner, Status`. Save the full narrative report as `risk_gap_analysis.md`.
 
 ### 7. Identify Gaps Requiring Action
 

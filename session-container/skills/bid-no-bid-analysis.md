@@ -104,6 +104,10 @@ Rate the opportunity on six dimensions. For each, provide a numeric score and a 
 - [Action items if Go/Conditional Go, or suggested alternative if No-Go]
 ```
 
+### 6. Save Output
+
+Save the scorecard to the working directory as `bid_no_bid_scorecard.md` so the user can download it and it appears in the artifacts panel.
+
 ## Tools to Use
 
 - **bash / glob**: List and read RFP files in the working directory

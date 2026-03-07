@@ -94,20 +94,20 @@ Prepare a sign-off checklist for leadership review:
 
 Flag each item as Ready / Needs Review / Blocked and identify the responsible person.
 
-### 9. Generate Compliance Checklist
+### 9. Verify Claims Against Knowledge Base
 
-Compile findings into a structured checklist with pass/fail/warning status.
-
-### 9b. Verify Claims Against Knowledge Base
-
-Before finalizing, use `knowledge_base_retrieve` to spot-check key claims in the drafted proposal:
+Before compiling the final checklist, use `knowledge_base_retrieve` to spot-check key claims in the drafted proposal:
 - Any cited past performance metrics or client outcomes — confirm they appear in KB records
 - Personnel qualifications and certifications referenced — verify they match KB personnel files
 - Firm credentials, registrations, or accreditations mentioned — confirm they are current per KB compliance docs
 
 Flag any claim that cannot be verified in the KB as needing human confirmation before submission.
 
-### 10. Save Output
+### 10. Generate Compliance Checklist
+
+Compile all findings from steps 1–9 into a structured checklist with pass/fail/warning status.
+
+### 11. Save Output
 
 Save the compliance review report to the working directory as `compliance_review.md` so the user can download it and it appears in the artifacts panel.
 

@@ -1,4 +1,4 @@
-# ROI & Pricing Analysis
+# Pricing Analysis
 
 ## Purpose
 
@@ -163,6 +163,10 @@ Use KB data to benchmark:
 ### Action Items
 1. [Items requiring human decision — e.g., partner approval on discounts, subcontractor quotes]
 ```
+
+### 8. Save Output
+
+Save the completed analysis to the working directory as `pricing_analysis.md` so the user can download it and it appears in the artifacts panel.
 
 ## Tools to Use
 

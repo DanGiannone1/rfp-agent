@@ -134,6 +134,10 @@ For each evaluator audience (technical, management, procurement), define:
 - **Critical Success Factors:** [What must go right to win]
 ```
 
+### 7. Save Output
+
+Save the strategy brief to the working directory as `response_strategy.md` so the user can download it and it appears in the artifacts panel.
+
 ## Tools to Use
 
 - **knowledge_base_retrieve**: Search for past proposals to similar clients, case studies, win/loss data, competitive intelligence, approved differentiators, and relationship history — search before developing win themes or competitive positioning
