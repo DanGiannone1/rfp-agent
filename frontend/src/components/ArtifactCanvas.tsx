@@ -86,7 +86,7 @@ export default function ArtifactCanvas({
   const iconBtnClass = "interactive-control rounded-lg border border-white/15 bg-white/[0.04] p-1.5 text-app-muted-strong hover:text-app-fg";
 
   return (
-    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 max-w-[680px] border-l border-white/10 bg-[#10151f]">
+    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 border-l border-white/10 bg-[#10151f]">
       <div className="flex items-center justify-between border-b border-white/[0.15] px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
