@@ -1,3 +1,8 @@
+---
+name: requirements-extraction
+description: Extract and classify RFP requirements into a traceability matrix; use when asked to extract requirements or parse the RFP.
+---
+
 # Requirements Extraction
 
 ## Purpose

@@ -10,10 +10,10 @@ interface MessageListProps {
 }
 
 const SUGGESTIONS = [
-  { icon: "checklist", label: "Compliance check", description: "Generate a full compliance matrix with pass/fail status", prompt: "Extract mandatory requirements into a compliance matrix." },
-  { icon: "gauge", label: "Fit assessment", description: "Score your bid across six weighted criteria", prompt: "Run a bid/no-bid score across six dimensions." },
-  { icon: "doc", label: "Win strategy", description: "Create an executive summary with win themes", prompt: "Draft a one-page executive summary with win themes." },
-  { icon: "shield", label: "Risk review", description: "Surface contract risks and recommended mitigations", prompt: "List top delivery risks and mitigation actions." },
+  { icon: "gauge", label: "Bid/No-Bid analysis", description: "Score this opportunity across six weighted dimensions", prompt: "Run a bid/no-bid analysis and score this opportunity across six dimensions." },
+  { icon: "checklist", label: "Extract requirements", description: "Parse the RFP into a prioritized requirements matrix", prompt: "Extract all requirements from the RFP and build a prioritized matrix with section and page references." },
+  { icon: "doc", label: "Executive summary", description: "Draft a one-page summary with our win themes", prompt: "Draft a one-page executive summary with our key win themes." },
+  { icon: "strategy", label: "Response strategy", description: "Define win themes and competitive positioning", prompt: "Develop a response strategy with win themes and competitive positioning." },
 ];
 
 function SuggestionIcon({ icon }: { icon: string }) {
@@ -27,6 +27,8 @@ function SuggestionIcon({ icon }: { icon: string }) {
       return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
     case "shield":
       return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+    case "strategy":
+      return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>;
     default:
       return null;
   }

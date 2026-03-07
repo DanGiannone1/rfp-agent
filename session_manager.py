@@ -299,7 +299,10 @@ class SessionManager:
 
     async def get_file_content(self, session_id: str, filename: str) -> dict:
         """Proxy GET /files/content to the session container."""
+        from urllib.parse import quote
         url = self._pool_url("/files/content", session_id)
-        resp = await self._http.get(url, params={"filename": filename})
+        # Append filename directly to preserve the identifier param already in the URL.
+        # httpx params= replaces the entire query string, which would drop identifier.
+        resp = await self._http.get(f"{url}&filename={quote(filename, safe='')}")
         resp.raise_for_status()
         return resp.json()

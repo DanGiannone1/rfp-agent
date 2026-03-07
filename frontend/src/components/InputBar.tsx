@@ -144,7 +144,7 @@ export default function InputBar({
             onKeyDown={handleKeyDown}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
-            placeholder="Ask for requirements, strategy, compliance, pricing..."
+            placeholder="Ask for bid analysis, requirements, strategy, pricing..."
             disabled={disabled || uploadBusy}
             rows={1}
             className="min-h-9 max-h-52 flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-relaxed text-app-fg outline-none placeholder:text-app-muted disabled:opacity-50"

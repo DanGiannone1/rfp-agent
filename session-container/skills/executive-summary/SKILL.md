@@ -1,3 +1,8 @@
+---
+name: executive-summary
+description: Write a 1–2 page executive summary synthesizing analysis and win themes; use when asked for an executive summary.
+---
+
 # Executive Summary Generation
 
 ## Purpose

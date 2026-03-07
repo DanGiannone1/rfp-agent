@@ -1,3 +1,120 @@
+# Tracing & Observability
+
+---
+
+## Local Dev Console Logging (`LOG_AGENT_EVENTS`)
+
+A lightweight console logging mode built into `session-container/agent.py`. Useful for
+investigating what the agent is doing — which tools it calls, in what order, how long
+each takes, and how many turns it takes to settle — without setting up any cloud
+infrastructure.
+
+### Enabling it
+
+Add to `.env`:
+```
+LOG_AGENT_EVENTS=true
+```
+
+Then start with `uv run dev.py` (see [Starting services correctly](#starting-services-correctly) below).
+
+### What gets logged
+
+```
+INFO:agent.events:[TURN START] thread=92c3aaec... run=7b15164f...
+INFO:agent.events:[THINKING] I'll start by listing the files in the working directory...
+INFO:agent.events:[TOOL] >>> bash  args={"command": "ls -la"}
+INFO:agent.events:[TOOL] <<< bash  duration=0.17s
+INFO:agent.events:[TOOL] >>> view  args={"path": "/workspace"}
+INFO:agent.events:[TOOL] <<< view  duration=0.09s
+INFO:agent.events:[TOOL] >>> glob  args={"pattern": "**/*"}
+INFO:agent.events:[TOOL] <<< glob  duration=0.08s
+INFO:agent.events:[THINKING] Plan: I can see the RFP document...
+INFO:agent.events:[TURN END] duration=44.28s  tools=4
+```
+
+`[THINKING]` only fires on the **first text delta** of each message (one line per assistant
+message, not per token). `[TURN END]` includes wall-clock duration and total tool calls for
+the turn.
+
+### Implementation
+
+- Module-level flag `_LOG = os.getenv("LOG_AGENT_EVENTS", "").lower() == "true"` — checked
+  once at import time, zero overhead when disabled.
+- `_log_event(msg)` helper returns immediately if `_LOG` is false — no `if _LOG:` scattered
+  through event handlers.
+- Tool timings: `_tool_names` stores `(tool_name, start_time)` tuples; duration computed at
+  `TOOL_EXECUTION_COMPLETE`.
+- Log level is `INFO` via Python's `logging` module (`logger = logging.getLogger("agent.events")`).
+  Set `PYTHONUNBUFFERED=1` to prevent output buffering in the terminal.
+
+---
+
+### Starting services correctly
+
+**Always use `uv run dev.py`** — it sets `POOL_MANAGEMENT_ENDPOINT=http://localhost:8080`
+and `WORKSPACE=./workspace` before starting the child processes. If you start services
+manually without these, session creation will fail with:
+
+```
+httpx.UnsupportedProtocol: Request URL is missing an 'http://' or 'https://' protocol.
+```
+
+If you must start services individually (e.g. to capture logs per-process):
+
+```bash
+# Session container — with event logging
+LOG_AGENT_EVENTS=true PYTHONUNBUFFERED=1 \
+  uv run uvicorn server:app --port 8080 \
+  > /tmp/session-container.log 2>&1 &
+
+# Orchestrator — must set POOL_MANAGEMENT_ENDPOINT explicitly
+POOL_MANAGEMENT_ENDPOINT=http://localhost:8080 PYTHONUNBUFFERED=1 \
+  uv run uvicorn app:app --port 8000 \
+  > /tmp/orchestrator.log 2>&1 &
+
+# Frontend
+cd frontend && npm run dev > /tmp/frontend.log 2>&1 &
+```
+
+---
+
+### Investigating agent behaviour
+
+Start the stack with `LOG_AGENT_EVENTS=true`, use the frontend to upload an RFP and
+trigger a workflow (e.g. "Run a bid/no-bid analysis"), then read the log:
+
+```bash
+# If started with services split (logs to file):
+grep -E "\[TURN|TOOL|THINKING|ERROR" /tmp/session-container.log
+
+# If started with dev.py (logs interleaved in terminal):
+# filter with grep in a second terminal:
+tail -f /tmp/session-container.log | grep -E "\[TURN|TOOL|THINKING|ERROR"
+```
+
+Sample output from a real bid/no-bid analysis run (City of Lakewood audit RFP):
+
+```
+[TURN START] thread=92c3aaec... run=7c711356...
+[TOOL] >>> bash  args={"command": "ls -la", "description": "List files in the current directory"}
+[TOOL] <<< bash  duration=0.17s
+[TOOL] >>> bash  args={"command": "ls -la || ..."}
+[TOOL] <<< bash  duration=0.16s
+[TOOL] >>> view  args={"path": "/workspace"}
+[TOOL] <<< view  duration=0.09s
+[TOOL] >>> glob  args={"pattern": "**/*"}
+[TOOL] <<< glob  duration=0.08s
+[THINKING] Plan: ...
+[TURN END] duration=44.28s  tools=4
+```
+
+For a repeatable investigation, the existing `tests/comprehensive.spec.ts` Journey 2
+("Upload Document and Discuss") is the closest match — upload a `.txt` RFP file and
+send a message. The `navigateToChatViaIntake` helper handles session retry logic.
+
+---
+
 # Foundry Tracing — Implementation Spec
 
 ## Overview

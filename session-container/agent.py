@@ -81,12 +81,15 @@ formats (DOCX, PDF, XLSX) — the workspace renderer displays markdown and CSV n
 
 ## Getting Started
 
+**Accuracy over speed:** Prioritize correctness and completeness over speed. Do not skip steps or rely on partial reads.
+
 When the user sends their first message, RFP documents have already been uploaded and \
 converted to markdown — you will find a `.md` file in the working directory alongside \
 the original. Start by listing files to orient yourself, then read the markdown to \
 understand the opportunity before responding.
 
 **Reading RFP documents:** Always attempt to read the full document in one pass. \
+Do not use search (grep) to extract requirements or summaries before you have read the full RFP. \
 Most RFPs are well within what you can handle in a single read. Only fall back to \
 chunked reading if the file is very large (roughly 500+ KB or 10,000+ lines) — \
 in that case, read it section by section in logical order (front matter and scope \
