@@ -61,8 +61,8 @@ export default function IntakeScreen({
   const activeStatus = localError || uploadError || sessionError || statusMessage;
 
   return (
-    <main className="relative flex min-h-screen items-start pt-12 sm:items-center sm:pt-0 justify-center overflow-hidden bg-app p-4 text-app-fg">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(79,133,255,.15),transparent_38%)]" />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app p-4 text-app-fg">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(79,133,255,.20),transparent_38%)]" />
 
       <section className="relative z-10 w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] backdrop-blur-xl md:p-8">
         <header className="mb-6">

@@ -86,12 +86,12 @@ export default function ArtifactCanvas({
   const iconBtnClass = "interactive-control rounded-lg border border-white/15 bg-white/[0.04] p-1.5 text-app-muted-strong hover:text-app-fg";
 
   return (
-    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 max-w-[680px] border-l border-white/10 bg-[#0d1018]">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 max-w-[680px] border-l border-white/10 bg-[#10151f]">
+      <div className="flex items-center justify-between border-b border-white/[0.15] px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="truncate text-sm font-semibold text-app-fg" title={filename}>{filename}</h3>
-            <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-app-muted">
+            <span className="shrink-0 rounded-md bg-white/[0.10] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-app-muted-strong">
               {filename.split('.').pop()?.toUpperCase() ?? 'FILE'}
             </span>
           </div>
@@ -121,7 +121,7 @@ export default function ArtifactCanvas({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-6">
+      <div className="min-h-0 flex-1 overflow-auto px-6 py-6">
         {loading && (
           <div className="space-y-3 pt-2">
             <div className="loading-shimmer h-6 w-48 rounded-lg border border-white/10 bg-white/[0.03]" />
@@ -140,13 +140,15 @@ export default function ArtifactCanvas({
 
         {!loading && !error && (
           isMarkdown(filename, mimeType) ? (
-            <article className="prose prose-message prose-canvas max-w-none">
+            <article className="prose prose-message prose-canvas mx-auto max-w-[68ch]">
               <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
                 {content || "_Empty artifact_"}
               </ReactMarkdown>
             </article>
           ) : isCsv(filename) ? (
-            <CsvTable content={content || ""} />
+            <div className="mx-auto max-w-full">
+              <CsvTable content={content || ""} />
+            </div>
           ) : (
             <pre className="overflow-x-auto rounded-xl border border-white/12 bg-black/25 p-3 text-xs text-app-fg whitespace-pre-wrap">
               {content || "Empty artifact"}

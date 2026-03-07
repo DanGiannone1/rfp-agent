@@ -796,7 +796,7 @@ export default function Chat() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-app text-app-fg">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_30%_at_50%_0%,rgba(79,133,255,.15),transparent_60%),linear-gradient(180deg,#070b13_0%,#05080e_50%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_30%_at_50%_0%,rgba(79,133,255,.15),transparent_60%)]" />
       <header className="sticky top-0 z-10 border-b border-white/10 bg-black/50 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
         <div className="flex w-full items-center gap-3 px-4 py-2.5 lg:px-6">
           <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#5f92ff] to-[#3a6fd8] text-white shadow-[0_10px_24px_rgba(64,124,255,.45)] ring-1 ring-white/20 ${agentWorking ? "agent-working" : ""}`}>
@@ -809,7 +809,7 @@ export default function Chat() {
             <h1 className="truncate text-[15px] font-semibold tracking-[0.01em] text-white sm:text-[16px]">Proposal Workspace</h1>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted md:flex">
+          <div className="hidden items-center gap-2 rounded-xl border border-white/20 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted md:flex">
             <span className={`h-1.5 w-1.5 rounded-full ${agentWorking ? "bg-brand" : "bg-emerald-400"}`} />
             <span>{agentWorking ? "Agent active" : "Ready"}</span>
             <span className="text-app-muted-strong">· {files.length} file{files.length === 1 ? "" : "s"}</span>
@@ -820,7 +820,7 @@ export default function Chat() {
             data-testid="new-chat-button"
             onClick={handleNewChat}
             disabled={state.isStreaming || state.isInitializing || isChatUploading}
-            className="interactive-control inline-flex rounded-xl border border-brand/40 bg-brand/[0.08] px-3 py-2 text-xs font-medium text-brand-strong disabled:cursor-not-allowed disabled:opacity-45"
+            className="interactive-control inline-flex rounded-xl border border-brand/40 bg-brand/[0.08] px-3 py-2 text-xs font-medium text-brand-strong hover:bg-brand/15 hover:border-brand/55 disabled:cursor-not-allowed disabled:opacity-45"
           >
             New chat
           </button>
@@ -845,8 +845,8 @@ export default function Chat() {
         />
 
         <div className="flex min-h-0 flex-1">
-          <div className={`flex min-h-0 flex-col transition-all duration-300 ${selectedArtifact ? "w-[420px] shrink-0 lg:w-[460px]" : "flex-1"}`}>
-            <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
+          <div className={`flex min-h-0 flex-col transition-all duration-300 ${selectedArtifact ? "w-[360px] shrink-0" : "flex-1"}`}>
+            <MessageList messages={state.messages} onSuggestion={state.isStreaming || state.isInitializing ? undefined : handleSend} />
 
             <InputBar
               onSend={handleSend}

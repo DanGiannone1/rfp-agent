@@ -62,7 +62,7 @@ export default function DocumentsList({
 
   if (files.length === 0) {
     return (
-        <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-app-muted">
+        <div className="rounded-xl border border-white/[0.12] bg-black/20 px-3 py-2 text-xs text-app-muted">
           {emptyLabel || "No documents attached yet."}
         </div>
       );
@@ -85,8 +85,8 @@ export default function DocumentsList({
             title={isClickable ? "Open in canvas" : undefined}
             className={`group flex items-center gap-2.5 rounded-xl border px-2.5 py-2.5 transition-all ${
               isClickable
-                ? "cursor-pointer border-white/8 bg-white/[0.02] hover:border-brand/40 hover:bg-brand/[0.10] active:scale-[0.99]"
-                : "border-white/8 bg-white/[0.02]"
+                ? "cursor-pointer border-white/[0.12] bg-white/[0.02] hover:border-brand/40 hover:bg-brand/[0.10] active:scale-[0.99]"
+                : "border-white/[0.12] bg-white/[0.02]"
             }`}
           >
             <FileIcon />

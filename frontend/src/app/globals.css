@@ -345,7 +345,7 @@ body {
 }
 
 .prose-message h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
-.prose-message h2 { font-size: 1.2rem;  font-weight: 600; letter-spacing: -0.008em; }
+.prose-message h2 { font-size: 1.2rem;  font-weight: 700; letter-spacing: -0.008em; }
 .prose-message h3 { font-size: 1.05rem; font-weight: 600; color: #b8c8e8; }
 
 .prose-message p,
@@ -354,6 +354,9 @@ body {
   margin-top: 0.75em;
   margin-bottom: 0.75em;
 }
+.prose-message ul { padding-left: 1.5em; list-style: disc; }
+.prose-message ol { padding-left: 1.5em; list-style: decimal; }
+.prose-message li { margin: 0.2em 0; }
 .prose-message p:first-child { margin-top: 0; }
 .prose-message p:last-child  { margin-bottom: 0; }
 
@@ -505,7 +508,7 @@ body {
   border-radius: 0.9rem;
 }
 
-.prose-message table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.prose-message table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.875rem; }
 .prose-message th {
   background: rgba(63, 124, 255, 0.15);
   color: #f3f7ff;
@@ -642,4 +645,11 @@ body {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Canvas document reading mode */
+.canvas-content {
+  max-width: 68ch;
+  margin-left: auto;
+  margin-right: auto;
 }

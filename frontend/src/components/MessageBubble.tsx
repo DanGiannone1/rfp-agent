@@ -61,14 +61,14 @@ function toolLabelForStatus(name: string, status: "running" | "done"): string {
   const normalized = name.includes("-") ? name.substring(name.indexOf("-") + 1) : name;
   const labels: Record<string, Record<string, string>> = {
     running: {
-      search: "Searching", read_file: "Reading file", write_file: "Writing file",
+      search: "Searching", read_file: "Reading file", write_file: "Writing file", create_file: "Creating file",
       view: "Reading file", analyze: "Analyzing", summarize: "Summarizing",
       extract: "Extracting", compare: "Comparing", bash: "Running command",
       grep: "Searching files", glob: "Finding files", str_replace_editor: "Editing file",
       knowledge_base_retrieve: "Searching knowledge base",
     },
     done: {
-      search: "Searched", read_file: "Read file", write_file: "Wrote file",
+      search: "Searched", read_file: "Read file", write_file: "Wrote file", create_file: "Created file",
       view: "Read file", analyze: "Analyzed", summarize: "Summarized",
       extract: "Extracted", compare: "Compared", bash: "Ran command",
       grep: "Searched files", glob: "Found files", str_replace_editor: "Edited file",
@@ -90,6 +90,8 @@ function toolContext(name: string, args: string | undefined): string | null {
       case "str_replace_editor": return p.path || null;
       case "view": return p.path || null;
       case "read_file": return p.path || null;
+      case "write_file": return p.path || null;
+      case "create_file": return p.path || null;
       default: return null;
     }
   } catch { return null; }
@@ -149,7 +151,7 @@ function groupParts(parts: MessagePart[]): RenderedSegment[] {
 function ToolGroup({ parts, isStreaming }: { parts: (MessagePart & { type: "tool_call" })[]; isStreaming: boolean }) {
   const [expanded, setExpanded] = useState(true);
   const allDone = parts.every((p) => p.status === "done");
-  const canCollapse = allDone && !isStreaming && parts.length > 2;
+  const canCollapse = allDone && !isStreaming && parts.length > 1;
   const isExpanded = canCollapse ? expanded : true;
   const runningCount = parts.filter((p) => p.status === "running").length;
 
