@@ -10,14 +10,14 @@ interface MessageListProps {
 }
 
 const SUGGESTIONS = [
-  { icon: "checklist", label: "Compliance check", description: "Map RFP requirements against our capabilities", prompt: "Extract mandatory requirements into a compliance matrix." },
-  { icon: "gauge", label: "Fit assessment", description: "Score our fit across key evaluation dimensions", prompt: "Run a bid/no-bid score across six dimensions." },
-  { icon: "doc", label: "Win strategy", description: "Draft a compelling one-page proposal summary", prompt: "Draft a one-page executive summary with win themes." },
-  { icon: "shield", label: "Risk review", description: "Identify delivery risks and mitigation plans", prompt: "List top delivery risks and mitigation actions." },
+  { icon: "checklist", label: "Compliance check", description: "Generate a full compliance matrix with pass/fail status", prompt: "Extract mandatory requirements into a compliance matrix." },
+  { icon: "gauge", label: "Fit assessment", description: "Score your bid across six weighted criteria", prompt: "Run a bid/no-bid score across six dimensions." },
+  { icon: "doc", label: "Win strategy", description: "Create an executive summary with win themes", prompt: "Draft a one-page executive summary with win themes." },
+  { icon: "shield", label: "Risk review", description: "Surface contract risks and recommended mitigations", prompt: "List top delivery risks and mitigation actions." },
 ];
 
 function SuggestionIcon({ icon }: { icon: string }) {
-  const cls = "shrink-0 text-brand/80";
+  const cls = "shrink-0 text-brand";
   switch (icon) {
     case "checklist":
       return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cls}><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>;
@@ -69,22 +69,25 @@ export default function MessageList({ messages, onSuggestion }: MessageListProps
       <div className="mx-auto w-full max-w-4xl px-4 py-5 md:py-7">
         {messages.length === 0 ? (
           <div className="mx-auto flex min-h-[52vh] max-w-3xl flex-col items-center justify-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-brand/20 ring-1 ring-brand/35">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-brand-strong">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-brand/20 ring-1 ring-brand/35 idle-breathe">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-brand-strong">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <polyline points="9 13 11 15 15 11"/>
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-app-fg">RFP uploaded. What should we do first?</h2>
+            <h2 className="text-xl font-semibold text-app-fg">Your RFP is ready. Where do you want to start?</h2>
             <p className="mt-1.5 text-sm text-app-muted">Pick a starting point or type your own request.</p>
 
             {onSuggestion && (
-              <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
-                {SUGGESTIONS.map((s) => (
+              <div className="mt-8 grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+                {SUGGESTIONS.map((s, i) => (
                   <button
                     key={s.prompt}
                     type="button"
                     onClick={() => onSuggestion(s.prompt)}
-                    className="interactive-chip flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left transition hover:border-brand/40 hover:bg-brand/8"
+                    style={{ animationDelay: `${i * 60}ms` }}
+                    className="interactive-chip animate-fade-in flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left transition hover:border-brand/40 hover:bg-brand/8 active:bg-brand/15"
                   >
                     <SuggestionIcon icon={s.icon} />
                     <div>
@@ -122,8 +125,9 @@ export default function MessageList({ messages, onSuggestion }: MessageListProps
             bottomRef.current?.scrollIntoView({ behavior: "smooth" });
             setShowJumpToLatest(false);
           }}
-          className="interactive-control fixed bottom-28 left-1/2 z-20 -translate-x-1/2 rounded-full border border-white/15 bg-black/85 px-3 py-2 text-xs text-app-fg shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur md:bottom-32 md:left-auto md:right-8 md:translate-x-0"
+          className="interactive-control animate-fade-in fixed bottom-28 left-1/2 z-20 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/85 px-3 py-2 text-xs text-app-fg shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur md:bottom-32 md:left-auto md:right-8 md:translate-x-0"
         >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           Jump to latest
         </button>
       )}

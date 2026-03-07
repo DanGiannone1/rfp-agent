@@ -27,6 +27,7 @@ export default function InputBar({
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [localUploading, setLocalUploading] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -77,7 +78,7 @@ export default function InputBar({
       onSubmit={(e) => void handleSubmit(e)}
       className="sticky bottom-0 border-t border-white/10 bg-[linear-gradient(180deg,rgba(5,7,12,.7)_0%,rgba(5,7,12,.98)_42%)] backdrop-blur-xl"
     >
-      <div className="mx-auto w-full max-w-4xl px-4 pb-[calc(max(env(safe-area-inset-bottom),0.75rem)+1.3rem)] pt-2.5 sm:pb-[calc(max(env(safe-area-inset-bottom),0.75rem)+0.9rem)] sm:pt-3">
+      <div className="mx-auto w-full max-w-4xl px-3 pb-[calc(max(env(safe-area-inset-bottom),0.75rem)+1.3rem)] pt-2.5 sm:px-4 sm:pb-[calc(max(env(safe-area-inset-bottom),0.75rem)+0.9rem)] sm:pt-3">
         {(selectedFile || uploadBusy) && (
           <div className={`mb-2 inline-flex items-center gap-2 rounded-xl border border-brand/35 bg-brand/12 px-3 py-1.5 text-xs text-brand-strong ${uploadBusy ? "loading-shimmer" : ""}`}>
             <span className="max-w-[220px] truncate">{uploadingFileName || selectedFile?.name || "Uploading file"}</span>
@@ -120,7 +121,9 @@ export default function InputBar({
           aria-label="Upload file"
         />
 
-        <div className="flex items-end gap-2 rounded-3xl border border-white/20 bg-white/[0.05] p-2 shadow-[0_14px_36px_rgba(0,0,0,.35)]">
+        <div className={`flex items-end gap-2 rounded-3xl border bg-white/[0.05] p-2 transition-all duration-200 ${
+          inputFocused ? "border-brand/50 shadow-[0_0_0_3px_rgba(79,133,255,0.12)]" : "border-white/20 shadow-[0_14px_36px_rgba(0,0,0,.35)]"
+        }`}>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -139,6 +142,8 @@ export default function InputBar({
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             placeholder="Ask for requirements, strategy, compliance, pricing..."
             disabled={disabled || uploadBusy}
             rows={1}
@@ -146,12 +151,18 @@ export default function InputBar({
             aria-label="Message input"
           />
 
+          {inputFocused && !input && (
+            <span className="hidden shrink-0 items-center gap-1 self-center text-[10px] text-app-muted/40 sm:flex">
+              <kbd className="font-sans">⏎</kbd> send
+            </span>
+          )}
+
           {isStreaming ? (
             <button
               data-testid="stop-button"
               type="button"
               onClick={onStop}
-              className="interactive-control flex h-9 shrink-0 items-center gap-1.5 rounded-2xl border border-red-500/35 bg-red-500/10 px-3 text-xs font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200"
+              className="interactive-control flex h-9 shrink-0 items-center gap-1.5 rounded-2xl border border-red-500/35 bg-red-500/10 px-3 text-xs font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 active:bg-red-500/30"
               aria-label="Stop generation"
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-red-400">
@@ -164,7 +175,7 @@ export default function InputBar({
               data-testid="send-button"
               type="submit"
               disabled={disabled || uploadBusy || !canSend}
-              className="interactive-control flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-brand text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-white/8 disabled:text-white/35"
+              className="interactive-control flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-brand text-white hover:bg-brand-strong disabled:cursor-not-allowed disabled:bg-white/12 disabled:text-white/50"
               aria-label="Send message"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -60,6 +60,7 @@ export default function ArtifactCanvas({
   onClose,
 }: ArtifactCanvasProps) {
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   if (!filename) return null;
 
@@ -78,16 +79,22 @@ export default function ArtifactCanvas({
     a.download = filename!;
     a.click();
     URL.revokeObjectURL(url);
+    setDownloaded(true);
+    setTimeout(() => setDownloaded(false), 1800);
   }
 
   const iconBtnClass = "interactive-control rounded-lg border border-white/15 bg-white/[0.04] p-1.5 text-app-muted-strong hover:text-app-fg";
 
   return (
-    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 border-l border-white/10 bg-black/35">
+    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 max-w-[680px] border-l border-white/10 bg-[#0d1018]">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-app-muted">Canvas</p>
-          <h3 className="truncate text-sm font-semibold text-app-fg" title={filename}>{filename}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-sm font-semibold text-app-fg" title={filename}>{filename}</h3>
+            <span className="shrink-0 rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-app-muted">
+              {filename.split('.').pop()?.toUpperCase() ?? 'FILE'}
+            </span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {!loading && !error && content && (
@@ -99,8 +106,12 @@ export default function ArtifactCanvas({
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 )}
               </button>
-              <button type="button" onClick={handleDownload} title="Download" className={iconBtnClass}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <button type="button" onClick={handleDownload} title={downloaded ? "Downloaded!" : "Download"} className={iconBtnClass}>
+                {downloaded ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                )}
               </button>
             </>
           )}
@@ -112,8 +123,12 @@ export default function ArtifactCanvas({
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
         {loading && (
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-app-muted">
-            Loading artifact...
+          <div className="space-y-3 pt-2">
+            <div className="loading-shimmer h-6 w-48 rounded-lg border border-white/10 bg-white/[0.03]" />
+            <div className="loading-shimmer h-4 w-full rounded-lg border border-white/10 bg-white/[0.03]" />
+            <div className="loading-shimmer h-4 w-5/6 rounded-lg border border-white/10 bg-white/[0.03]" />
+            <div className="loading-shimmer h-4 w-4/6 rounded-lg border border-white/10 bg-white/[0.03]" />
+            <div className="loading-shimmer mt-4 h-24 w-full rounded-xl border border-white/10 bg-white/[0.03]" />
           </div>
         )}
 

@@ -61,15 +61,15 @@ export default function IntakeScreen({
   const activeStatus = localError || uploadError || sessionError || statusMessage;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app p-4 text-app-fg">
+    <main className="relative flex min-h-screen items-start pt-12 sm:items-center sm:pt-0 justify-center overflow-hidden bg-app p-4 text-app-fg">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(79,133,255,.15),transparent_38%)]" />
 
-      <section className="relative z-10 w-full max-w-4xl rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] backdrop-blur-xl md:p-8">
+      <section className="relative z-10 w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] backdrop-blur-xl md:p-8">
         <header className="mb-6">
-          <p className="text-xs uppercase tracking-[0.18em] text-app-muted">Meridian & Associates</p>
-          <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Upload your RFP to begin</h1>
+          <p className="text-[13px] font-medium uppercase tracking-[0.16em] text-app-muted">RFP Agent</p>
+          <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Win more contracts, faster.</h1>
           <p className="mt-2 max-w-2xl text-sm text-app-muted-strong">
-            Upload your RFP and the agent will automatically generate compliance matrices, bid/no-bid scoring, executive summaries, and risk analysis. Additional files can be attached once the chat opens.
+            Upload any RFP and the AI agent instantly generates compliance matrices, bid scoring, executive summaries, and risk analysis — all in one workspace.
           </p>
         </header>
 
@@ -78,7 +78,7 @@ export default function IntakeScreen({
           tabIndex={ready && !busy ? 0 : -1}
           aria-disabled={!ready || busy}
           aria-label="Upload RFP file"
-          className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 md:p-10 ${
+          className={`rounded-2xl border-2 border-dashed py-10 px-6 text-center transition-all duration-200 md:py-14 md:px-8 ${
             isDragOver ? "border-brand bg-brand/10 scale-[1.02]" : "border-white/20 bg-black/20 scale-100"
           } ${!ready || busy ? "opacity-70" : "cursor-pointer"}`}
           onClick={() => {
@@ -115,7 +115,7 @@ export default function IntakeScreen({
             }}
           />
 
-          <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 text-brand-strong ${preparing ? "agent-working" : ""}`}>
+          <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-brand/20 text-brand-strong ${preparing ? "agent-working" : ""}`}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
@@ -142,6 +142,14 @@ export default function IntakeScreen({
         <p className="mt-2 text-[11px] text-app-muted/60">
             Accepts PDF, DOCX, XLSX, PPTX, TXT, CSV, JSON, XML, MD, RTF, HTML
           </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/8 pt-4">
+          {["End-to-end encrypted", "Session-isolated sandbox", "Files auto-deleted after 24h", "SOC 2 Type II"].map((item) => (
+            <span key={item} className="flex items-center gap-1.5 text-[11px] text-app-muted/60">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500/70"><polyline points="20 6 9 17 4 12"/></svg>
+              {item}
+            </span>
+          ))}
+        </div>
 
         {selectedFileName && (
           <p className="mt-3 text-xs text-app-muted">Selected file: <span className="text-app-fg">{selectedFileName}</span></p>

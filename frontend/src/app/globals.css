@@ -3,10 +3,12 @@
 :root {
   --app-bg: #17191d;
   --app-fg: #eceff4;
-  --app-muted: #b0bac8;
+  --app-muted: #c2ccd8;
   --app-muted-strong: #cdd4df;
   --brand: #4f85ff;
   --brand-strong: #7aaaff;
+  --surface-sidebar: #0d1018;
+  --surface-canvas: #0d1018;
   --type-body: clamp(1rem, 0.95rem + 0.25vw, 1.1rem);
 }
 
@@ -37,6 +39,7 @@
 html,
 body {
   background: var(--app-bg);
+  background-image: radial-gradient(ellipse 80% 35% at 50% -5%, rgba(79,133,255,0.12), transparent);
   color: var(--app-fg);
 }
 
@@ -192,24 +195,19 @@ body {
   border-radius: 2px;
   background: var(--brand-strong);
   vertical-align: text-bottom;
-  animation: cursor-blink 0.7s step-end infinite;
+  animation: cursor-blink 1.0s ease-in-out infinite;
 }
 
 @keyframes cursor-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.1; }
 }
 
 /* Inline tool calls (interleaved in message parts) */
 .message-parts {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.65rem;
 }
 
 /* Tool group: wraps consecutive tool calls in a card */
@@ -252,7 +250,7 @@ body {
 
 .inline-tool-done {
   background: rgba(52, 211, 153, 0.05);
-  color: #8a95ab;
+  color: #a3b0c4;
 }
 
 .inline-tool-icon {
@@ -272,7 +270,7 @@ body {
 
 .inline-tool-icon-done {
   background: rgba(52, 211, 153, 0.12);
-  color: #34d399;
+  color: #4ade80;
 }
 
 .inline-tool-label {
@@ -300,7 +298,7 @@ body {
   gap: 0.5rem;
   padding: 0.45rem 0.7rem;
   font-size: 0.78rem;
-  color: #8a95ab;
+  color: #a3b0c4;
   cursor: pointer;
   transition: color 0.15s ease;
   border: none;
@@ -310,7 +308,8 @@ body {
 }
 
 .tool-group-toggle:hover {
-  color: #b8c2d4;
+  color: #c8d4e8;
+  background: rgba(255,255,255,0.04);
 }
 
 .tool-group-toggle svg {
@@ -345,27 +344,18 @@ body {
   color: #f4f7ff;
 }
 
-.prose-message h1 {
-  font-size: 1.4rem;
-  font-weight: 700;
-}
-
-.prose-message h2 {
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
-.prose-message h3 {
-  font-size: 1rem;
-  font-weight: 600;
-}
+.prose-message h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+.prose-message h2 { font-size: 1.2rem;  font-weight: 600; letter-spacing: -0.008em; }
+.prose-message h3 { font-size: 1.05rem; font-weight: 600; color: #b8c8e8; }
 
 .prose-message p,
 .prose-message ul,
 .prose-message ol {
-  margin-top: 0.45em;
-  margin-bottom: 0.45em;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
 }
+.prose-message p:first-child { margin-top: 0; }
+.prose-message p:last-child  { margin-bottom: 0; }
 
 .prose-message a {
   color: #7ec8ff;
@@ -465,12 +455,12 @@ body {
   inset: 0;
   transform: translateX(-100%);
   background: linear-gradient(
-    100deg,
+    90deg,
     transparent 20%,
-    rgba(255, 255, 255, 0.18) 45%,
+    rgba(255, 255, 255, 0.26) 45%,
     transparent 70%
   );
-  animation: shimmer 1.25s ease-in-out infinite;
+  animation: shimmer 0.95s ease-in-out infinite;
 }
 
 @keyframes shimmer {
@@ -481,6 +471,14 @@ body {
 
 .agent-working {
   animation: agent-working-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes idle-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79, 133, 255, 0.3); }
+  50%       { box-shadow: 0 0 0 10px rgba(79, 133, 255, 0); }
+}
+.idle-breathe {
+  animation: idle-breathe 2.8s ease-in-out infinite;
 }
 
 @keyframes agent-working-pulse {
@@ -504,34 +502,31 @@ body {
   overflow-x: auto;
   margin: 0.7rem 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.65rem;
+  border-radius: 0.9rem;
 }
 
-.prose-message table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.83rem;
-}
-
+.prose-message table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .prose-message th {
-  background: rgba(63, 124, 255, 0.18);
+  background: rgba(63, 124, 255, 0.15);
   color: #f3f7ff;
   font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
-
 .prose-message th,
-.prose-message td {
-  padding: 0.55rem 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
+.prose-message td { padding: 0.55rem 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); }
+.prose-message td { color: #dce6f7; }
+.prose-message tr:nth-child(even) td { background: rgba(255,255,255,0.025); }
 
 .prose-message blockquote {
-  border-left: 3px solid rgba(113, 160, 255, 0.75);
-  margin: 0.7rem 0;
-  padding: 0.45rem 0.8rem;
-  background: rgba(63, 124, 255, 0.08);
-  border-radius: 0 0.5rem 0.5rem 0;
+  border-left: 3px solid rgba(113, 160, 255, 0.85);
+  margin: 0.85rem 0;
+  padding: 0.6rem 1rem;
+  background: rgba(63, 124, 255, 0.11);
+  border-radius: 0 0.6rem 0.6rem 0;
 }
+.prose-message blockquote p { color: #d5e5ff; margin: 0; }
 
 /* Canvas-specific prose variant — document reading mode */
 .prose-canvas {
@@ -550,7 +545,7 @@ body {
 
 .prose-canvas h2 {
   font-size: 1.2rem;
-  font-weight: 650;
+  font-weight: 600;
   color: #e8efff;
   margin-top: 1.4em;
   margin-bottom: 0.4em;
@@ -559,16 +554,17 @@ body {
 }
 
 .prose-canvas h3 {
-  font-size: 0.95rem;
+  font-size: 1.0rem;
   font-weight: 600;
-  color: #d8e3ff;
+  color: #c8d8f4;
+  letter-spacing: 0.01em;
   margin-top: 1.1em;
   margin-bottom: 0.3em;
 }
 
 .prose-canvas p,
 .prose-canvas li {
-  color: #cdd8f0;
+  color: #e2eaff;
 }
 
 .prose-canvas ul,
@@ -616,7 +612,7 @@ body {
 /* Scrollbar and focus */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3d4f72 transparent;
+  scrollbar-color: #2a3a52 transparent;
 }
 
 ::-webkit-scrollbar {
@@ -625,7 +621,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3d4f72;
+  background: #2a3a52;
   border-radius: 8px;
 }
 

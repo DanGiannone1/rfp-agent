@@ -394,6 +394,7 @@ export default function Chat() {
   const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+  const [confirmNewChat, setConfirmNewChat] = useState(false);
   const [artifactContent, setArtifactContent] = useState<string>("");
   const [artifactMimeType, setArtifactMimeType] = useState<string | undefined>();
   const [artifactLoading, setArtifactLoading] = useState(false);
@@ -583,13 +584,7 @@ export default function Chat() {
     [state.sessionId, addPendingFile, clearPendingFile, markUploadedFile, refreshFiles],
   );
 
-  const handleNewChat = useCallback(async () => {
-    const hasActiveContext = state.messages.length > 0 || Boolean(uploadedFileName) || files.length > 0;
-    if (hasActiveContext && typeof window !== "undefined") {
-      const ok = window.confirm("Start a new chat? This will clear current messages and uploaded context.");
-      if (!ok) return;
-    }
-
+  const doNewChat = useCallback(async () => {
     abortRef.current?.abort();
     abortRef.current = null;
 
@@ -614,7 +609,16 @@ export default function Chat() {
     dispatch({ type: "RESET_FOR_NEW_CHAT" });
 
     await startSession();
-  }, [state.messages.length, uploadedFileName, files.length, startSession]);
+  }, [startSession]);
+
+  const handleNewChat = useCallback(() => {
+    const hasActiveContext = state.messages.length > 0 || Boolean(uploadedFileName) || files.length > 0;
+    if (hasActiveContext) {
+      setConfirmNewChat(true);
+      return;
+    }
+    void doNewChat();
+  }, [state.messages.length, uploadedFileName, files.length, doNewChat]);
 
   const handleStop = useCallback(() => {
     if (!state.isStreaming) return;
@@ -792,24 +796,23 @@ export default function Chat() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-app text-app-fg">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(79,133,255,.10),transparent_35%),linear-gradient(180deg,#070b13_0%,#05080e_50%)]" />
-      <header className="sticky top-0 z-10 border-b border-white/10 bg-black/35 backdrop-blur-xl">
-        <div className="flex w-full items-center gap-3 px-4 py-3 lg:px-6">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-cyan-400 text-white shadow-[0_10px_24px_rgba(64,124,255,.45)] ring-1 ring-white/20 ${agentWorking ? "agent-working" : ""}`}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_30%_at_50%_0%,rgba(79,133,255,.15),transparent_60%),linear-gradient(180deg,#070b13_0%,#05080e_50%)]" />
+      <header className="sticky top-0 z-10 border-b border-white/10 bg-black/50 shadow-[0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+        <div className="flex w-full items-center gap-3 px-4 py-2.5 lg:px-6">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#5f92ff] to-[#3a6fd8] text-white shadow-[0_10px_24px_rgba(64,124,255,.45)] ring-1 ring-white/20 ${agentWorking ? "agent-working" : ""}`}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-strong/90 sm:block">Meridian Platform</p>
-            <h1 className="truncate text-[15px] font-semibold tracking-[0.01em] text-white sm:text-[16px]">Agentic RFP Response System</h1>
+            <p className="hidden text-[10px] font-semibold uppercase tracking-[0.22em] text-brand-strong/90 sm:block">MERIDIAN</p>
+            <h1 className="truncate text-[15px] font-semibold tracking-[0.01em] text-white sm:text-[16px]">Proposal Workspace</h1>
           </div>
 
           <div className="hidden items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted md:flex">
             <span className={`h-1.5 w-1.5 rounded-full ${agentWorking ? "bg-brand" : "bg-emerald-400"}`} />
-            <span className="text-app-muted-strong">Session {state.sessionId ? state.sessionId.slice(0, 6) : "-----"}</span>
-            <span>{agentWorking ? "Working" : "Idle"}</span>
-            <span className="text-app-muted-strong">{files.length} file{files.length === 1 ? "" : "s"}</span>
+            <span>{agentWorking ? "Agent active" : "Ready"}</span>
+            <span className="text-app-muted-strong">· {files.length} file{files.length === 1 ? "" : "s"}</span>
           </div>
 
           <button
@@ -817,7 +820,7 @@ export default function Chat() {
             data-testid="new-chat-button"
             onClick={handleNewChat}
             disabled={state.isStreaming || state.isInitializing || isChatUploading}
-            className="interactive-control inline-flex rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-app-fg disabled:cursor-not-allowed disabled:opacity-45"
+            className="interactive-control inline-flex rounded-xl border border-brand/40 bg-brand/[0.08] px-3 py-2 text-xs font-medium text-brand-strong disabled:cursor-not-allowed disabled:opacity-45"
           >
             New chat
           </button>
@@ -842,7 +845,7 @@ export default function Chat() {
         />
 
         <div className="flex min-h-0 flex-1">
-          <div className={`flex min-h-0 flex-col transition-all duration-300 ${selectedArtifact ? "w-[500px] shrink-0" : "flex-1"}`}>
+          <div className={`flex min-h-0 flex-col transition-all duration-300 ${selectedArtifact ? "w-[420px] shrink-0 lg:w-[460px]" : "flex-1"}`}>
             <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
 
             <InputBar
@@ -876,6 +879,19 @@ export default function Chat() {
         disableActions={state.isStreaming}
         onClose={() => setDocumentsOpen(false)}
       />
+
+      {confirmNewChat && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setConfirmNewChat(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/12 bg-[#0f1520] p-6 shadow-[0_24px_64px_rgba(0,0,0,0.6)]" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-app-fg">Start a new chat?</h2>
+            <p className="mt-2 text-sm text-app-muted">This will clear your current messages and uploaded context.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setConfirmNewChat(false)} className="interactive-control rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm text-app-fg">Cancel</button>
+              <button type="button" onClick={() => { setConfirmNewChat(false); void doNewChat(); }} className="interactive-control rounded-xl border border-red-500/30 bg-red-500/15 px-4 py-2 text-sm font-medium text-red-300">Start new chat</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
