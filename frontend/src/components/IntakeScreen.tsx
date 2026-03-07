@@ -66,7 +66,7 @@ export default function IntakeScreen({
 
       <section className="relative z-10 w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] backdrop-blur-xl md:p-8">
         <header className="mb-6">
-          <p className="text-[13px] font-medium uppercase tracking-[0.16em] text-app-muted">RFP Agent</p>
+          <p className="text-[13px] font-medium uppercase tracking-[0.16em] text-app-muted">Meridian & Associates</p>
           <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Win more contracts, faster.</h1>
           <p className="mt-2 max-w-2xl text-sm text-app-muted-strong">
             Upload any RFP and the AI agent instantly generates compliance matrices, bid scoring, executive summaries, and risk analysis — all in one workspace.
