@@ -3,8 +3,8 @@
 :root {
   --app-bg: #17191d;
   --app-fg: #eceff4;
-  --app-muted: #9aa3b2;
-  --app-muted-strong: #c7ced9;
+  --app-muted: #a0a9b8;
+  --app-muted-strong: #cdd4df;
   --brand: #6ea2ff;
   --brand-strong: #8eb7ff;
   --type-body: clamp(0.94rem, 0.9rem + 0.2vw, 1.02rem);

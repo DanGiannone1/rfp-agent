@@ -19,6 +19,38 @@ function isMarkdown(filename: string | null, mimeType?: string): boolean {
   return filename.toLowerCase().endsWith(".md") || (mimeType || "").includes("markdown");
 }
 
+function isCsv(filename: string | null): boolean {
+  return !!filename && filename.toLowerCase().endsWith(".csv");
+}
+
+function CsvTable({ content }: { content: string }) {
+  const rows = content.trim().split("\n").map((line) => line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, "")));
+  if (rows.length === 0) return <pre className="text-xs text-app-muted">Empty CSV</pre>;
+  const [header, ...body] = rows;
+  return (
+    <div className="table-wrapper">
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr>
+            {header.map((cell, i) => (
+              <th key={i} className="bg-brand/15 px-3 py-2 text-left font-semibold text-app-fg">{cell}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {body.map((row, ri) => (
+            <tr key={ri} className="border-t border-white/8">
+              {row.map((cell, ci) => (
+                <td key={ci} className="px-3 py-1.5 text-app-muted-strong">{cell}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function ArtifactCanvas({
   filename,
   mimeType,
@@ -94,6 +126,8 @@ export default function ArtifactCanvas({
                 {content || "_Empty artifact_"}
               </ReactMarkdown>
             </article>
+          ) : isCsv(filename) ? (
+            <CsvTable content={content || ""} />
           ) : (
             <pre className="overflow-x-auto rounded-xl border border-white/12 bg-black/25 p-3 text-xs text-app-fg whitespace-pre-wrap">
               {content || "Empty artifact"}

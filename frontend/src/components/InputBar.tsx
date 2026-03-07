@@ -151,12 +151,13 @@ export default function InputBar({
               data-testid="stop-button"
               type="button"
               onClick={onStop}
-              className="interactive-control flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-300 hover:bg-amber-500/30"
+              className="interactive-control flex h-9 shrink-0 items-center gap-1.5 rounded-2xl border border-white/15 bg-white/[0.06] px-3 text-xs font-medium text-app-muted-strong hover:bg-white/10 hover:text-app-fg"
               aria-label="Stop generation"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="text-app-muted">
                 <rect x="4" y="4" width="16" height="16" rx="2" />
               </svg>
+              Stop
             </button>
           ) : (
             <button

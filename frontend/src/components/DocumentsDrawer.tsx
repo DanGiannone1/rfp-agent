@@ -39,12 +39,9 @@ export default function DocumentsDrawer({
         onClick={onClose}
         className={`absolute inset-0 bg-black/50 backdrop-blur-[1px] transition-opacity duration-200 ${open ? "opacity-100" : "opacity-0"}`}
       />
-      <div className={`absolute right-0 top-0 h-full w-full max-w-md border-l border-white/12 bg-[#070b13] p-4 shadow-[0_20px_60px_rgba(0,0,0,.45)] transition-transform duration-200 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="inline-flex items-center gap-2 text-base font-semibold">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand/90" />
-            Workspace Files
-          </h2>
+      <div className={`absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-white/12 bg-[#070b13] shadow-[0_20px_60px_rgba(0,0,0,.45)] transition-transform duration-200 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}>
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <h2 className="text-base font-semibold">Workspace Files</h2>
           <button
             type="button"
             onClick={onClose}
@@ -53,42 +50,40 @@ export default function DocumentsDrawer({
             Close
           </button>
         </div>
-        <div className="space-y-4">
-          <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-app-muted-strong">Uploaded Documents</p>
-              <span className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] text-brand-strong">
-                {uploadedFiles.length}
-              </span>
-            </div>
-            <DocumentsList
-              files={uploadedFiles}
-              loading={loading}
-              onAskFile={onAskFile}
-              onOpenFile={onOpenFile}
-              disableActions={disableActions}
-              kind="uploaded"
-              emptyLabel="No source documents uploaded."
-            />
-          </section>
-          <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-medium text-app-muted-strong">Generated Artifacts</p>
-              <span className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] text-brand-strong">
-                {generatedFiles.length}
-              </span>
-            </div>
+
+        <section className="border-b border-white/8 px-4 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-app-muted">Source Documents</p>
+            <span className="text-[10px] tabular-nums text-app-muted/70">{uploadedFiles.length}</span>
+          </div>
+          <DocumentsList
+            files={uploadedFiles}
+            loading={loading}
+            onAskFile={onAskFile}
+            onOpenFile={onOpenFile}
+            disableActions={disableActions}
+            kind="uploaded"
+            emptyLabel="No documents uploaded."
+          />
+        </section>
+
+        <section className="flex min-h-0 flex-1 flex-col px-4 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-app-muted">Generated Artifacts</p>
+            <span className="text-[10px] tabular-nums text-app-muted/70">{generatedFiles.length}</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
             {loading ? (
               <DocumentsList files={[]} loading />
             ) : generatedFiles.length === 0 ? (
-              <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-app-muted">
-                No generated artifacts yet.
-              </div>
+              <p className="py-6 text-center text-xs text-app-muted/60">
+                Artifacts will appear here as the agent generates deliverables.
+              </p>
             ) : (
               <DocumentsList files={generatedFiles} onOpenFile={onOpenFile} disableActions={disableActions} kind="generated" />
             )}
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   );
