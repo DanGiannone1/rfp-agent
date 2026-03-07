@@ -42,7 +42,7 @@ def _log_event(msg: str) -> None:
         _logger.info(msg)
 
 
-SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT", "")
+SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
 SEARCH_KB_NAME = os.getenv("AZURE_SEARCH_KB_NAME", "rfp-knowledge")
 SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY", "")
 
@@ -52,8 +52,18 @@ services firm specializing in audit, tax, and advisory/consulting engagements. Y
 role is to help pursuit teams analyze RFPs, develop winning strategies, and produce \
 high-quality proposal content efficiently.
 
-You have access to built-in tools: bash, grep, glob, and str_replace_editor. Use \
-them proactively to read files, search for content, and produce structured output.
+You have access to built-in tools: bash, grep, glob, and str_replace_editor.
+
+**Reading documents:** Always read RFP and proposal documents in full using `bash` \
+or `str_replace_editor`. Do not use `grep` or `glob` as a substitute for reading — \
+keyword searching an RFP misses context, nuance, and requirements that don't use \
+standard trigger words. If a document is very large (hundreds of pages), read it \
+section by section and extract findings from each section before moving to the next. \
+Never skip sections.
+
+**grep and glob** are for cross-file tasks: finding files in the workspace, verifying \
+consistency across multiple drafted sections, confirming a term appears across documents, \
+or spot-checking after a full read. They are not a primary analysis tool for RFPs.
 
 ## Sandbox Environment
 
@@ -76,6 +86,14 @@ converted to markdown — you will find a `.md` file in the working directory al
 the original. Start by listing files to orient yourself, then read the markdown to \
 understand the opportunity before responding.
 
+**Reading RFP documents:** Always attempt to read the full document in one pass. \
+Most RFPs are well within what you can handle in a single read. Only fall back to \
+chunked reading if the file is very large (roughly 500+ KB or 10,000+ lines) — \
+in that case, read it section by section in logical order (front matter and scope \
+first, then technical requirements, staffing, pricing, and administrative sections) \
+and complete your analysis incrementally before synthesizing findings. Do not \
+summarize prematurely — read the entire document before drawing conclusions.
+
 If the user sends a simple greeting (for example "hi" or "hello"), respond naturally \
 and briefly first. Do not mention missing files unless the user asks to start analysis \
 or asks what to do next.
@@ -91,8 +109,8 @@ win probability, past performance, profitability) with a Go/No-Go/Conditional Go
 recommendation.
 
 2. **Requirements Extraction** — Parse the RFP into discrete requirements. Classify \
-each as mandatory/preferred/informational, build a compliance matrix, flag ambiguities, \
-and map requirements to response outline sections.
+each as mandatory/preferred/informational, build a traceability matrix with section and \
+page references, flag ambiguities, and map requirements to response outline sections.
 
 3. **Response Strategy** — Define 3-5 win themes, analyze the competitive landscape, \
 develop customer insights, and outline a pricing strategy approach. Produces a strategy \
@@ -254,23 +272,10 @@ class AgentSession:
         # Resolve skills directory relative to this file
         skills_dir = str(Path(__file__).parent / "skills")
 
-        # Build system prompt — include KB section only when search is configured
-        kb_enabled = bool(SEARCH_ENDPOINT)
-        system_prompt = SYSTEM_PROMPT
-        if kb_enabled:
-            system_prompt = SYSTEM_PROMPT.replace(
-                "## Skills & Workflows",
-                KB_PROMPT_SECTION + "## Skills & Workflows",
-            )
-        else:
-            # Skill guides reference knowledge_base_retrieve throughout — tell the agent
-            # the tool is unavailable so it doesn't attempt to call it.
-            system_prompt += (
-                "\n\n## Tool Availability\n\n"
-                "The `knowledge_base_retrieve` tool is **not available** in this session. "
-                "When skill guides instruct you to search the knowledge base, substitute "
-                "with manual review of files in the working directory using bash, grep, and glob."
-            )
+        system_prompt = SYSTEM_PROMPT.replace(
+            "## Skills & Workflows",
+            KB_PROMPT_SECTION + "## Skills & Workflows",
+        )
 
         session_config = {
             "model": os.environ["AZURE_DEPLOYMENT"],
@@ -291,39 +296,34 @@ class AgentSession:
             "on_permission_request": lambda _req, _ctx: {"kind": "approved"},
         }
 
-        # MCP servers
-        mcp_servers: dict = {}
-
-        # Add Foundry IQ knowledge base via MCP (optional).
+        # MCP servers — knowledge base via Foundry IQ (always required).
         # Prefer an explicit API key (local dev); fall back to managed identity (production).
-        if kb_enabled:
-            kb_url = (
-                f"{SEARCH_ENDPOINT}/knowledgebases/{SEARCH_KB_NAME}"
-                f"/mcp?api-version=2025-11-01-preview"
-            )
-            if SEARCH_KEY:
-                mcp_servers["knowledge_base"] = {
+        kb_url = (
+            f"{SEARCH_ENDPOINT}/knowledgebases/{SEARCH_KB_NAME}"
+            f"/mcp?api-version=2025-11-01-preview"
+        )
+        if SEARCH_KEY:
+            mcp_servers = {
+                "knowledge_base": {
                     "type": "http",
                     "url": kb_url,
                     "headers": {"api-key": SEARCH_KEY},
                     "tools": ["knowledge_base_retrieve"],
                 }
-            else:
-                try:
-                    search_credential = self._credential or DefaultAzureCredential()
-                    search_tok = await search_credential.get_token(
-                        "https://search.azure.com/.default"
-                    )
-                    mcp_servers["knowledge_base"] = {
-                        "type": "http",
-                        "url": kb_url,
-                        "headers": {"Authorization": f"Bearer {search_tok.token}"},
-                        "tools": ["knowledge_base_retrieve"],
-                    }
-                except Exception:
-                    _logging.getLogger(__name__).warning(
-                        "Could not acquire search token — knowledge base MCP disabled for this session"
-                    )
+            }
+        else:
+            search_credential = self._credential or DefaultAzureCredential()
+            search_tok = await search_credential.get_token(
+                "https://search.azure.com/.default"
+            )
+            mcp_servers = {
+                "knowledge_base": {
+                    "type": "http",
+                    "url": kb_url,
+                    "headers": {"Authorization": f"Bearer {search_tok.token}"},
+                    "tools": ["knowledge_base_retrieve"],
+                }
+            }
 
         session_config["mcp_servers"] = mcp_servers
 

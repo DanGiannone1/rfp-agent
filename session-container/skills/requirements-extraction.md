@@ -14,7 +14,7 @@ Parse an RFP into discrete, actionable requirements. Classify each by priority, 
 
 ### 1. Read the Full RFP
 
-Use `bash` or `str_replace_editor` to read the complete RFP document. Pay special attention to:
+Use `bash` or `str_replace_editor` to read the complete RFP document end-to-end before any keyword search. Pay special attention to:
 - Scope of work / statement of work sections
 - Technical requirements
 - Staffing and qualification requirements
@@ -42,7 +42,7 @@ Break the RFP into discrete requirement statements. For each requirement, captur
 
 ### 3. Classify Priority
 
-For each requirement, determine:
+For each requirement, determine priority based on the full context (not just keyword hits):
 - **Mandatory (M)**: Must comply — uses language like "shall", "must", "required", "mandatory"
 - **Preferred (P)**: Desired but not disqualifying — uses "should", "preferred", "desired", "ideally"
 - **Informational (I)**: Context or background — no compliance needed
@@ -58,6 +58,10 @@ Identify requirements that are:
 ### 5. Map to Response Outline
 
 Suggest which response section each requirement should be addressed in, creating a traceability matrix between RFP requirements and proposal sections.
+
+### 6. Save Output
+
+Save the requirements matrix to the working directory as `requirements_matrix.md` so the user can download it and it appears in the artifacts panel. Downstream skills (compliance review, draft generation, response strategy) will reference this file.
 
 ## Output Format
 
@@ -93,12 +97,8 @@ Suggest which response section each requirement should be addressed in, creating
 [etc.]
 ```
 
-### 6. Save Output
-
-Save the requirements matrix to the working directory as `requirements_matrix.md` so the user can download it and it appears in the artifacts panel. Downstream skills (compliance review, draft generation, response strategy) will reference this file.
-
 ## Tools to Use
 
-- **bash / str_replace_editor**: Read RFP document sections thoroughly
-- **grep**: Search for requirement keywords ("shall", "must", "required", "mandatory", "certif")
+- **bash / str_replace_editor**: Read the full RFP thoroughly end-to-end
+- **grep**: Optional, only to confirm you did not miss requirements after manual extraction
 - **glob**: Find all related RFP documents, attachments, and exhibits
