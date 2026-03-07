@@ -61,7 +61,11 @@ Follow this proven structure (adapt headings to match RFP requirements):
 - Express enthusiasm for the partnership
 - Reference next steps or availability for discussions
 
-### 4. Refine for Impact
+### 4. Save Output
+
+Save the completed executive summary to the working directory as `executive_summary.md` so the user can download it and it appears in the artifacts panel.
+
+### 5. Refine for Impact
 
 - **Length**: Keep to 1-2 pages (roughly 500-800 words unless RFP specifies otherwise)
 - **Tone**: Confident but not arrogant; client-focused, not self-congratulatory

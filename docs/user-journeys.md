@@ -48,7 +48,7 @@ The agent announces it is compiling requirements into a CSV compliance matrix, t
 - `compliance_matrix_mandatory.csv` (≈40 KB) under GENERATED ARTIFACTS
 - Canvas auto-opens showing the CSV rendered as a table with columns: Req_ID, Section, Requirement, Mandatory, Compliance
 
-**Correction from original doc:** File is a **CSV**, not a `.md`. Filename is `compliance_matrix_mandatory.csv`, not `compliance-matrix.md`.
+Output file is a **CSV** (`compliance_matrix_mandatory.csv`), rendered as a table in the artifact canvas.
 
 ---
 
@@ -65,7 +65,7 @@ Agent generates a 6-dimension bid/no-bid scorecard CSV and a summary markdown. F
 - `bid_no_bid_summary.md` (875 B) — narrative summary and recommendation
 - Previous artifacts remain listed below
 
-**Correction from original doc:** Produces **two files**, not one. Both a scorecard CSV and a summary markdown.
+Produces **two files**: a scorecard CSV and a summary markdown.
 
 ---
 
@@ -99,7 +99,7 @@ Agent produces a risk register and offers next steps:
 **What appears in the panel:**
 - `risk_register.csv` (31 KB) — auto-opens in canvas as a table with columns: risk ID, category, description, likelihood, severity, score, owner, mitigation
 
-**Correction from original doc:** File is a **CSV**, not `.md`. Filename is `risk_register.csv`.
+Output file is a **CSV** (`risk_register.csv`), rendered as a sortable table in the artifact canvas.
 
 ---
 

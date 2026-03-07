@@ -7,6 +7,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -136,7 +137,6 @@ async def list_files(session_id: str) -> dict:
     try:
         return await session_manager.list_files(session_id)
     except Exception as exc:
-        import httpx
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
             raise HTTPException(status_code=exc.response.status_code, detail="Failed to list files")
         raise
@@ -153,7 +153,6 @@ async def get_file_content(session_id: str, filename: str) -> dict:
     try:
         return await session_manager.get_file_content(session_id, filename)
     except Exception as exc:
-        import httpx
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
             detail = exc.response.text
             try:
@@ -175,7 +174,6 @@ async def upload_file(session_id: str, file: UploadFile) -> dict:
     try:
         result = await session_manager.upload_file(session_id, file)
     except Exception as exc:
-        import httpx
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
             detail = exc.response.text
             try:

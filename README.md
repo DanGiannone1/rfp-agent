@@ -205,7 +205,7 @@ npx playwright test -g "SSE"                  # run by keyword
 
 ## Deployment
 
-Once you're satisfied with local testing, deploy to Azure with a single command using [`infra/deploy.sh`](infra/deploy.sh):
+Once you're satisfied with local testing, deploy to Azure with a single command using [`infra/deploy.sh`](infra/deploy.sh). See [`docs/deployment-issues.md`](docs/deployment-issues.md) for known deployment issues and resolutions.
 
 ```bash
 AZURE_ENDPOINT=https://... ./infra/deploy.sh

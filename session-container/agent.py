@@ -115,7 +115,7 @@ Produces a pass/fail checklist with sign-off tracker.
 constraints, and dependencies. Score severity and likelihood, propose mitigations. \
 Produces a risk register.
 
-8. **ROI & Pricing Analysis** — Build bottom-up cost models, analyze margins and \
+8. **Pricing Analysis** — Build bottom-up cost models, analyze margins and \
 profitability, run sensitivity scenarios, benchmark against past engagements, and \
 recommend competitive price positioning.
 

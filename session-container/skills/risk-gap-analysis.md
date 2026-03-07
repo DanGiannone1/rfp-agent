@@ -82,7 +82,11 @@ For each medium-and-above risk, propose:
 - **Cost/effort**: What resources are needed for mitigation
 - **Residual risk**: Risk level after mitigation is applied
 
-### 6. Identify Gaps Requiring Action
+### 6. Save Output
+
+Save the risk register to the working directory as `risk_register.csv` (using the Risk Register table from the output format) so the user can download it and it appears in the artifacts panel. Save the full narrative report as `risk_gap_analysis.md`.
+
+### 7. Identify Gaps Requiring Action
 
 Separate out gaps that need immediate action:
 - Missing certifications or qualifications

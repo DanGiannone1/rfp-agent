@@ -98,6 +98,10 @@ Flag each item as Ready / Needs Review / Blocked and identify the responsible pe
 
 Compile findings into a structured checklist with pass/fail/warning status.
 
+### 10. Save Output
+
+Save the compliance review report to the working directory as `compliance_review.md` so the user can download it and it appears in the artifacts panel.
+
 ## Output Format
 
 ```markdown

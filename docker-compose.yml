@@ -1,3 +1,6 @@
+# Local development only. Production uses Azure Container Apps Dynamic Sessions
+# (isolated per-user session pools) instead of a shared container.
+# See infra/deploy.sh for the production deployment.
 services:
   session-container:
     build: ./session-container
