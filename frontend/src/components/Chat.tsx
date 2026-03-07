@@ -3,8 +3,8 @@
 import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from "react";
 import { AGUIEvent, ChatMessage, FileInfo, MessagePart } from "@/lib/types";
 import { streamSSE } from "@/lib/sse";
-import { createSession, getFileContent, listFiles, uploadFile } from "@/lib/api";
-import { clearSessionId, storeSessionId, storeMessages } from "@/lib/session";
+import { createSession, getFileContent, getSession, listFiles, uploadFile } from "@/lib/api";
+import { clearSessionId, getSessionId, getStoredMessages, storeSessionId, storeMessages } from "@/lib/session";
 import MessageList from "./MessageList";
 import InputBar from "./InputBar";
 import IntakeScreen from "./IntakeScreen";
@@ -29,7 +29,9 @@ type Action =
   | { type: "SET_INITIALIZING"; value: boolean }
   | { type: "SET_STAGE"; stage: ChatStage }
   | { type: "FILES_CHANGED" }
-  | { type: "APPEND_ASSISTANT"; content: string }
+  | { type: "APPEND_ASSISTANT"; content: string; id?: string }
+  | { type: "UPDATE_ASSISTANT"; id: string; content: string }
+  | { type: "RESTORE_SESSION"; sessionId: string; messages: ChatMessage[] }
   | { type: "RESET_FOR_NEW_CHAT" };
 
 interface State {
@@ -296,13 +298,22 @@ function reducer(state: State, action: Action): State {
       return { ...state, messages: msgs, isStreaming: false, currentRunId: null };
     }
 
+    case "RESTORE_SESSION":
+      return {
+        ...state,
+        sessionId: action.sessionId,
+        stage: "chat",
+        messages: action.messages,
+        isInitializing: false,
+      };
+
     case "APPEND_ASSISTANT":
       return {
         ...state,
         messages: [
           ...state.messages,
           {
-            id: crypto.randomUUID(),
+            id: action.id ?? crypto.randomUUID(),
             role: "assistant",
             content: action.content,
             isStreaming: false,
@@ -310,6 +321,16 @@ function reducer(state: State, action: Action): State {
             parts: [{ type: "text", content: action.content }],
           },
         ],
+      };
+
+    case "UPDATE_ASSISTANT":
+      return {
+        ...state,
+        messages: state.messages.map((m) =>
+          m.id === action.id
+            ? { ...m, content: action.content, parts: [{ type: "text", content: action.content }] }
+            : m,
+        ),
       };
 
     case "FILES_CHANGED":
@@ -422,16 +443,35 @@ export default function Chat() {
   }, []);
 
   const startSession = useCallback(async () => {
-    clearSessionId();
     setSessionError(null);
     setUploadError(null);
     setStatusMessage(null);
     setSessionState("preparing");
+    dispatch({ type: "SET_INITIALIZING", value: true });
+
+    // Attempt to restore an existing session from sessionStorage
+    const storedId = getSessionId();
+    if (storedId) {
+      try {
+        const meta = await getSession(storedId);
+        if (meta) {
+          const msgs = getStoredMessages();
+          dispatch({ type: "RESTORE_SESSION", sessionId: meta.session_id, messages: msgs });
+          setSessionState("ready");
+          try { await refreshFiles(meta.session_id); } catch { /* non-blocking */ }
+          return;
+        }
+      } catch {
+        // Fall through to create a new session
+      }
+    }
+
+    // No stored session or restore failed — create fresh
+    clearSessionId();
     setServerFiles([]);
     setPendingFiles([]);
     setHasFetchedFiles(false);
     setUploadedFileNames([]);
-    dispatch({ type: "SET_INITIALIZING", value: true });
 
     try {
       const meta = await withTimeout(createSession(), SESSION_TIMEOUT_MS, "Session creation timed out");
@@ -444,7 +484,7 @@ export default function Chat() {
     } finally {
       dispatch({ type: "SET_INITIALIZING", value: false });
     }
-  }, []);
+  }, [refreshFiles]);
 
   useEffect(() => {
     startSession();
@@ -659,9 +699,15 @@ export default function Chat() {
   const handleChatUpload = useCallback(
     async (file: File, opts?: { announce?: boolean }) => {
       if (!state.sessionId) return;
+      const tempId = crypto.randomUUID();
       setIsChatUploading(true);
       setChatUploadName(file.name);
       addPendingFile(file);
+      dispatch({
+        type: "APPEND_ASSISTANT",
+        id: tempId,
+        content: `Uploading and converting **${file.name}**... This can take 30–60 seconds for large files.`,
+      });
       try {
         await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
         dispatch({ type: "FILES_CHANGED" });
@@ -672,11 +718,19 @@ export default function Chat() {
           // non-blocking; optimistic pending file remains visible
         }
         if (opts?.announce !== false) {
-          dispatch({ type: "APPEND_ASSISTANT", content: `Uploaded **${file.name}**. Ready for your next instruction.` });
+          dispatch({
+            type: "UPDATE_ASSISTANT",
+            id: tempId,
+            content: `**${file.name}** is ready in the workspace. Ask me anything about it.`,
+          });
         }
       } catch (err) {
         clearPendingFile(file.name);
-        dispatch({ type: "ERROR", message: friendlyError(err, "Could not upload the file. Please try again.") });
+        dispatch({
+          type: "UPDATE_ASSISTANT",
+          id: tempId,
+          content: friendlyError(err, "Could not upload the file. Please try again."),
+        });
       } finally {
         setIsChatUploading(false);
         setChatUploadName(null);
@@ -738,7 +792,7 @@ export default function Chat() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-app text-app-fg">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(63,124,255,.12),transparent_28%),radial-gradient(circle_at_85%_0%,rgba(20,184,166,.08),transparent_24%),linear-gradient(180deg,#070b13_0%,#05070c_40%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(79,133,255,.10),transparent_35%),linear-gradient(180deg,#070b13_0%,#05080e_50%)]" />
       <header className="sticky top-0 z-10 border-b border-white/10 bg-black/35 backdrop-blur-xl">
         <div className="flex w-full items-center gap-3 px-4 py-3 lg:px-6">
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-cyan-400 text-white shadow-[0_10px_24px_rgba(64,124,255,.45)] ring-1 ring-white/20 ${agentWorking ? "agent-working" : ""}`}>
@@ -751,7 +805,7 @@ export default function Chat() {
             <h1 className="truncate text-[15px] font-semibold tracking-[0.01em] text-white sm:text-[16px]">Agentic RFP Response System</h1>
           </div>
 
-          <div className="hidden items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted lg:flex">
+          <div className="hidden items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted md:flex">
             <span className={`h-1.5 w-1.5 rounded-full ${agentWorking ? "bg-brand" : "bg-emerald-400"}`} />
             <span className="text-app-muted-strong">Session {state.sessionId ? state.sessionId.slice(0, 6) : "-----"}</span>
             <span>{agentWorking ? "Working" : "Idle"}</span>
@@ -763,16 +817,7 @@ export default function Chat() {
             data-testid="new-chat-button"
             onClick={handleNewChat}
             disabled={state.isStreaming || state.isInitializing || isChatUploading}
-            className="interactive-control hidden rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-app-fg lg:inline-flex disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            New chat
-          </button>
-
-          <button
-            type="button"
-            onClick={handleNewChat}
-            disabled={state.isStreaming || state.isInitializing || isChatUploading}
-            className="interactive-control rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-app-fg lg:hidden disabled:cursor-not-allowed disabled:opacity-45"
+            className="interactive-control inline-flex rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-app-fg disabled:cursor-not-allowed disabled:opacity-45"
           >
             New chat
           </button>
@@ -788,8 +833,16 @@ export default function Chat() {
       </header>
 
       <div className="relative z-10 flex min-h-0 flex-1">
+        <ArtifactsPanel
+          uploadedFiles={uploadedFiles}
+          generatedFiles={generatedFiles}
+          loading={filesLoading}
+          onOpenFile={handleOpenFile}
+          disableActions={state.isStreaming}
+        />
+
         <div className="flex min-h-0 flex-1">
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className={`flex min-h-0 flex-col transition-all duration-300 ${selectedArtifact ? "w-[500px] shrink-0" : "flex-1"}`}>
             <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
 
             <InputBar
@@ -812,15 +865,6 @@ export default function Chat() {
             onClose={() => setSelectedArtifact(null)}
           />
         </div>
-
-        <ArtifactsPanel
-          uploadedFiles={uploadedFiles}
-          generatedFiles={generatedFiles}
-          loading={filesLoading}
-          onAskFile={handleAskAboutFile}
-          onOpenFile={handleOpenFile}
-          disableActions={state.isStreaming}
-        />
       </div>
 
       <DocumentsDrawer
@@ -828,7 +872,6 @@ export default function Chat() {
         uploadedFiles={uploadedFiles}
         generatedFiles={generatedFiles}
         loading={filesLoading}
-        onAskFile={handleAskAboutFile}
         onOpenFile={handleOpenFile}
         disableActions={state.isStreaming}
         onClose={() => setDocumentsOpen(false)}

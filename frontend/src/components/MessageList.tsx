@@ -10,10 +10,10 @@ interface MessageListProps {
 }
 
 const SUGGESTIONS = [
-  { icon: "checklist", label: "Compliance matrix", prompt: "Extract mandatory requirements into a compliance matrix." },
-  { icon: "gauge", label: "Bid / no-bid", prompt: "Run a bid/no-bid score across six dimensions." },
-  { icon: "doc", label: "Executive summary", prompt: "Draft a one-page executive summary with win themes." },
-  { icon: "shield", label: "Risk analysis", prompt: "List top delivery risks and mitigation actions." },
+  { icon: "checklist", label: "Compliance check", description: "Map RFP requirements against our capabilities", prompt: "Extract mandatory requirements into a compliance matrix." },
+  { icon: "gauge", label: "Fit assessment", description: "Score our fit across key evaluation dimensions", prompt: "Run a bid/no-bid score across six dimensions." },
+  { icon: "doc", label: "Win strategy", description: "Draft a compelling one-page proposal summary", prompt: "Draft a one-page executive summary with win themes." },
+  { icon: "shield", label: "Risk review", description: "Identify delivery risks and mitigation plans", prompt: "List top delivery risks and mitigation actions." },
 ];
 
 function SuggestionIcon({ icon }: { icon: string }) {
@@ -69,27 +69,27 @@ export default function MessageList({ messages, onSuggestion }: MessageListProps
       <div className="mx-auto w-full max-w-4xl px-4 py-5 md:py-7">
         {messages.length === 0 ? (
           <div className="mx-auto flex min-h-[52vh] max-w-3xl flex-col items-center justify-center">
-            <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/15 ring-1 ring-brand/25">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-brand/20 ring-1 ring-brand/35">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-brand-strong">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
             </div>
-            <h2 className="text-lg font-semibold text-app-fg">RFP uploaded. What should we do first?</h2>
+            <h2 className="text-xl font-semibold text-app-fg">RFP uploaded. What should we do first?</h2>
             <p className="mt-1.5 text-sm text-app-muted">Pick a starting point or type your own request.</p>
 
             {onSuggestion && (
-              <div className="mt-6 grid w-full gap-2 sm:grid-cols-2">
+              <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s.prompt}
                     type="button"
                     onClick={() => onSuggestion(s.prompt)}
-                    className="interactive-chip flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 text-left transition hover:border-brand/40 hover:bg-brand/8"
+                    className="interactive-chip flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left transition hover:border-brand/40 hover:bg-brand/8"
                   >
                     <SuggestionIcon icon={s.icon} />
                     <div>
-                      <p className="text-[13px] font-medium text-app-fg">{s.label}</p>
-                      <p className="mt-0.5 text-[11px] leading-snug text-app-muted">{s.prompt}</p>
+                      <p className="text-[14px] font-medium text-app-fg">{s.label}</p>
+                      <p className="mt-0.5 text-[12px] leading-snug text-app-muted">{s.description}</p>
                     </div>
                   </button>
                 ))}

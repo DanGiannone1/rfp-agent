@@ -20,7 +20,6 @@ function toolLabel(name: string): string {
     grep: "Searching workspace",
     glob: "Finding files",
     str_replace_editor: "Editing file",
-    convert_document: "Converting document",
     knowledge_base_retrieve: "Searching knowledge base",
   };
   return labels[normalized] || labels[name] || normalized;
@@ -31,8 +30,6 @@ function toolContext(name: string, args: string | undefined): string | null {
   try {
     const p = JSON.parse(args);
     switch (name) {
-      case "convert_document":
-        return p.filename || null;
       case "grep":
         return p.pattern ? `"${String(p.pattern).slice(0, 40)}"` : null;
       case "glob":

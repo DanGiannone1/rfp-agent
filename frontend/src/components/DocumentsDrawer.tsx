@@ -8,7 +8,6 @@ interface DocumentsDrawerProps {
   uploadedFiles: FileInfo[];
   generatedFiles: FileInfo[];
   loading?: boolean;
-  onAskFile?: (filename: string) => void;
   onOpenFile?: (filename: string) => void;
   disableActions?: boolean;
   onClose: () => void;
@@ -19,7 +18,6 @@ export default function DocumentsDrawer({
   uploadedFiles,
   generatedFiles,
   loading = false,
-  onAskFile,
   onOpenFile,
   disableActions = false,
   onClose,
@@ -59,7 +57,6 @@ export default function DocumentsDrawer({
           <DocumentsList
             files={uploadedFiles}
             loading={loading}
-            onAskFile={onAskFile}
             onOpenFile={onOpenFile}
             disableActions={disableActions}
             kind="uploaded"

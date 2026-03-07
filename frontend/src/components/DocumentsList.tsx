@@ -21,19 +21,14 @@ function formatRelativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
-function fileExtension(filename: string): string {
-  const dot = filename.lastIndexOf(".");
-  return dot >= 0 ? filename.slice(dot + 1).toUpperCase() : "";
-}
 
-function FileIcon({ ext, className }: { ext: string; className?: string }) {
+function FileIcon() {
   return (
-    <div className={`flex h-8 w-7 flex-col items-center justify-center rounded-[0.3rem] border border-white/12 bg-white/[0.04] text-[7px] font-bold uppercase leading-none tracking-wider text-app-muted-strong ${className || ""}`}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mb-0.5 text-app-muted/60">
+    <div className="flex h-8 w-6 shrink-0 items-center justify-center rounded-[0.3rem] border border-white/10 bg-white/[0.04] text-app-muted">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
         <polyline points="14 2 14 8 20 8" />
       </svg>
-      {ext && <span>{ext.slice(0, 4)}</span>}
     </div>
   );
 }
@@ -41,7 +36,6 @@ function FileIcon({ ext, className }: { ext: string; className?: string }) {
 interface DocumentsListProps {
   files: FileInfo[];
   loading?: boolean;
-  onAskFile?: (filename: string) => void;
   onOpenFile?: (filename: string) => void;
   disableActions?: boolean;
   kind?: "uploaded" | "generated";
@@ -51,7 +45,6 @@ interface DocumentsListProps {
 export default function DocumentsList({
   files,
   loading = false,
-  onAskFile,
   onOpenFile,
   disableActions = false,
   kind,
@@ -78,46 +71,36 @@ export default function DocumentsList({
   return (
     <div className="space-y-1">
       {files.map((file) => {
-        const ext = fileExtension(file.filename);
+        const isClickable = !!onOpenFile && !disableActions;
+        // For uploaded files that have been converted, open the markdown version
+        const openTarget = kind === "uploaded" && file.has_markdown ? file.filename + ".md" : file.filename;
         return (
-          <div key={file.filename} data-testid="document-item" className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.04]">
-            <FileIcon ext={ext} />
+          <div
+            key={file.filename}
+            data-testid="document-item"
+            role={isClickable ? "button" : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onClick={isClickable ? () => onOpenFile(openTarget) : undefined}
+            onKeyDown={isClickable ? (e) => { if (e.key === "Enter" || e.key === " ") onOpenFile(openTarget); } : undefined}
+            className={`group flex items-center gap-2.5 rounded-xl border px-2 py-2 transition-all ${
+              isClickable
+                ? "cursor-pointer border-white/8 bg-white/[0.02] hover:border-brand/40 hover:bg-brand/[0.10] active:scale-[0.99]"
+                : "border-white/8 bg-white/[0.02]"
+            }`}
+          >
+            <FileIcon />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span data-testid="document-name" className="min-w-0 truncate text-xs font-medium text-app-fg" title={file.filename}>{file.filename}</span>
-                {kind === "uploaded" && file.has_markdown && (
-                  <svg data-testid="conversion-done" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-emerald-400" aria-label="Converted">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
+              <span data-testid="document-name" className="block min-w-0 truncate text-xs font-medium text-app-fg" title={file.filename}>{file.filename}</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-[10px] text-app-muted">{formatSize(file.size)}</span>
-                <span className="text-[10px] text-app-muted/60">{formatRelativeTime(file.modified_at)}</span>
+                {file.modified_at && <span className="text-[10px] text-app-muted/50">{formatRelativeTime(file.modified_at)}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {onAskFile && (
-                <button
-                  type="button"
-                  disabled={disableActions}
-                  onClick={() => onAskFile(file.filename)}
-                  className="interactive-control rounded-md border border-white/15 bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-app-muted hover:text-app-fg disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Ask
-                </button>
-              )}
-              {onOpenFile && (
-                <button
-                  type="button"
-                  disabled={disableActions}
-                  onClick={() => onOpenFile(file.filename)}
-                  className="interactive-control rounded-md border border-white/15 bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-app-muted hover:text-app-fg disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Open
-                </button>
-              )}
-            </div>
+            {isClickable && (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-app-muted/30 transition-colors group-hover:text-brand/60">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            )}
           </div>
         );
       })}

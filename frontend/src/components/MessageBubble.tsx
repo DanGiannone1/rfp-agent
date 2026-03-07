@@ -65,14 +65,14 @@ function toolLabelForStatus(name: string, status: "running" | "done"): string {
       view: "Reading file", analyze: "Analyzing", summarize: "Summarizing",
       extract: "Extracting", compare: "Comparing", bash: "Running command",
       grep: "Searching files", glob: "Finding files", str_replace_editor: "Editing file",
-      convert_document: "Converting document", knowledge_base_retrieve: "Searching knowledge base",
+      knowledge_base_retrieve: "Searching knowledge base",
     },
     done: {
       search: "Searched", read_file: "Read file", write_file: "Wrote file",
       view: "Read file", analyze: "Analyzed", summarize: "Summarized",
       extract: "Extracted", compare: "Compared", bash: "Ran command",
       grep: "Searched files", glob: "Found files", str_replace_editor: "Edited file",
-      convert_document: "Converted document", knowledge_base_retrieve: "Searched knowledge base",
+      knowledge_base_retrieve: "Searched knowledge base",
     },
   };
   return labels[status][normalized] || labels[status][name] || normalized;
@@ -83,7 +83,6 @@ function toolContext(name: string, args: string | undefined): string | null {
   try {
     const p = JSON.parse(args);
     switch (name) {
-      case "convert_document": return p.filename || null;
       case "grep": return p.pattern ? String(p.pattern).slice(0, 40) : null;
       case "glob": return p.pattern || null;
       case "bash": return typeof p.command === "string" ? p.command.slice(0, 50) : null;
@@ -196,8 +195,9 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     <article className={`message-row ${isUser ? "message-row-user" : "message-row-assistant"}`} data-testid={isUser ? "user-message" : "assistant-message"}>
       {!isUser && (
         <div className="message-avatar message-avatar-assistant">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m12 2 2.4 5.1L20 9.2l-4 3.8.9 5.8L12 16.3 7.1 18.8 8 13 4 9.2l5.6-2.1z" />
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="7" y="7" width="10" height="10" rx="1" />
+            <path d="M7 9H5M7 12H5M7 15H5M17 9h2M17 12h2M17 15h2M9 7V5M12 7V5M15 7V5M9 17v2M12 17v2M15 17v2" />
           </svg>
         </div>
       )}

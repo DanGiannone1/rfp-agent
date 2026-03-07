@@ -80,10 +80,10 @@ export default function ArtifactCanvas({
     URL.revokeObjectURL(url);
   }
 
-  const btnClass = "interactive-control rounded-lg border border-white/15 bg-white/[0.04] px-2 py-1 text-xs text-app-muted-strong hover:text-app-fg";
+  const iconBtnClass = "interactive-control rounded-lg border border-white/15 bg-white/[0.04] p-1.5 text-app-muted-strong hover:text-app-fg";
 
   return (
-    <aside className="hidden w-[44%] min-w-[420px] shrink-0 border-l border-white/10 bg-black/35 xl:flex xl:flex-col">
+    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 border-l border-white/10 bg-black/35">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.14em] text-app-muted">Canvas</p>
@@ -92,16 +92,20 @@ export default function ArtifactCanvas({
         <div className="flex shrink-0 items-center gap-2">
           {!loading && !error && content && (
             <>
-              <button type="button" onClick={handleCopy} className={btnClass}>
-                {copied ? "Copied!" : "Copy"}
+              <button type="button" onClick={handleCopy} title={copied ? "Copied!" : "Copy"} className={iconBtnClass}>
+                {copied ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                )}
               </button>
-              <button type="button" onClick={handleDownload} className={btnClass}>
-                Download
+              <button type="button" onClick={handleDownload} title="Download" className={iconBtnClass}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               </button>
             </>
           )}
-          <button type="button" onClick={onClose} className={btnClass}>
-            Close
+          <button type="button" onClick={onClose} title="Close" className={iconBtnClass}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
       </div>

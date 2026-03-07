@@ -62,14 +62,14 @@ export default function IntakeScreen({
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app p-4 text-app-fg">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(64,124,255,.18),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(20,184,166,.14),transparent_30%),radial-gradient(circle_at_50%_100%,rgba(56,189,248,.08),transparent_50%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(79,133,255,.15),transparent_38%)]" />
 
       <section className="relative z-10 w-full max-w-4xl rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] backdrop-blur-xl md:p-8">
         <header className="mb-6">
           <p className="text-xs uppercase tracking-[0.18em] text-app-muted">Meridian & Associates</p>
-          <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Upload RFP to Start</h1>
+          <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Upload your RFP to begin</h1>
           <p className="mt-2 max-w-2xl text-sm text-app-muted-strong">
-            Upload one primary RFP file to begin. You can attach additional files after chat opens.
+            Upload your RFP and the agent will automatically generate compliance matrices, bid/no-bid scoring, executive summaries, and risk analysis. Additional files can be attached once the chat opens.
           </p>
         </header>
 
@@ -78,8 +78,8 @@ export default function IntakeScreen({
           tabIndex={ready && !busy ? 0 : -1}
           aria-disabled={!ready || busy}
           aria-label="Upload RFP file"
-          className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all md:p-10 ${
-            isDragOver ? "border-brand bg-brand/10" : "border-white/20 bg-black/20"
+          className={`rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-200 md:p-10 ${
+            isDragOver ? "border-brand bg-brand/10 scale-[1.02]" : "border-white/20 bg-black/20 scale-100"
           } ${!ready || busy ? "opacity-70" : "cursor-pointer"}`}
           onClick={() => {
             if (!ready || busy) return;
@@ -115,7 +115,7 @@ export default function IntakeScreen({
             }}
           />
 
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 text-brand-strong">
+          <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/20 text-brand-strong ${preparing ? "agent-working" : ""}`}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
@@ -138,6 +138,10 @@ export default function IntakeScreen({
             <p className="mt-2 text-xs text-app-muted/70">Large documents can take 1–2 minutes to process.</p>
           )}
         </div>
+
+        <p className="mt-2 text-[11px] text-app-muted/60">
+            Accepts PDF, DOCX, XLSX, PPTX, TXT, CSV, JSON, XML, MD, RTF, HTML
+          </p>
 
         {selectedFileName && (
           <p className="mt-3 text-xs text-app-muted">Selected file: <span className="text-app-fg">{selectedFileName}</span></p>

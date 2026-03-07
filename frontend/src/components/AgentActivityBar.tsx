@@ -16,7 +16,6 @@ function toolLabel(name: string): string {
     glob: "Finding files",
     view: "Reading file",
     str_replace_editor: "Editing file",
-    convert_document: "Converting document",
     knowledge_base_retrieve: "Searching knowledge base",
   };
   return labels[normalized] || labels[name] || normalized;
@@ -27,7 +26,6 @@ function toolContext(name: string, args: string | undefined): string | null {
   try {
     const p = JSON.parse(args);
     switch (name) {
-      case "convert_document": return p.filename || null;
       case "grep": return p.pattern ? `"${String(p.pattern).slice(0, 40)}"` : null;
       case "glob": return p.pattern || null;
       case "bash": return typeof p.command === "string" ? p.command.slice(0, 50) : null;

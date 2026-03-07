@@ -3,11 +3,11 @@
 :root {
   --app-bg: #17191d;
   --app-fg: #eceff4;
-  --app-muted: #a0a9b8;
+  --app-muted: #b0bac8;
   --app-muted-strong: #cdd4df;
-  --brand: #6ea2ff;
-  --brand-strong: #8eb7ff;
-  --type-body: clamp(0.94rem, 0.9rem + 0.2vw, 1.02rem);
+  --brand: #4f85ff;
+  --brand-strong: #7aaaff;
+  --type-body: clamp(1rem, 0.95rem + 0.25vw, 1.1rem);
 }
 
 @theme inline {
@@ -156,11 +156,11 @@ body {
 }
 
 .thinking-dots span {
-  width: 0.32rem;
-  height: 0.32rem;
+  width: 0.38rem;
+  height: 0.38rem;
   border-radius: 999px;
   background: #8fb1ff;
-  animation: thinking-dot 1.15s ease-in-out infinite;
+  animation: thinking-dot 0.95s ease-in-out infinite;
 }
 
 .thinking-dots span:nth-child(2) {
@@ -192,7 +192,7 @@ body {
   border-radius: 2px;
   background: var(--brand-strong);
   vertical-align: text-bottom;
-  animation: cursor-blink 1s step-end infinite;
+  animation: cursor-blink 0.7s step-end infinite;
 }
 
 @keyframes cursor-blink {
@@ -251,7 +251,7 @@ body {
 }
 
 .inline-tool-done {
-  background: transparent;
+  background: rgba(52, 211, 153, 0.05);
   color: #8a95ab;
 }
 
@@ -285,8 +285,8 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 240px;
-  opacity: 0.5;
-  font-size: 0.72rem;
+  opacity: 0.7;
+  font-size: 0.8rem;
   font-family: var(--font-mono);
   padding: 0.1rem 0.35rem;
   border-radius: 0.25rem;
@@ -345,6 +345,21 @@ body {
   color: #f4f7ff;
 }
 
+.prose-message h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.prose-message h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.prose-message h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .prose-message p,
 .prose-message ul,
 .prose-message ol {
@@ -353,7 +368,7 @@ body {
 }
 
 .prose-message a {
-  color: #9ab8ff;
+  color: #7ec8ff;
   text-decoration: none;
 }
 
@@ -364,7 +379,7 @@ body {
 .prose-message code:not(pre code) {
   border-radius: 0.35rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.09);
   padding: 0.1rem 0.35rem;
   font-size: 0.82em;
 }
@@ -465,7 +480,7 @@ body {
 }
 
 .agent-working {
-  animation: agent-working-pulse 1.6s ease-in-out infinite;
+  animation: agent-working-pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes agent-working-pulse {
@@ -525,7 +540,7 @@ body {
 }
 
 .prose-canvas h1 {
-  font-size: 1.45rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: #f4f7ff;
   margin-top: 0;
@@ -534,7 +549,7 @@ body {
 }
 
 .prose-canvas h2 {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: 650;
   color: #e8efff;
   margin-top: 1.4em;
@@ -625,9 +640,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *:not(.animate-spin),
+  *:not(.animate-spin)::before,
+  *:not(.animate-spin)::after {
     animation: none !important;
     transition: none !important;
   }
