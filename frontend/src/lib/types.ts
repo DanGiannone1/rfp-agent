@@ -9,19 +9,24 @@ export type AGUIEvent =
   | { type: "RUN_FINISHED"; thread_id: string; run_id: string }
   | { type: "RUN_ERROR"; message: string };
 
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  isStreaming: boolean;
-  toolActivity: ToolActivity[];
-}
+export type MessagePart =
+  | { type: "text"; content: string }
+  | { type: "tool_call"; tool: string; toolCallId: string; status: "running" | "done"; args?: string };
 
 export interface ToolActivity {
   tool: string;
   toolCallId: string;
   status: "running" | "done";
   args?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  isStreaming: boolean;
+  toolActivity: ToolActivity[];
+  parts: MessagePart[];
 }
 
 export interface FileInfo {

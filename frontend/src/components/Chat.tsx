@@ -1,7 +1,7 @@
 "use client";
 
 import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from "react";
-import { AGUIEvent, ChatMessage, FileInfo } from "@/lib/types";
+import { AGUIEvent, ChatMessage, FileInfo, MessagePart } from "@/lib/types";
 import { streamSSE } from "@/lib/sse";
 import { createSession, getFileContent, listFiles, uploadFile } from "@/lib/api";
 import { clearSessionId, storeSessionId, storeMessages } from "@/lib/session";
@@ -10,7 +10,6 @@ import InputBar from "./InputBar";
 import IntakeScreen from "./IntakeScreen";
 import DocumentsDrawer from "./DocumentsDrawer";
 import ArtifactsPanel from "./ArtifactsPanel";
-import AgentActivityBar from "./AgentActivityBar";
 import ArtifactCanvas from "./ArtifactCanvas";
 
 type ChatStage = "intake" | "chat";
@@ -40,10 +39,11 @@ interface State {
   isInitializing: boolean;
   fileRefreshKey: number;
   stage: ChatStage;
+  currentRunId: string | null;
 }
 
 const SESSION_TIMEOUT_MS = 12_000;
-const UPLOAD_TIMEOUT_MS = 30_000;
+const UPLOAD_TIMEOUT_MS = 180_000; // covers file transfer + CU conversion (large PDFs can take 2+ min)
 
 function normalizeFileList(files: FileInfo[]): FileInfo[] {
   const byName = new Map(files.map((f) => [f.filename, f]));
@@ -77,6 +77,26 @@ function mergeVisibleFiles(serverFiles: FileInfo[], pendingFiles: FileInfo[]): F
   return Array.from(map.values()).sort((a, b) => Date.parse(b.modified_at || "") - Date.parse(a.modified_at || ""));
 }
 
+/** Helper: update the last message in a messages array. */
+function updateLastMessage(msgs: ChatMessage[], updater: (msg: ChatMessage) => ChatMessage): ChatMessage[] {
+  if (msgs.length === 0) return msgs;
+  const copy = [...msgs];
+  copy[copy.length - 1] = updater({ ...copy[copy.length - 1] });
+  return copy;
+}
+
+/** Derive flat content and toolActivity from parts for backward compat. */
+function syncFromParts(msg: ChatMessage): ChatMessage {
+  const content = msg.parts
+    .filter((p): p is MessagePart & { type: "text" } => p.type === "text")
+    .map((p) => p.content)
+    .join("");
+  const toolActivity = msg.parts
+    .filter((p): p is MessagePart & { type: "tool_call" } => p.type === "tool_call")
+    .map((p) => ({ tool: p.tool, toolCallId: p.toolCallId, status: p.status, args: p.args }));
+  return { ...msg, content, toolActivity };
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "SET_SESSION_ID":
@@ -96,6 +116,7 @@ function reducer(state: State, action: Action): State {
         sessionId: null,
         stage: "intake",
         fileRefreshKey: 0,
+        currentRunId: null,
       };
 
     case "USER_SEND":
@@ -110,6 +131,7 @@ function reducer(state: State, action: Action): State {
             content: action.content,
             isStreaming: false,
             toolActivity: [],
+            parts: [{ type: "text", content: action.content }],
           },
           {
             id: `pending-${crypto.randomUUID()}`,
@@ -117,26 +139,39 @@ function reducer(state: State, action: Action): State {
             content: "",
             isStreaming: true,
             toolActivity: [],
+            parts: [],
           },
         ],
       };
 
     case "RUN_STARTED":
-      return state;
+      return { ...state, currentRunId: action.runId };
 
     case "ASSISTANT_START": {
-      if (state.messages.length > 0) {
-        const msgs = [...state.messages];
-        const last = msgs[msgs.length - 1];
-        if (
-          last.role === "assistant" &&
-          last.isStreaming &&
-          last.content === "" &&
-          last.id.startsWith("pending-")
-        ) {
-          msgs[msgs.length - 1] = { ...last, id: action.messageId };
-          return { ...state, messages: msgs };
-        }
+      if (state.messages.length === 0) {
+        return {
+          ...state,
+          messages: [{
+            id: action.messageId,
+            role: "assistant",
+            content: "",
+            isStreaming: true,
+            toolActivity: [],
+            parts: [],
+          }],
+        };
+      }
+      const last = state.messages[state.messages.length - 1];
+      // Replace pending message ID
+      if (last.role === "assistant" && last.isStreaming && last.id.startsWith("pending-")) {
+        return {
+          ...state,
+          messages: updateLastMessage(state.messages, (m) => ({ ...m, id: action.messageId })),
+        };
+      }
+      // Same run — continuation after tool call, stay in same message
+      if (last.role === "assistant" && last.isStreaming && state.currentRunId) {
+        return state;
       }
       return {
         ...state,
@@ -148,6 +183,7 @@ function reducer(state: State, action: Action): State {
             content: "",
             isStreaming: true,
             toolActivity: [],
+            parts: [],
           },
         ],
       };
@@ -155,11 +191,19 @@ function reducer(state: State, action: Action): State {
 
     case "DELTA": {
       if (state.messages.length === 0) return state;
-      const msgs = [...state.messages];
-      const last = { ...msgs[msgs.length - 1] };
-      last.content += action.delta;
-      msgs[msgs.length - 1] = last;
-      return { ...state, messages: msgs };
+      return {
+        ...state,
+        messages: updateLastMessage(state.messages, (m) => {
+          const parts = [...m.parts];
+          const lastPart = parts[parts.length - 1];
+          if (lastPart && lastPart.type === "text") {
+            parts[parts.length - 1] = { ...lastPart, content: lastPart.content + action.delta };
+          } else {
+            parts.push({ type: "text", content: action.delta });
+          }
+          return syncFromParts({ ...m, parts });
+        }),
+      };
     }
 
     case "MESSAGE_END":
@@ -167,70 +211,89 @@ function reducer(state: State, action: Action): State {
 
     case "TOOL_START": {
       if (state.messages.length === 0) return state;
-      const msgs = [...state.messages];
-      const last = { ...msgs[msgs.length - 1] };
-      last.toolActivity = [
-        ...last.toolActivity,
-        { tool: action.toolCallName, toolCallId: action.toolCallId, status: "running" },
-      ];
-      msgs[msgs.length - 1] = last;
-      return { ...state, messages: msgs };
+      return {
+        ...state,
+        messages: updateLastMessage(state.messages, (m) => {
+          const parts = [...m.parts, {
+            type: "tool_call" as const,
+            tool: action.toolCallName,
+            toolCallId: action.toolCallId,
+            status: "running" as const,
+          }];
+          return syncFromParts({ ...m, parts });
+        }),
+      };
     }
 
     case "TOOL_ARGS": {
       if (state.messages.length === 0) return state;
-      const msgs = [...state.messages];
-      const last = { ...msgs[msgs.length - 1] };
-      last.toolActivity = last.toolActivity.map((ta) =>
-        ta.toolCallId === action.toolCallId
-          ? { ...ta, args: (ta.args || "") + action.delta }
-          : ta,
-      );
-      msgs[msgs.length - 1] = last;
-      return { ...state, messages: msgs };
+      return {
+        ...state,
+        messages: updateLastMessage(state.messages, (m) => {
+          const parts = m.parts.map((p) =>
+            p.type === "tool_call" && p.toolCallId === action.toolCallId
+              ? { ...p, args: (p.args || "") + action.delta }
+              : p,
+          );
+          return syncFromParts({ ...m, parts });
+        }),
+      };
     }
 
     case "TOOL_END": {
       if (state.messages.length === 0) return state;
-      const msgs = [...state.messages];
-      const last = { ...msgs[msgs.length - 1] };
-      last.toolActivity = last.toolActivity.map((ta) =>
-        ta.toolCallId === action.toolCallId ? { ...ta, status: "done" as const } : ta,
-      );
-      msgs[msgs.length - 1] = last;
-      return { ...state, messages: msgs };
+      return {
+        ...state,
+        messages: updateLastMessage(state.messages, (m) => {
+          const parts = m.parts.map((p) =>
+            p.type === "tool_call" && p.toolCallId === action.toolCallId
+              ? { ...p, status: "done" as const }
+              : p,
+          );
+          return syncFromParts({ ...m, parts });
+        }),
+      };
     }
 
     case "DONE": {
-      const msgs = [...state.messages];
-      if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant") {
-        const last = { ...msgs[msgs.length - 1] };
-        last.isStreaming = false;
-        last.toolActivity = last.toolActivity.map((ta) =>
-          ta.status === "running" ? { ...ta, status: "done" as const } : ta,
-        );
-        msgs[msgs.length - 1] = last;
-      }
-      return { ...state, messages: msgs, isStreaming: false };
+      return {
+        ...state,
+        isStreaming: false,
+        currentRunId: null,
+        messages: updateLastMessage(state.messages, (m) => {
+          if (m.role !== "assistant") return m;
+          const parts = m.parts.map((p) =>
+            p.type === "tool_call" && p.status === "running"
+              ? { ...p, status: "done" as const }
+              : p,
+          );
+          return syncFromParts({ ...m, parts, isStreaming: false });
+        }),
+      };
     }
 
     case "ERROR": {
       const msgs = [...state.messages];
       if (msgs.length > 0 && msgs[msgs.length - 1].role === "assistant") {
-        const last = { ...msgs[msgs.length - 1] };
-        last.content += `\n\n${action.message}`;
-        last.isStreaming = false;
-        msgs[msgs.length - 1] = last;
-      } else {
-        msgs.push({
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: action.message,
+        return {
+          ...state,
           isStreaming: false,
-          toolActivity: [],
-        });
+          currentRunId: null,
+          messages: updateLastMessage(msgs, (m) => {
+            const parts = [...m.parts, { type: "text" as const, content: `\n\n${action.message}` }];
+            return syncFromParts({ ...m, parts, isStreaming: false });
+          }),
+        };
       }
-      return { ...state, messages: msgs, isStreaming: false };
+      msgs.push({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: action.message,
+        isStreaming: false,
+        toolActivity: [],
+        parts: [{ type: "text", content: action.message }],
+      });
+      return { ...state, messages: msgs, isStreaming: false, currentRunId: null };
     }
 
     case "APPEND_ASSISTANT":
@@ -244,6 +307,7 @@ function reducer(state: State, action: Action): State {
             content: action.content,
             isStreaming: false,
             toolActivity: [],
+            parts: [{ type: "text", content: action.content }],
           },
         ],
       };
@@ -263,6 +327,7 @@ const initialState: State = {
   isInitializing: true,
   fileRefreshKey: 0,
   stage: "intake",
+  currentRunId: null,
 };
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -299,7 +364,7 @@ export default function Chat() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadState, setUploadState] = useState<"idle" | "uploading" | "processing">("idle");
+  const [uploadState, setUploadState] = useState<"idle" | "uploading">("idle");
   const [sessionState, setSessionState] = useState<"preparing" | "ready" | "error">("preparing");
   const [chatUploadName, setChatUploadName] = useState<string | null>(null);
   const [isChatUploading, setIsChatUploading] = useState(false);
@@ -314,11 +379,8 @@ export default function Chat() {
   const [artifactError, setArtifactError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastAutoOpenedGenerated = useRef<string | null>(null);
+  const fileRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const files = useMemo(() => mergeVisibleFiles(serverFiles, pendingFiles), [serverFiles, pendingFiles]);
-  const latestAssistantMessage = useMemo(
-    () => [...state.messages].reverse().find((m) => m.role === "assistant") || null,
-    [state.messages],
-  );
   const uploadedNameSet = useMemo(
     () => new Set([...uploadedFileNames, ...pendingFiles.map((f) => f.filename)]),
     [uploadedFileNames, pendingFiles],
@@ -389,6 +451,10 @@ export default function Chat() {
   }, [startSession]);
 
   useEffect(() => {
+    return () => { if (fileRetryTimerRef.current) clearTimeout(fileRetryTimerRef.current); };
+  }, []);
+
+  useEffect(() => {
     if (!state.isStreaming && state.messages.length > 0) {
       storeMessages(state.messages);
     }
@@ -402,10 +468,10 @@ export default function Chat() {
       timer = setTimeout(() => {
         setStatusMessage("Still starting your session. You can retry if this continues.");
       }, 9000);
-    } else if (isUploading || uploadState === "processing") {
+    } else if (isUploading) {
       timer = setTimeout(() => {
-        setStatusMessage("Still processing your file. This can take a bit for large documents.");
-      }, 12000);
+        setStatusMessage("Converting your document with Azure Content Understanding — this can take 30–60 seconds for large files.");
+      }, 8000);
     } else {
       setStatusMessage(null);
     }
@@ -413,7 +479,7 @@ export default function Chat() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [state.isInitializing, isUploading, uploadState, sessionError, uploadError]);
+  }, [state.isInitializing, isUploading, sessionError, uploadError]);
 
   useEffect(() => {
     if (!state.sessionId || state.stage !== "chat") return;
@@ -454,8 +520,8 @@ export default function Chat() {
       addPendingFile(file);
 
       try {
+        // Single request: file transfer + CU conversion happen server-side before response
         await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-        setUploadState("processing");
         dispatch({ type: "FILES_CHANGED" });
         setUploadedFileName(file.name);
         markUploadedFile(file.name);
@@ -464,7 +530,6 @@ export default function Chat() {
         } catch {
           // non-blocking; optimistic pending file remains visible
         }
-        await new Promise((resolve) => setTimeout(resolve, 550));
         dispatch({ type: "SET_STAGE", stage: "chat" });
         setUploadState("idle");
       } catch (err) {
@@ -548,7 +613,8 @@ export default function Chat() {
         if (state.sessionId) {
           const sid = state.sessionId;
           void refreshFiles(sid).catch(() => {});
-          setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
+          if (fileRetryTimerRef.current) clearTimeout(fileRetryTimerRef.current);
+          fileRetryTimerRef.current = setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
         }
         break;
       case "RUN_ERROR":
@@ -557,7 +623,8 @@ export default function Chat() {
         if (state.sessionId) {
           const sid = state.sessionId;
           void refreshFiles(sid).catch(() => {});
-          setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
+          if (fileRetryTimerRef.current) clearTimeout(fileRetryTimerRef.current);
+          fileRetryTimerRef.current = setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
         }
         break;
     }
@@ -724,10 +791,6 @@ export default function Chat() {
       <div className="relative z-10 flex min-h-0 flex-1">
         <div className="flex min-h-0 flex-1">
           <div className="flex min-h-0 flex-1 flex-col">
-            <AgentActivityBar
-              isStreaming={state.isStreaming}
-              toolActivity={latestAssistantMessage?.toolActivity || []}
-            />
             <MessageList messages={state.messages} onSuggestion={state.isStreaming ? undefined : handleSend} />
 
             <InputBar
