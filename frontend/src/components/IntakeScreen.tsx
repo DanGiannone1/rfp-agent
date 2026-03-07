@@ -134,6 +134,9 @@ export default function IntakeScreen({
                 ? selectedFileName ? `Processing ${selectedFileName}` : "Uploading and extracting content..."
                 : "or click to choose from your device"}
           </p>
+          {uploading && (
+            <p className="mt-2 text-xs text-app-muted/70">Large documents can take 1–2 minutes to process.</p>
+          )}
         </div>
 
         {selectedFileName && (

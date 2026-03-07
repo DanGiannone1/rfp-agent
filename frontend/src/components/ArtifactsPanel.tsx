@@ -21,20 +21,12 @@ export default function ArtifactsPanel({
   disableActions = false,
 }: ArtifactsPanelProps) {
   return (
-    <aside data-testid="artifacts-panel" className="hidden w-80 shrink-0 border-l border-white/10 bg-black/25 p-4 lg:flex lg:flex-col lg:gap-4">
-      <div>
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-app-muted">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand/90" />
-          Workspace Files
-        </p>
-      </div>
-
-      <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-3">
+    <aside data-testid="artifacts-panel" className="hidden w-80 shrink-0 border-l border-white/10 bg-black/25 lg:flex lg:flex-col">
+      {/* Uploaded documents — compact, top section */}
+      <section className="border-b border-white/8 px-4 py-3">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-medium text-app-muted-strong">Uploaded Documents</p>
-          <span className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] text-brand-strong">
-            {uploadedFiles.length}
-          </span>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-app-muted">Source Documents</p>
+          <span className="text-[10px] tabular-nums text-app-muted/70">{uploadedFiles.length}</span>
         </div>
         <DocumentsList
           files={uploadedFiles}
@@ -43,26 +35,27 @@ export default function ArtifactsPanel({
           onOpenFile={onOpenFile}
           disableActions={disableActions}
           kind="uploaded"
-          emptyLabel="No source documents uploaded."
+          emptyLabel="No documents uploaded."
         />
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-white/[0.01] p-3">
+      {/* Generated artifacts — remaining space */}
+      <section className="flex min-h-0 flex-1 flex-col px-4 py-3">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-xs font-medium text-app-muted-strong">Generated Artifacts</p>
-          <span className="rounded-full border border-brand/40 bg-brand/15 px-2 py-0.5 text-[10px] text-brand-strong">
-            {generatedFiles.length}
-          </span>
+          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-app-muted">Generated Artifacts</p>
+          <span className="text-[10px] tabular-nums text-app-muted/70">{generatedFiles.length}</span>
         </div>
-        {loading ? (
-          <DocumentsList files={[]} loading />
-        ) : generatedFiles.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-app-muted">
-            No generated artifacts yet.
-          </div>
-        ) : (
-          <DocumentsList files={generatedFiles} onOpenFile={onOpenFile} disableActions={disableActions} kind="generated" />
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loading ? (
+            <DocumentsList files={[]} loading />
+          ) : generatedFiles.length === 0 ? (
+            <p className="py-6 text-center text-xs text-app-muted/60">
+              Artifacts will appear here as the agent generates deliverables.
+            </p>
+          ) : (
+            <DocumentsList files={generatedFiles} onOpenFile={onOpenFile} disableActions={disableActions} kind="generated" />
+          )}
+        </div>
       </section>
     </aside>
   );

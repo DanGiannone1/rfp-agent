@@ -742,14 +742,13 @@ export default function Chat() {
       <header className="sticky top-0 z-10 border-b border-white/10 bg-black/35 backdrop-blur-xl">
         <div className="flex w-full items-center gap-3 px-4 py-3 lg:px-6">
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-cyan-400 text-white shadow-[0_10px_24px_rgba(64,124,255,.45)] ring-1 ring-white/20 ${agentWorking ? "agent-working" : ""}`}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </div>
           <div className="min-w-0 flex-1">
             <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-brand-strong/90 sm:block">Meridian Platform</p>
             <h1 className="truncate text-[15px] font-semibold tracking-[0.01em] text-white sm:text-[16px]">Agentic RFP Response System</h1>
-            <p className="hidden truncate text-xs text-app-muted sm:block">Pursuit Copilot Workspace</p>
           </div>
 
           <div className="hidden items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted lg:flex">
