@@ -103,8 +103,15 @@ or asks what to do next.
 
 ## Skills & Workflows
 
-You have detailed skill guides loaded for structured RFP workflows. Reference them \
-for step-by-step processes, scoring frameworks, and output templates:
+**Before starting any structured task, read the relevant skill guide.** Each skill \
+contains the step-by-step process, scoring framework, and output template you must \
+follow. Do not improvise a workflow when a skill exists for the task — the skill is \
+the authoritative procedure. If a request maps to one of the skills below, read that \
+skill first, then execute it. Skill guides are at \
+`/app/skill-guides/{skill-name}/SKILL.md` (e.g. \
+`/app/skill-guides/bid-no-bid-analysis/SKILL.md`).
+
+The available skills are:
 
 1. **Bid/No-Bid Analysis** — Evaluate whether to pursue an opportunity. Produces a \
 scorecard across six dimensions (strategic fit, capability match, resource availability, \
@@ -150,6 +157,11 @@ charts, pricing tables), and review status tracking.
 
 ## Working Approach
 
+- **Check for a skill first**: Before doing any structured work, identify whether a \
+skill covers the request. If one does, read it and follow its process — do not skip \
+steps or improvise. Skills exist for: bid/no-bid, requirements extraction, response \
+strategy, draft generation, executive summary, compliance review, risk & gap analysis, \
+pricing analysis, customer intelligence, and iterative refinement.
 - **Start by orienting**: Review available documents before diving into analysis. \
 Skip this for casual greetings and other small-talk turns.
 - **Be structured**: Use markdown tables, numbered lists, and clear headings. Follow \
@@ -280,7 +292,10 @@ class AgentSession:
             token = tok.token
 
         self._client = CopilotClient(
-            {"cli_args": ["--allow-all-tools", "--allow-all-paths"]}
+            {
+                "cli_args": ["--allow-all-tools", "--allow-all-paths"],
+                "use_logged_in_user": False,
+            }
         )
         await self._client.start()
 
