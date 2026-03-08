@@ -209,7 +209,18 @@ function reducer(state: State, action: Action): State {
     }
 
     case "MESSAGE_END":
-      return state;
+      return {
+        ...state,
+        messages: updateLastMessage(state.messages, (m) => {
+          if (m.role !== "assistant") return m;
+          const parts = m.parts.map((p) =>
+            p.type === "tool_call" && p.status === "running"
+              ? { ...p, status: "done" as const }
+              : p,
+          );
+          return syncFromParts({ ...m, parts, isStreaming: false });
+        }),
+      };
 
     case "TOOL_START": {
       if (state.messages.length === 0) return state;
@@ -373,6 +384,7 @@ function friendlyError(err: unknown, fallback: string): string {
   if (msg.includes("failed to fetch") || msg.includes("network")) return "Network issue. Check your connection and try again.";
   if (msg.includes("413") || msg.includes("too large")) return "The file is too large. Please upload a smaller file.";
   if (msg.includes("415") || msg.includes("unsupported")) return "This file type is not supported.";
+  if (msg.includes("404")) return "Artifact not found. It may still be generating — please try again in a moment.";
   return fallback;
 }
 
@@ -758,12 +770,20 @@ export default function Chat() {
     setArtifactError(null);
     setArtifactContent("");
     try {
-      const data = await getFileContent(state.sessionId, filename);
-      setArtifactContent(data.content);
-      setArtifactMimeType(data.mime_type);
-    } catch (err) {
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        if (attempt > 0) await new Promise<void>((r) => setTimeout(r, attempt * 1000));
+        try {
+          const data = await getFileContent(state.sessionId, filename);
+          setArtifactContent(data.content);
+          setArtifactMimeType(data.mime_type);
+          return;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
       setArtifactMimeType(undefined);
-      setArtifactError(friendlyError(err, "Could not load artifact content."));
+      setArtifactError(friendlyError(lastErr, "Could not load artifact content."));
     } finally {
       setArtifactLoading(false);
     }
