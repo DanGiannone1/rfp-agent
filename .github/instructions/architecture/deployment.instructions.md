@@ -20,8 +20,10 @@ Easy Auth is disabled; IP restriction is used instead.
 ## Build (Run in Parallel)
 
 ```bash
+TAG="deploy-$(date +%Y%m%d-%H%M%S)"
+
 az acr build --registry rfpagentacr \
-  --image rfp-session:latest \
+  --image rfp-session:latest --image rfp-session:$TAG \
   --file session-container/Dockerfile session-container/
 
 az acr build --registry rfpagentacr \
@@ -37,10 +39,11 @@ az acr build --registry rfpagentacr \
 ## Update (Run Sequentially)
 
 ```bash
+# IMPORTANT: Never use :latest for session pools — ACA caches tag resolution
 az containerapp sessionpool update \
   --name rfpagent-sessions \
   --resource-group rfpagent-rg \
-  --image rfpagentacr.azurecr.io/rfp-session:latest \
+  --image rfpagentacr.azurecr.io/rfp-session:$TAG \
   --cooldown-period 300 --max-sessions 20 --ready-sessions 5
 
 az containerapp update \

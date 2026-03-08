@@ -1,6 +1,6 @@
 # RFP Agent — Frontend
 
-Next.js 15 web UI for the RFP Agent. Communicates with the orchestrator over HTTP and SSE.
+Next.js 16 web UI for the RFP Agent. Communicates with the orchestrator over HTTP and SSE.
 
 ## Development
 

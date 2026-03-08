@@ -131,7 +131,7 @@ unless the user requests otherwise.
 
 ## Skills
 
-The agent loads 10 skill files from `session-container/skills/` via the `skill_directories` configuration. Each skill is a markdown file containing a detailed workflow guide with step-by-step processes, scoring frameworks, and output templates.
+The agent loads 10 skill files from `session-container/skills/` via the `skill_directories` configuration. Each skill uses the `{skill-name}/SKILL.md` subdirectory format per the GitHub Copilot SDK spec (e.g., `session-container/skills/requirements-extraction/SKILL.md`). Each SKILL.md contains a detailed workflow guide with step-by-step processes, scoring frameworks, and output templates.
 
 | Skill | File | Trigger | Output |
 |-------|------|---------|--------|

@@ -36,7 +36,7 @@ Each skill is a plain markdown file. The **GitHub Copilot SDK** reads the user's
 > For a detailed breakdown of each use case — including sub-tasks, decision criteria, and team workflow context — see [`rfp-use-cases.md`](rfp-use-cases.md).
 
 ### 1. Requirements Extraction & Compliance Matrix
-**Skill:** [`requirements-extraction.md`](session-container/skills/requirements-extraction.md)
+**Skill:** [`requirements-extraction/SKILL.md`](session-container/skills/requirements-extraction/SKILL.md)
 **Trigger:** "Extract mandatory requirements into a compliance matrix."
 
 Reads the uploaded RFP and extracts all mandatory requirements into a CSV compliance matrix (requirement ID, section reference, requirement text, mandatory flag, compliance status). Typically produces 20–40 requirements from a real RFP.
@@ -46,7 +46,7 @@ Reads the uploaded RFP and extracts all mandatory requirements into a CSV compli
 ---
 
 ### 2. Bid / No-Bid Analysis
-**Skill:** [`bid-no-bid-analysis.md`](session-container/skills/bid-no-bid-analysis.md)
+**Skill:** [`bid-no-bid-analysis/SKILL.md`](session-container/skills/bid-no-bid-analysis/SKILL.md)
 **Trigger:** "Run a bid/no-bid score across six dimensions."
 
 The agent scores the opportunity across six weighted dimensions (strategic fit, technical capability, competitive position, relationship strength, resource availability, risk profile) and produces a recommendation: Go, No-Go, or Conditional Go with a subcontract/teaming recommendation.
@@ -56,7 +56,7 @@ The agent scores the opportunity across six weighted dimensions (strategic fit, 
 ---
 
 ### 3. Executive Summary
-**Skill:** [`executive-summary.md`](session-container/skills/executive-summary.md)
+**Skill:** [`executive-summary/SKILL.md`](session-container/skills/executive-summary/SKILL.md)
 **Trigger:** "Draft a one-page executive summary with win themes."
 
 The agent queries the knowledge base for approved firm language, case studies, and past win themes, then drafts a submission-ready executive summary grounded in both the RFP's evaluation criteria and the firm's verified credentials.
@@ -66,7 +66,7 @@ The agent queries the knowledge base for approved firm language, case studies, a
 ---
 
 ### 4. Risk & Gap Analysis
-**Skill:** [`risk-gap-analysis.md`](session-container/skills/risk-gap-analysis.md)
+**Skill:** [`risk-gap-analysis/SKILL.md`](session-container/skills/risk-gap-analysis/SKILL.md)
 **Trigger:** "List top delivery risks and mitigation actions."
 
 The agent builds a structured risk register with likelihood, impact, severity scores, owners, and mitigations for each identified risk. Surfaces delivery risks, integration risks, SLA exposure, and scope creep vectors from the RFP language.
@@ -76,7 +76,7 @@ The agent builds a structured risk register with likelihood, impact, severity sc
 ---
 
 ### 5. Response Strategy
-**Skill:** [`response-strategy.md`](session-container/skills/response-strategy.md)
+**Skill:** [`response-strategy/SKILL.md`](session-container/skills/response-strategy/SKILL.md)
 **Trigger:** "Develop a response strategy and win themes."
 
 The agent produces a competitive strategy brief with win themes, pricing posture, and capture actions — grounded in the firm's past performance from the knowledge base and the RFP's stated evaluation criteria.
@@ -86,7 +86,7 @@ The agent produces a competitive strategy brief with win themes, pricing posture
 ---
 
 ### 6. Draft Generation
-**Skill:** [`draft-generation.md`](session-container/skills/draft-generation.md)
+**Skill:** [`draft-generation/SKILL.md`](session-container/skills/draft-generation/SKILL.md)
 **Trigger:** "Draft the technical approach section."
 
 Draws on the requirements matrix, strategy brief, RFP sections, and KB-sourced methodology language to produce submission-ready prose mapped to the RFP structure.
@@ -96,7 +96,7 @@ Draws on the requirements matrix, strategy brief, RFP sections, and KB-sourced m
 ---
 
 ### 7. Compliance Review
-**Skill:** [`compliance-review.md`](session-container/skills/compliance-review.md)
+**Skill:** [`compliance-review/SKILL.md`](session-container/skills/compliance-review/SKILL.md)
 **Trigger:** "Run a compliance review on all drafted sections."
 
 The agent inventories all generated workspace files, checks for placeholders (TBD, TODO), verifies terminology consistency across sections, and cross-references all drafts against the compliance matrix baseline.
@@ -106,7 +106,7 @@ The agent inventories all generated workspace files, checks for placeholders (TB
 ---
 
 ### 8. Pricing Analysis
-**Skill:** [`pricing-analysis.md`](session-container/skills/pricing-analysis.md)
+**Skill:** [`pricing-analysis/SKILL.md`](session-container/skills/pricing-analysis/SKILL.md)
 **Trigger:** "Run a pricing analysis and build a cost model."
 
 Pulls rate cards, past pricing, and margin guidance from the knowledge base, cross-references the RFP's scope and pricing requirements, and builds a bottom-up cost model with sensitivity scenarios.
@@ -116,7 +116,7 @@ Pulls rate cards, past pricing, and margin guidance from the knowledge base, cro
 ---
 
 ### 9. Customer Intelligence
-**Skill:** [`customer-intelligence.md`](session-container/skills/customer-intelligence.md)
+**Skill:** [`customer-intelligence/SKILL.md`](session-container/skills/customer-intelligence/SKILL.md)
 **Trigger:** "Build a customer intelligence briefing for this client."
 
 The agent searches the knowledge base for all prior engagement history with the issuing agency, surfaces relationship context, procurement patterns, pain points, and personalization recommendations for the proposal.
@@ -126,7 +126,7 @@ The agent searches the knowledge base for all prior engagement history with the 
 ---
 
 ### 10. Iterative Refinement
-**Skill:** [`iterative-refinement.md`](session-container/skills/iterative-refinement.md)
+**Skill:** [`iterative-refinement/SKILL.md`](session-container/skills/iterative-refinement/SKILL.md)
 **Trigger:** "Check consistency across all sections and generate an org chart."
 
 The agent cross-checks all generated files for terminology, naming, and date consistency, then generates supporting collateral (org charts, staffing summaries) based on the accumulated workspace content.
@@ -205,7 +205,7 @@ npx playwright test -g "SSE"                  # run by keyword
 
 ## Deployment
 
-Once you're satisfied with local testing, deploy to Azure with a single command using [`infra/deploy.sh`](infra/deploy.sh). See [`docs/deployment-issues.md`](docs/deployment-issues.md) for known deployment issues and resolutions.
+Once you're satisfied with local testing, deploy to Azure with a single command using [`infra/deploy.sh`](infra/deploy.sh).
 
 ```bash
 AZURE_ENDPOINT=https://... ./infra/deploy.sh
