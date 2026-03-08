@@ -35,11 +35,25 @@ load_dotenv()
 
 _LOG = os.getenv("LOG_AGENT_EVENTS", "").lower() == "true"
 _logger = _logging.getLogger("agent.events")
+_trace_logger = _logging.getLogger("trace")
 
 
 def _log_event(msg: str) -> None:
     if _LOG:
         _logger.info(msg)
+
+
+def _trace(event: str, **data) -> None:
+    if not _trace_logger.handlers:
+        return
+    from datetime import datetime, timezone
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "component": "session",
+        "event": event,
+        "data": data,
+    }
+    _trace_logger.info(_json.dumps(record, default=str))
 
 
 SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
@@ -283,13 +297,16 @@ class AgentSession:
         return self._status
 
     async def __aenter__(self) -> "AgentSession":
+        _logger.info("[INIT] __aenter__ start")
         token = self._initial_token or os.getenv("AZURE_OPENAI_TOKEN")
         if not token:
+            _logger.info("[INIT] getting token via DefaultAzureCredential")
             self._credential = DefaultAzureCredential()
             tok = await self._credential.get_token(
                 "https://cognitiveservices.azure.com/.default"
             )
             token = tok.token
+        _logger.info("[INIT] token ok (len=%d)", len(token or ""))
 
         self._client = CopilotClient(
             {
@@ -297,12 +314,15 @@ class AgentSession:
                 "use_logged_in_user": False,
             }
         )
+        _logger.info("[INIT] starting CopilotClient")
         await self._client.start()
+        _logger.info("[INIT] CopilotClient started")
 
         self._loop = asyncio.get_running_loop()
 
         # Resolve skills directory relative to this file
         skills_dir = str(Path(__file__).parent / "skills")
+        _logger.info("[INIT] skills_dir=%s", skills_dir)
 
         system_prompt = SYSTEM_PROMPT.replace(
             "## Skills & Workflows",
@@ -359,9 +379,12 @@ class AgentSession:
 
         session_config["mcp_servers"] = mcp_servers
 
+        _logger.info("[INIT] calling create_session (model=%s)", session_config.get("model"))
         self._session = await self._client.create_session(session_config)
+        _logger.info("[INIT] create_session done")
 
         self._unsubscribe = self._session.on(self._on_event)
+        _logger.info("[INIT] __aenter__ complete")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -392,6 +415,7 @@ class AgentSession:
                 self._current_message_id = str(uuid.uuid4())
                 self._message_started = True
                 _log_event(f"[THINKING] {delta[:120]}")
+                _trace("agent.thinking", text=delta[:120])
                 self._enqueue(TextMessageStartEvent(
                     message_id=self._current_message_id,
                     role="assistant",
@@ -432,6 +456,7 @@ class AgentSession:
                     delta=args_str,
                 ))
             _log_event(f"[TOOL] >>> {tool}  args={args_str or '{}'}")
+            _trace("agent.tool_start", tool=tool, call_id=call_id, args=args_str or "{}")
 
         elif event.type == SessionEventType.TOOL_EXECUTION_COMPLETE:
             call_id = getattr(event.data, "tool_call_id", None)
@@ -454,13 +479,17 @@ class AgentSession:
             if call_id:
                 self._enqueue(ToolCallEndEvent(tool_call_id=call_id))
             _log_event(f"[TOOL] <<< {tool}  duration={duration:.2f}s")
+            _trace("agent.tool_end", tool=tool, call_id=call_id, duration_s=round(duration, 2))
 
         elif event.type == SessionEventType.SESSION_IDLE:
             self._status = "idle"
+            turn_duration = _time.monotonic() - self._turn_start
             _log_event(
-                f"[TURN END] duration={_time.monotonic() - self._turn_start:.2f}s"
+                f"[TURN END] duration={turn_duration:.2f}s"
                 f"  tools={self._tools_called}"
             )
+            _trace("agent.turn_end", duration_s=round(turn_duration, 2),
+                   tools_called=self._tools_called)
             self._enqueue(RunFinishedEvent(
                 thread_id=self._thread_id,
                 run_id=self._run_id,
@@ -482,6 +511,7 @@ class AgentSession:
                     "Please wait 30–60 seconds and try again."
                 )
             _log_event(f"[ERROR] {msg}")
+            _trace("agent.error", message=msg)
             self._enqueue(RunErrorEvent(message=msg))
             self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
             return
@@ -501,6 +531,7 @@ class AgentSession:
         self._status = "thinking"
 
         _log_event(f"[TURN START] thread={self._thread_id} run={self._run_id}")
+        _trace("agent.turn_start", thread_id=self._thread_id, run_id=self._run_id)
 
         # Emit RunStartedEvent
         yield _sse_event(RunStartedEvent(

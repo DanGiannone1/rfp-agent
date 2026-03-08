@@ -17,6 +17,8 @@ import logging
 import mimetypes
 import os
 import uuid
+from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 
 from ag_ui.core.events import RunErrorEvent, RunFinishedEvent
 from fastapi import FastAPI, HTTPException, Request, UploadFile
@@ -27,6 +29,38 @@ from agent import AgentSession, _sse_event
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Trace logging (opt-in via LOG_TRACE=true)
+# ---------------------------------------------------------------------------
+_trace_logger = logging.getLogger("trace")
+
+
+def _setup_trace_logging() -> None:
+    trace_dir = os.getenv("LOG_TRACE_DIR")
+    if os.getenv("LOG_TRACE", "").lower() != "true" or not trace_dir:
+        return
+    path = os.path.join(trace_dir, "trace.jsonl")
+    handler = RotatingFileHandler(path, maxBytes=50 * 1024 * 1024, backupCount=1)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    _trace_logger.addHandler(handler)
+    _trace_logger.setLevel(logging.INFO)
+    _trace_logger.propagate = False
+
+
+def _trace(event: str, **data) -> None:
+    if not _trace_logger.handlers:
+        return
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "component": "session",
+        "event": event,
+        "data": data,
+    }
+    _trace_logger.info(json.dumps(record, default=str))
+
+
+_setup_trace_logging()
 
 WORKSPACE = os.getenv("WORKSPACE", "/workspace")
 UPLOAD_MANIFEST = ".uploaded_files.json"
@@ -93,11 +127,13 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
                 await _destroy_session_locked()
             yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
             yield _sse_event(RunFinishedEvent(thread_id=thread_id, run_id=run_id))
-        except Exception:
-            logger.exception("Chat stream failed")
+        except Exception as _exc:
+            import traceback as _tb
+            _detail = _tb.format_exc()
+            logger.error("Chat stream failed: %s\n%s", _exc, _detail)
             async with _lock:
                 await _destroy_session_locked()
-            yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
+            yield _sse_event(RunErrorEvent(message=f"Agent error: {type(_exc).__name__}: {_exc}"))
             yield _sse_event(RunFinishedEvent(thread_id=thread_id, run_id=run_id))
 
     return StreamingResponse(generate(), media_type="text/event-stream")
@@ -150,6 +186,7 @@ async def upload(file: UploadFile) -> dict:
             f.write(chunk)
 
     logger.info("Uploaded %s (%d bytes)", safe_name, bytes_written)
+    _trace("fs.upload", filename=safe_name, size=bytes_written)
     async with _manifest_lock:
         uploaded = _read_uploaded_manifest()
         uploaded.add(safe_name)
@@ -188,6 +225,7 @@ async def list_files() -> dict:
             "origin": "uploaded" if entry.name in uploaded else "generated",
         })
 
+    _trace("fs.list", filenames=[f["filename"] for f in files])
     return {"files": files}
 
 
@@ -196,6 +234,8 @@ async def file_content(filename: str) -> dict:
     """Return UTF-8 text content for a workspace file."""
     from pathlib import Path
 
+    _trace("fs.content_request", filename=filename)
+
     if not filename:
         raise HTTPException(status_code=400, detail="filename is required")
 
@@ -203,23 +243,28 @@ async def file_content(filename: str) -> dict:
     target = (workspace / filename).resolve()
 
     if workspace not in target.parents and target != workspace:
+        _trace("fs.content_error", filename=filename, status=400, detail="Invalid file path")
         raise HTTPException(status_code=400, detail="Invalid file path")
     if not target.exists() or not target.is_file():
+        _trace("fs.content_error", filename=filename, status=404, detail="File not found")
         raise HTTPException(status_code=404, detail="File not found")
 
     # Keep payload bounded for in-app canvas rendering.
     max_bytes = 2 * 1024 * 1024
     size = target.stat().st_size
     if size > max_bytes:
+        _trace("fs.content_error", filename=filename, status=413, detail="File too large")
         raise HTTPException(status_code=413, detail="File too large to preview in canvas")
 
     raw = target.read_bytes()
     try:
         content = raw.decode("utf-8")
     except UnicodeDecodeError:
+        _trace("fs.content_error", filename=filename, status=415, detail="Binary file")
         raise HTTPException(status_code=415, detail="Binary file preview is not supported")
 
     mime_type = mimetypes.guess_type(target.name)[0] or "text/plain"
+    _trace("fs.content_response", filename=target.name, size=size, mime_type=mime_type)
     return {
         "filename": target.name,
         "size": size,
