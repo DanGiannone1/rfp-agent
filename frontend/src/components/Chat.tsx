@@ -1,7 +1,7 @@
 "use client";
 
-import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from "react";
-import { AGUIEvent, ChatMessage, FileInfo, MessagePart } from "@/lib/types";
+import { useReducer, useRef, useCallback, useEffect, useState } from "react";
+import { AGUIEvent, AppFile, ChatMessage, IntakeState, MessagePart } from "@/lib/types";
 import { streamSSE } from "@/lib/sse";
 import { createSession, getFileContent, getSession, listFiles, uploadFile } from "@/lib/api";
 import { clearSessionId, getSessionId, getStoredMessages, storeSessionId, storeMessages } from "@/lib/session";
@@ -28,56 +28,26 @@ type Action =
   | { type: "SET_SESSION_ID"; sessionId: string }
   | { type: "SET_INITIALIZING"; value: boolean }
   | { type: "SET_STAGE"; stage: ChatStage }
-  | { type: "FILES_CHANGED" }
-  | { type: "APPEND_ASSISTANT"; content: string; id?: string }
-  | { type: "UPDATE_ASSISTANT"; id: string; content: string }
   | { type: "RESTORE_SESSION"; sessionId: string; messages: ChatMessage[] }
-  | { type: "RESET_FOR_NEW_CHAT" };
+  | { type: "RESET_FOR_NEW_CHAT" }
+  | { type: "FILE_PENDING"; filename: string; size: number }
+  | { type: "FILES_LOADED"; files: AppFile[] }
+  | { type: "INTAKE_SESSION"; sessionState: "preparing" | "ready" | "error"; error?: string }
+  | { type: "INTAKE_UPLOAD"; uploadState: "idle" | "uploading"; filename?: string; error?: string };
 
 interface State {
   messages: ChatMessage[];
   isStreaming: boolean;
   sessionId: string | null;
   isInitializing: boolean;
-  fileRefreshKey: number;
   stage: ChatStage;
   currentRunId: string | null;
+  files: AppFile[];
+  intake: IntakeState;
 }
 
 const SESSION_TIMEOUT_MS = 12_000;
 const UPLOAD_TIMEOUT_MS = 180_000; // covers file transfer + CU conversion (large PDFs can take 2+ min)
-
-function normalizeFileList(files: FileInfo[]): FileInfo[] {
-  const byName = new Map(files.map((f) => [f.filename, f]));
-  return files
-    .filter((f) => {
-      if (!f.filename.endsWith(".md")) return true;
-      const sourceName = f.filename.slice(0, -3);
-      return !byName.has(sourceName);
-    })
-    .sort((a, b) => Date.parse(b.modified_at || "") - Date.parse(a.modified_at || ""));
-}
-
-function pendingFileFromUpload(file: File): FileInfo {
-  return {
-    filename: file.name,
-    size: file.size,
-    modified_at: new Date().toISOString(),
-    has_markdown: false,
-  };
-}
-
-function mergeVisibleFiles(serverFiles: FileInfo[], pendingFiles: FileInfo[]): FileInfo[] {
-  const map = new Map<string, FileInfo>();
-  for (const file of pendingFiles) {
-    map.set(file.filename, file);
-  }
-  for (const file of serverFiles) {
-    const existing = map.get(file.filename);
-    map.set(file.filename, existing ? { ...existing, ...file, has_markdown: file.has_markdown || existing.has_markdown } : file);
-  }
-  return Array.from(map.values()).sort((a, b) => Date.parse(b.modified_at || "") - Date.parse(a.modified_at || ""));
-}
 
 /** Helper: update the last message in a messages array. */
 function updateLastMessage(msgs: ChatMessage[], updater: (msg: ChatMessage) => ChatMessage): ChatMessage[] {
@@ -87,16 +57,32 @@ function updateLastMessage(msgs: ChatMessage[], updater: (msg: ChatMessage) => C
   return copy;
 }
 
-/** Derive flat content and toolActivity from parts for backward compat. */
-function syncFromParts(msg: ChatMessage): ChatMessage {
-  const content = msg.parts
-    .filter((p): p is MessagePart & { type: "text" } => p.type === "text")
-    .map((p) => p.content)
-    .join("");
-  const toolActivity = msg.parts
-    .filter((p): p is MessagePart & { type: "tool_call" } => p.type === "tool_call")
-    .map((p) => ({ tool: p.tool, toolCallId: p.toolCallId, status: p.status, args: p.args }));
-  return { ...msg, content, toolActivity };
+function createUserMessage(content: string): ChatMessage {
+  return {
+    id: crypto.randomUUID(),
+    role: "user",
+    isStreaming: false,
+    parts: [{ type: "text", content }],
+  };
+}
+
+function createAssistantMessage(id: string, parts: MessagePart[], isStreaming: boolean): ChatMessage {
+  return {
+    id,
+    role: "assistant",
+    isStreaming,
+    parts,
+  };
+}
+
+function finalizeAssistantMessage(msg: ChatMessage): ChatMessage {
+  if (msg.role !== "assistant") return msg;
+  const parts = msg.parts.map((p) =>
+    p.type === "tool_call" && p.status === "running"
+      ? { ...p, status: "done" as const }
+      : p,
+  );
+  return { ...msg, parts, isStreaming: false };
 }
 
 function reducer(state: State, action: Action): State {
@@ -117,8 +103,9 @@ function reducer(state: State, action: Action): State {
         isStreaming: false,
         sessionId: null,
         stage: "intake",
-        fileRefreshKey: 0,
         currentRunId: null,
+        files: [],
+        intake: { sessionState: "preparing", uploadState: "idle", error: null, filename: null },
       };
 
     case "USER_SEND":
@@ -127,22 +114,8 @@ function reducer(state: State, action: Action): State {
         isStreaming: true,
         messages: [
           ...state.messages,
-          {
-            id: crypto.randomUUID(),
-            role: "user",
-            content: action.content,
-            isStreaming: false,
-            toolActivity: [],
-            parts: [{ type: "text", content: action.content }],
-          },
-          {
-            id: `pending-${crypto.randomUUID()}`,
-            role: "assistant",
-            content: "",
-            isStreaming: true,
-            toolActivity: [],
-            parts: [],
-          },
+          createUserMessage(action.content),
+          createAssistantMessage(`pending-${crypto.randomUUID()}`, [], true),
         ],
       };
 
@@ -153,14 +126,7 @@ function reducer(state: State, action: Action): State {
       if (state.messages.length === 0) {
         return {
           ...state,
-          messages: [{
-            id: action.messageId,
-            role: "assistant",
-            content: "",
-            isStreaming: true,
-            toolActivity: [],
-            parts: [],
-          }],
+          messages: [createAssistantMessage(action.messageId, [], true)],
         };
       }
       const last = state.messages[state.messages.length - 1];
@@ -179,14 +145,7 @@ function reducer(state: State, action: Action): State {
         ...state,
         messages: [
           ...state.messages,
-          {
-            id: action.messageId,
-            role: "assistant",
-            content: "",
-            isStreaming: true,
-            toolActivity: [],
-            parts: [],
-          },
+          createAssistantMessage(action.messageId, [], true),
         ],
       };
     }
@@ -203,7 +162,7 @@ function reducer(state: State, action: Action): State {
           } else {
             parts.push({ type: "text", content: action.delta });
           }
-          return syncFromParts({ ...m, parts });
+          return { ...m, parts };
         }),
       };
     }
@@ -212,13 +171,7 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         messages: updateLastMessage(state.messages, (m) => {
-          if (m.role !== "assistant") return m;
-          const parts = m.parts.map((p) =>
-            p.type === "tool_call" && p.status === "running"
-              ? { ...p, status: "done" as const }
-              : p,
-          );
-          return syncFromParts({ ...m, parts, isStreaming: false });
+          return finalizeAssistantMessage(m);
         }),
       };
 
@@ -233,7 +186,7 @@ function reducer(state: State, action: Action): State {
             toolCallId: action.toolCallId,
             status: "running" as const,
           }];
-          return syncFromParts({ ...m, parts });
+          return { ...m, parts };
         }),
       };
     }
@@ -248,7 +201,7 @@ function reducer(state: State, action: Action): State {
               ? { ...p, args: (p.args || "") + action.delta }
               : p,
           );
-          return syncFromParts({ ...m, parts });
+          return { ...m, parts };
         }),
       };
     }
@@ -263,7 +216,7 @@ function reducer(state: State, action: Action): State {
               ? { ...p, status: "done" as const }
               : p,
           );
-          return syncFromParts({ ...m, parts });
+          return { ...m, parts };
         }),
       };
     }
@@ -274,13 +227,7 @@ function reducer(state: State, action: Action): State {
         isStreaming: false,
         currentRunId: null,
         messages: updateLastMessage(state.messages, (m) => {
-          if (m.role !== "assistant") return m;
-          const parts = m.parts.map((p) =>
-            p.type === "tool_call" && p.status === "running"
-              ? { ...p, status: "done" as const }
-              : p,
-          );
-          return syncFromParts({ ...m, parts, isStreaming: false });
+          return finalizeAssistantMessage(m);
         }),
       };
     }
@@ -294,17 +241,12 @@ function reducer(state: State, action: Action): State {
           currentRunId: null,
           messages: updateLastMessage(msgs, (m) => {
             const parts = [...m.parts, { type: "text" as const, content: `\n\n${action.message}` }];
-            return syncFromParts({ ...m, parts, isStreaming: false });
+            return { ...m, parts, isStreaming: false };
           }),
         };
       }
       msgs.push({
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: action.message,
-        isStreaming: false,
-        toolActivity: [],
-        parts: [{ type: "text", content: action.message }],
+        ...createAssistantMessage(crypto.randomUUID(), [{ type: "text", content: action.message }], false),
       });
       return { ...state, messages: msgs, isStreaming: false, currentRunId: null };
     }
@@ -316,36 +258,53 @@ function reducer(state: State, action: Action): State {
         stage: "chat",
         messages: action.messages,
         isInitializing: false,
+        files: [],
+        intake: { sessionState: "ready", uploadState: "idle", error: null, filename: null },
       };
 
-    case "APPEND_ASSISTANT":
+    case "FILE_PENDING": {
+      const pending: AppFile = {
+        filename: action.filename,
+        size: action.size,
+        modified_at: new Date().toISOString(),
+        origin: "uploaded",
+        status: "pending",
+        has_markdown: false,
+      };
       return {
         ...state,
-        messages: [
-          ...state.messages,
-          {
-            id: action.id ?? crypto.randomUUID(),
-            role: "assistant",
-            content: action.content,
-            isStreaming: false,
-            toolActivity: [],
-            parts: [{ type: "text", content: action.content }],
-          },
-        ],
+        files: [pending, ...state.files.filter(f => f.filename !== action.filename)],
       };
+    }
 
-    case "UPDATE_ASSISTANT":
+    case "FILES_LOADED": {
+      const serverFilenames = new Set(action.files.map(f => f.filename));
+      const stillPending = state.files.filter(
+        f => f.status === "pending" && !serverFilenames.has(f.filename)
+      );
+      return { ...state, files: [...stillPending, ...action.files] };
+    }
+
+    case "INTAKE_SESSION":
       return {
         ...state,
-        messages: state.messages.map((m) =>
-          m.id === action.id
-            ? { ...m, content: action.content, parts: [{ type: "text", content: action.content }] }
-            : m,
-        ),
+        intake: {
+          ...state.intake,
+          sessionState: action.sessionState,
+          error: action.error ?? (action.sessionState === "error" ? state.intake.error : null),
+        },
       };
 
-    case "FILES_CHANGED":
-      return { ...state, fileRefreshKey: state.fileRefreshKey + 1 };
+    case "INTAKE_UPLOAD":
+      return {
+        ...state,
+        intake: {
+          ...state.intake,
+          uploadState: action.uploadState,
+          filename: action.filename ?? state.intake.filename,
+          error: action.error ?? (action.uploadState === "idle" ? null : state.intake.error),
+        },
+      };
 
     default:
       return state;
@@ -357,9 +316,10 @@ const initialState: State = {
   isStreaming: false,
   sessionId: null,
   isInitializing: true,
-  fileRefreshKey: 0,
   stage: "intake",
   currentRunId: null,
+  files: [],
+  intake: { sessionState: "preparing", uploadState: "idle", error: null, filename: null },
 };
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
@@ -390,76 +350,53 @@ function friendlyError(err: unknown, fallback: string): string {
 
 export default function Chat() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const [uploadedFileNames, setUploadedFileNames] = useState<string[]>([]);
-  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [sessionError, setSessionError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadState, setUploadState] = useState<"idle" | "uploading">("idle");
-  const [sessionState, setSessionState] = useState<"preparing" | "ready" | "error">("preparing");
   const [chatUploadName, setChatUploadName] = useState<string | null>(null);
   const [isChatUploading, setIsChatUploading] = useState(false);
-  const [hasFetchedFiles, setHasFetchedFiles] = useState(false);
-  const [serverFiles, setServerFiles] = useState<FileInfo[]>([]);
-  const [pendingFiles, setPendingFiles] = useState<FileInfo[]>([]);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+  const [artifact, setArtifact] = useState<{
+    filename: string | null;
+    content: string;
+    mimeType: string | undefined;
+    loading: boolean;
+    error: string | null;
+  }>({ filename: null, content: "", mimeType: undefined, loading: false, error: null });
   const [confirmNewChat, setConfirmNewChat] = useState(false);
-  const [artifactContent, setArtifactContent] = useState<string>("");
-  const [artifactMimeType, setArtifactMimeType] = useState<string | undefined>();
-  const [artifactLoading, setArtifactLoading] = useState(false);
-  const [artifactError, setArtifactError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastAutoOpenedGenerated = useRef<string | null>(null);
-  const fileRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const files = useMemo(() => mergeVisibleFiles(serverFiles, pendingFiles), [serverFiles, pendingFiles]);
-  const uploadedNameSet = useMemo(
-    () => new Set([...uploadedFileNames, ...pendingFiles.map((f) => f.filename)]),
-    [uploadedFileNames, pendingFiles],
-  );
-  const hasOriginMetadata = useMemo(() => files.some((f) => f.origin === "uploaded" || f.origin === "generated"), [files]);
-  const uploadedFiles = useMemo(
-    () => hasOriginMetadata
-      ? files.filter((f) => f.origin === "uploaded")
-      : files.filter((f) => uploadedNameSet.has(f.filename)),
-    [files, hasOriginMetadata, uploadedNameSet],
-  );
-  const generatedFiles = useMemo(
-    () => hasOriginMetadata
-      ? files.filter((f) => f.origin === "generated")
-      : files.filter((f) => !uploadedNameSet.has(f.filename)),
-    [files, hasOriginMetadata, uploadedNameSet],
-  );
-  const filesLoading = !hasFetchedFiles && pendingFiles.length === 0;
-
-  const addPendingFile = useCallback((file: File) => {
-    const pending = pendingFileFromUpload(file);
-    setPendingFiles((prev) => [pending, ...prev.filter((item) => item.filename !== pending.filename)]);
-  }, []);
-
-  const clearPendingFile = useCallback((filename: string) => {
-    setPendingFiles((prev) => prev.filter((item) => item.filename !== filename));
-  }, []);
-
-  const markUploadedFile = useCallback((filename: string) => {
-    setUploadedFileNames((prev) => (prev.includes(filename) ? prev : [...prev, filename]));
-  }, []);
+  const sessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    sessionIdRef.current = state.sessionId;
+  }, [state.sessionId]);
+  const uploadedFiles = state.files.filter(f => f.origin === "uploaded");
+  const generatedFiles = state.files.filter(f => f.origin === "generated");
+  const filesLoading = state.files.length === 0;
 
   const refreshFiles = useCallback(async (sessionId: string) => {
     const data = await listFiles(sessionId);
-    const normalized = normalizeFileList(data.files);
-    setServerFiles(normalized);
-    setPendingFiles((prev) => prev.filter((file) => !normalized.some((server) => server.filename === file.filename)));
-    setHasFetchedFiles(true);
+    const raw = data.files;
+    const byName = new Map(raw.map(f => [f.filename, f]));
+    const normalized = raw
+      .filter(f => {
+        if (!f.filename.endsWith(".md")) return true;
+        const sourceName = f.filename.slice(0, -3);
+        return !byName.has(sourceName);
+      })
+      .map((f): AppFile => ({
+        filename: f.filename,
+        size: f.size,
+        modified_at: f.modified_at,
+        origin: f.origin ?? "generated",
+        status: "ready",
+        has_markdown: f.has_markdown,
+      }))
+      .sort((a, b) => Date.parse(b.modified_at) - Date.parse(a.modified_at));
+    dispatch({ type: "FILES_LOADED", files: normalized });
   }, []);
 
   const startSession = useCallback(async () => {
-    setSessionError(null);
-    setUploadError(null);
     setStatusMessage(null);
-    setSessionState("preparing");
+    dispatch({ type: "INTAKE_SESSION", sessionState: "preparing" });
     dispatch({ type: "SET_INITIALIZING", value: true });
 
     // Attempt to restore an existing session from sessionStorage
@@ -470,7 +407,6 @@ export default function Chat() {
         if (meta) {
           const msgs = getStoredMessages();
           dispatch({ type: "RESTORE_SESSION", sessionId: meta.session_id, messages: msgs });
-          setSessionState("ready");
           try { await refreshFiles(meta.session_id); } catch { /* non-blocking */ }
           return;
         }
@@ -481,19 +417,14 @@ export default function Chat() {
 
     // No stored session or restore failed — create fresh
     clearSessionId();
-    setServerFiles([]);
-    setPendingFiles([]);
-    setHasFetchedFiles(false);
-    setUploadedFileNames([]);
 
     try {
       const meta = await withTimeout(createSession(), SESSION_TIMEOUT_MS, "Session creation timed out");
       storeSessionId(meta.session_id);
       dispatch({ type: "SET_SESSION_ID", sessionId: meta.session_id });
-      setSessionState("ready");
+      dispatch({ type: "INTAKE_SESSION", sessionState: "ready" });
     } catch (err) {
-      setSessionError(friendlyError(err, "Could not start a session. Please retry."));
-      setSessionState("error");
+      dispatch({ type: "INTAKE_SESSION", sessionState: "error", error: friendlyError(err, "Could not start a session. Please retry.") });
     } finally {
       dispatch({ type: "SET_INITIALIZING", value: false });
     }
@@ -504,24 +435,20 @@ export default function Chat() {
   }, [startSession]);
 
   useEffect(() => {
-    return () => { if (fileRetryTimerRef.current) clearTimeout(fileRetryTimerRef.current); };
-  }, []);
-
-  useEffect(() => {
     if (!state.isStreaming && state.messages.length > 0) {
       storeMessages(state.messages);
     }
   }, [state.isStreaming, state.messages]);
 
   useEffect(() => {
-    if (sessionError || uploadError) return;
+    if (state.intake.error) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     if (state.isInitializing) {
       timer = setTimeout(() => {
         setStatusMessage("Still starting your session. You can retry if this continues.");
       }, 9000);
-    } else if (isUploading) {
+    } else if (state.intake.uploadState === "uploading") {
       timer = setTimeout(() => {
         setStatusMessage("Converting your document with Azure Content Understanding — this can take 30–60 seconds for large files.");
       }, 8000);
@@ -532,7 +459,7 @@ export default function Chat() {
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [state.isInitializing, isUploading, sessionError, uploadError]);
+  }, [state.isInitializing, state.intake.uploadState, state.intake.error]);
 
   useEffect(() => {
     if (!state.sessionId || state.stage !== "chat") return;
@@ -555,45 +482,34 @@ export default function Chat() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [state.sessionId, state.stage, state.fileRefreshKey, refreshFiles]);
+  }, [state.sessionId, state.stage, refreshFiles]);
 
   const handleIntakeUpload = useCallback(
     async (file: File) => {
       if (!state.sessionId) {
-        setSessionError("Session is not ready yet. Please retry session setup.");
-        setSessionState("error");
+        dispatch({ type: "INTAKE_SESSION", sessionState: "error", error: "Session is not ready yet. Please retry session setup." });
         return;
       }
 
-      setSelectedFileName(file.name);
-      setUploadError(null);
       setStatusMessage(null);
-      setIsUploading(true);
-      setUploadState("uploading");
-      addPendingFile(file);
+      dispatch({ type: "INTAKE_UPLOAD", uploadState: "uploading", filename: file.name });
+      dispatch({ type: "FILE_PENDING", filename: file.name, size: file.size });
 
       try {
         // Single request: file transfer + CU conversion happen server-side before response
         await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-        dispatch({ type: "FILES_CHANGED" });
-        setUploadedFileName(file.name);
-        markUploadedFile(file.name);
         try {
           await refreshFiles(state.sessionId);
         } catch {
           // non-blocking; optimistic pending file remains visible
         }
+        dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle" });
         dispatch({ type: "SET_STAGE", stage: "chat" });
-        setUploadState("idle");
       } catch (err) {
-        clearPendingFile(file.name);
-        setUploadError(friendlyError(err, "Upload failed. Please try again."));
-        setUploadState("idle");
-      } finally {
-        setIsUploading(false);
+        dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle", error: friendlyError(err, "Upload failed. Please try again.") });
       }
     },
-    [state.sessionId, addPendingFile, clearPendingFile, markUploadedFile, refreshFiles],
+    [state.sessionId, refreshFiles],
   );
 
   const doNewChat = useCallback(async () => {
@@ -601,43 +517,30 @@ export default function Chat() {
     abortRef.current = null;
 
     clearSessionId();
-    setUploadedFileName(null);
-    setSelectedFileName(null);
-    setUploadError(null);
-    setSessionError(null);
     setStatusMessage(null);
-    setUploadState("idle");
-    setServerFiles([]);
-    setPendingFiles([]);
-    setHasFetchedFiles(false);
-    setUploadedFileNames([]);
     setDocumentsOpen(false);
-    setSelectedArtifact(null);
-    setArtifactContent("");
-    setArtifactMimeType(undefined);
-    setArtifactError(null);
-    setArtifactLoading(false);
+    setArtifact({ filename: null, content: "", mimeType: undefined, loading: false, error: null });
     lastAutoOpenedGenerated.current = null;
     dispatch({ type: "RESET_FOR_NEW_CHAT" });
 
+    dispatch({ type: "SET_INITIALIZING", value: true });
     await startSession();
   }, [startSession]);
 
   const handleNewChat = useCallback(() => {
-    const hasActiveContext = state.messages.length > 0 || Boolean(uploadedFileName) || files.length > 0;
+    const hasActiveContext = state.messages.length > 0 || state.files.length > 0;
     if (hasActiveContext) {
       setConfirmNewChat(true);
       return;
     }
     void doNewChat();
-  }, [state.messages.length, uploadedFileName, files.length, doNewChat]);
+  }, [state.messages.length, state.files.length, doNewChat]);
 
   const handleStop = useCallback(() => {
     if (!state.isStreaming) return;
     abortRef.current?.abort();
     abortRef.current = null;
     dispatch({ type: "DONE" });
-    dispatch({ type: "APPEND_ASSISTANT", content: "_Generation stopped by user._" });
   }, [state.isStreaming]);
 
   const handleAGUIEvent = useCallback((event: AGUIEvent) => {
@@ -665,26 +568,14 @@ export default function Chat() {
         break;
       case "RUN_FINISHED":
         dispatch({ type: "DONE" });
-        dispatch({ type: "FILES_CHANGED" });
-        if (state.sessionId) {
-          const sid = state.sessionId;
-          void refreshFiles(sid).catch(() => {});
-          if (fileRetryTimerRef.current) clearTimeout(fileRetryTimerRef.current);
-          fileRetryTimerRef.current = setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
-        }
+        if (sessionIdRef.current) void refreshFiles(sessionIdRef.current).catch(() => {});
         break;
       case "RUN_ERROR":
         dispatch({ type: "ERROR", message: event.message || "Something went wrong while generating the response. Please retry." });
-        dispatch({ type: "FILES_CHANGED" });
-        if (state.sessionId) {
-          const sid = state.sessionId;
-          void refreshFiles(sid).catch(() => {});
-          if (fileRetryTimerRef.current) clearTimeout(fileRetryTimerRef.current);
-          fileRetryTimerRef.current = setTimeout(() => void refreshFiles(sid).catch(() => {}), 1500);
-        }
+        if (sessionIdRef.current) void refreshFiles(sessionIdRef.current).catch(() => {});
         break;
     }
-  }, [refreshFiles, state.sessionId]);
+  }, [refreshFiles]);
 
   const handleSend = useCallback(
     async (content: string) => {
@@ -706,53 +597,30 @@ export default function Chat() {
         if (err instanceof Error && err.name === "AbortError") return;
         dispatch({ type: "ERROR", message: friendlyError(err, "Message failed to send. Please try again.") });
       } finally {
-        abortRef.current = null;
+        if (abortRef.current === controller) abortRef.current = null;
       }
     },
     [handleAGUIEvent, state.sessionId, state.isStreaming],
   );
 
   const handleChatUpload = useCallback(
-    async (file: File, opts?: { announce?: boolean }) => {
+    async (file: File) => {
       if (!state.sessionId) return;
-      const tempId = crypto.randomUUID();
       setIsChatUploading(true);
       setChatUploadName(file.name);
-      addPendingFile(file);
-      dispatch({
-        type: "APPEND_ASSISTANT",
-        id: tempId,
-        content: `Uploading and converting **${file.name}**... This can take 30–60 seconds for large files.`,
-      });
+      dispatch({ type: "FILE_PENDING", filename: file.name, size: file.size });
       try {
         await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-        dispatch({ type: "FILES_CHANGED" });
-        markUploadedFile(file.name);
-        try {
-          await refreshFiles(state.sessionId);
-        } catch {
-          // non-blocking; optimistic pending file remains visible
-        }
-        if (opts?.announce !== false) {
-          dispatch({
-            type: "UPDATE_ASSISTANT",
-            id: tempId,
-            content: `**${file.name}** is ready in the workspace. Ask me anything about it.`,
-          });
-        }
+        try { await refreshFiles(state.sessionId); } catch { /* non-blocking */ }
       } catch (err) {
-        clearPendingFile(file.name);
-        dispatch({
-          type: "UPDATE_ASSISTANT",
-          id: tempId,
-          content: friendlyError(err, "Could not upload the file. Please try again."),
-        });
+        // Error is visible in InputBar upload badge — no need for chat message
+        console.error("Chat upload failed:", err);
       } finally {
         setIsChatUploading(false);
         setChatUploadName(null);
       }
     },
-    [state.sessionId, addPendingFile, clearPendingFile, markUploadedFile, refreshFiles],
+    [state.sessionId, refreshFiles],
   );
 
   const handleAskAboutFile = useCallback(
@@ -765,48 +633,39 @@ export default function Chat() {
 
   const handleOpenFile = useCallback(async (filename: string) => {
     if (!state.sessionId) return;
-    setSelectedArtifact(filename);
-    setArtifactLoading(true);
-    setArtifactError(null);
-    setArtifactContent("");
+    setArtifact({ filename, content: "", mimeType: undefined, loading: true, error: null });
     try {
       let lastErr: unknown;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        if (attempt > 0) await new Promise<void>((r) => setTimeout(r, attempt * 1000));
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) await new Promise<void>((r) => setTimeout(r, 800));
         try {
           const data = await getFileContent(state.sessionId, filename);
-          setArtifactContent(data.content);
-          setArtifactMimeType(data.mime_type);
+          setArtifact(prev => ({ ...prev, content: data.content, mimeType: data.mime_type, loading: false }));
           return;
         } catch (err) {
           lastErr = err;
         }
       }
-      setArtifactMimeType(undefined);
-      setArtifactError(friendlyError(lastErr, "Could not load artifact content."));
-    } finally {
-      setArtifactLoading(false);
+      setArtifact(prev => ({ ...prev, mimeType: undefined, loading: false, error: friendlyError(lastErr, "Could not load artifact content.") }));
+    } catch {
+      // swallowed by the retry loop above
     }
   }, [state.sessionId]);
 
   useEffect(() => {
-    if (state.isStreaming || generatedFiles.length === 0 || selectedArtifact) return;
+    if (state.isStreaming || generatedFiles.length === 0 || artifact.filename) return;
     const newest = generatedFiles[0]?.filename;
     if (!newest || lastAutoOpenedGenerated.current === newest) return;
     lastAutoOpenedGenerated.current = newest;
     void handleOpenFile(newest);
-  }, [generatedFiles, state.isStreaming, selectedArtifact, handleOpenFile]);
+  }, [generatedFiles, state.isStreaming, artifact.filename, handleOpenFile]);
 
   const agentWorking = state.isStreaming || isChatUploading;
 
   if (state.stage === "intake") {
     return (
       <IntakeScreen
-        sessionState={sessionState}
-        uploadState={uploadState}
-        selectedFileName={selectedFileName}
-        uploadError={uploadError}
-        sessionError={sessionError}
+        intake={state.intake}
         statusMessage={statusMessage}
         onUpload={handleIntakeUpload}
         onRetrySession={startSession}
@@ -832,7 +691,7 @@ export default function Chat() {
           <div className="hidden items-center gap-2 rounded-xl border border-white/20 bg-white/[0.03] px-2.5 py-1.5 text-[11px] text-app-muted md:flex">
             <span className={`h-1.5 w-1.5 rounded-full ${agentWorking ? "bg-brand" : "bg-emerald-400"}`} />
             <span>{agentWorking ? "Agent active" : "Ready"}</span>
-            <span className="text-app-muted-strong">· {files.length} file{files.length === 1 ? "" : "s"}</span>
+            <span className="text-app-muted-strong">· {state.files.length} file{state.files.length === 1 ? "" : "s"}</span>
           </div>
 
           <button
@@ -850,7 +709,7 @@ export default function Chat() {
             onClick={() => setDocumentsOpen(true)}
             className="interactive-control rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-app-fg lg:hidden"
           >
-            Files ({files.length})
+            Files ({state.files.length})
           </button>
         </div>
       </header>
@@ -865,7 +724,7 @@ export default function Chat() {
         />
 
         <div className="flex min-h-0 flex-1">
-          <div className={`flex min-h-0 flex-col transition-all duration-300 ${selectedArtifact ? "w-[360px] shrink-0" : "flex-1"}`}>
+          <div className={`flex min-h-0 flex-col transition-all duration-300 ${artifact.filename ? "w-[35%] min-w-[320px] shrink-0" : "flex-1"}`}>
             <MessageList messages={state.messages} onSuggestion={state.isStreaming || state.isInitializing ? undefined : handleSend} />
 
             <InputBar
@@ -880,12 +739,12 @@ export default function Chat() {
           </div>
 
           <ArtifactCanvas
-            filename={selectedArtifact}
-            mimeType={artifactMimeType}
-            content={artifactContent}
-            loading={artifactLoading}
-            error={artifactError}
-            onClose={() => setSelectedArtifact(null)}
+            filename={artifact.filename}
+            mimeType={artifact.mimeType}
+            content={artifact.content}
+            loading={artifact.loading}
+            error={artifact.error}
+            onClose={() => setArtifact(prev => ({ ...prev, filename: null }))}
           />
         </div>
       </div>

@@ -420,9 +420,9 @@ test.describe.serial("Journey 4: Session Isolation", () => {
       page.locator("text=Hello from session isolation test"),
     ).toBeVisible();
 
-    // Click new chat — accept the confirmation dialog, returns to intake screen
-    page.on("dialog", (dialog: any) => dialog.accept());
+    // Click new chat — confirm via the custom React modal
     await page.getByTestId("new-chat-button").click();
+    await page.getByRole("button", { name: "Start new chat" }).click();
 
     // Should be back on intake screen (old message gone)
     await expect(page.getByTestId("intake-upload-input")).toBeAttached({
@@ -444,8 +444,9 @@ test.describe.serial("Journey 4: Session Isolation", () => {
     await send.click();
     await expect(input).toBeEnabled({ timeout: 180_000 });
 
-    // New chat → back to intake
+    // New chat → confirm via modal → back to intake
     await page.getByTestId("new-chat-button").click();
+    await page.getByRole("button", { name: "Start new chat" }).click();
 
     // Navigate through intake again
     await navigateToChatViaIntake(page, sharedTmpFile);
