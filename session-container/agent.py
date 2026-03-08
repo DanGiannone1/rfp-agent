@@ -297,32 +297,23 @@ class AgentSession:
         return self._status
 
     async def __aenter__(self) -> "AgentSession":
-        _logger.info("[INIT] __aenter__ start")
         token = self._initial_token or os.getenv("AZURE_OPENAI_TOKEN")
         if not token:
-            _logger.info("[INIT] getting token via DefaultAzureCredential")
             self._credential = DefaultAzureCredential()
             tok = await self._credential.get_token(
                 "https://cognitiveservices.azure.com/.default"
             )
             token = tok.token
-        _logger.info("[INIT] token ok (len=%d)", len(token or ""))
 
         self._client = CopilotClient(
-            {
-                "cli_args": ["--allow-all-tools", "--allow-all-paths"],
-                "use_logged_in_user": False,
-            }
+            {"cli_args": ["--allow-all-tools", "--allow-all-paths"]}
         )
-        _logger.info("[INIT] starting CopilotClient")
         await self._client.start()
-        _logger.info("[INIT] CopilotClient started")
 
         self._loop = asyncio.get_running_loop()
 
         # Resolve skills directory relative to this file
         skills_dir = str(Path(__file__).parent / "skills")
-        _logger.info("[INIT] skills_dir=%s", skills_dir)
 
         system_prompt = SYSTEM_PROMPT.replace(
             "## Skills & Workflows",
@@ -379,12 +370,9 @@ class AgentSession:
 
         session_config["mcp_servers"] = mcp_servers
 
-        _logger.info("[INIT] calling create_session (model=%s)", session_config.get("model"))
         self._session = await self._client.create_session(session_config)
-        _logger.info("[INIT] create_session done")
 
         self._unsubscribe = self._session.on(self._on_event)
-        _logger.info("[INIT] __aenter__ complete")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:

@@ -127,13 +127,11 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
                 await _destroy_session_locked()
             yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
             yield _sse_event(RunFinishedEvent(thread_id=thread_id, run_id=run_id))
-        except Exception as _exc:
-            import traceback as _tb
-            _detail = _tb.format_exc()
-            logger.error("Chat stream failed: %s\n%s", _exc, _detail)
+        except Exception:
+            logger.exception("Chat stream failed")
             async with _lock:
                 await _destroy_session_locked()
-            yield _sse_event(RunErrorEvent(message=f"Agent error: {type(_exc).__name__}: {_exc}"))
+            yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
             yield _sse_event(RunFinishedEvent(thread_id=thread_id, run_id=run_id))
 
     return StreamingResponse(generate(), media_type="text/event-stream")
