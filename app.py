@@ -3,9 +3,13 @@
 Proxies all AI interactions to isolated session containers via SessionManager.
 """
 
+import json
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile
@@ -16,6 +20,36 @@ from pydantic import BaseModel
 from session_manager import SessionManager
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Trace logging (opt-in via LOG_TRACE=true)
+# ---------------------------------------------------------------------------
+_trace_logger = logging.getLogger("trace")
+
+
+def _setup_trace_logging() -> None:
+    trace_dir = os.getenv("LOG_TRACE_DIR")
+    if os.getenv("LOG_TRACE", "").lower() != "true" or not trace_dir:
+        return
+    path = os.path.join(trace_dir, "trace.jsonl")
+    handler = RotatingFileHandler(path, maxBytes=50 * 1024 * 1024, backupCount=1)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    _trace_logger.addHandler(handler)
+    _trace_logger.setLevel(logging.INFO)
+    _trace_logger.propagate = False
+
+
+def _trace(event: str, **data) -> None:
+    if not _trace_logger.handlers:
+        return
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "component": "orchestrator",
+        "event": event,
+        "data": data,
+    }
+    _trace_logger.info(json.dumps(record, default=str))
+
 
 # ---------------------------------------------------------------------------
 # Globals set during lifespan
@@ -40,6 +74,8 @@ async def lifespan(app: FastAPI):
         logger.info("Content processing ready")
     else:
         logger.info("Content processing disabled (ADLS or CU not configured)")
+
+    _setup_trace_logging()
 
     session_manager = SessionManager(content_processor)
     await session_manager.start()
@@ -69,6 +105,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def trace_requests(request, call_next):
+    t0 = time.monotonic()
+    response = await call_next(request)
+    _trace(
+        "http.request",
+        method=request.method,
+        path=request.url.path,
+        query=str(request.url.query),
+        status=response.status_code,
+        duration_s=round(time.monotonic() - t0, 4),
+    )
+    return response
 
 
 # ---------------------------------------------------------------------------

@@ -113,26 +113,23 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
         chat_timeout = 300
 
     async def generate():
-        thread_id = str(uuid.uuid4())
-        run_id = str(uuid.uuid4())
         try:
             async with _lock:
                 session = await _get_or_create_session(token=token)
+                if token and session.token != token:
+                    await _destroy_session_locked()
+                    session = await _get_or_create_session(token=token)
                 async with asyncio.timeout(chat_timeout):
                     async for event in session.send(req.prompt):
                         yield event
         except asyncio.TimeoutError:
             logger.warning("Chat stream timed out after %ds", chat_timeout)
-            async with _lock:
-                await _destroy_session_locked()
+            await _destroy_session_locked()
             yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
-            yield _sse_event(RunFinishedEvent(thread_id=thread_id, run_id=run_id))
         except Exception:
             logger.exception("Chat stream failed")
-            async with _lock:
-                await _destroy_session_locked()
+            await _destroy_session_locked()
             yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
-            yield _sse_event(RunFinishedEvent(thread_id=thread_id, run_id=run_id))
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

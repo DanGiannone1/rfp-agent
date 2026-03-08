@@ -17,6 +17,21 @@ from azure.identity.aio import DefaultAzureCredential
 from fastapi import UploadFile
 
 logger = logging.getLogger(__name__)
+_trace_logger = logging.getLogger("trace")
+
+
+def _trace(event: str, **data) -> None:
+    if not _trace_logger.handlers:
+        return
+    import json as _json
+    from datetime import datetime, timezone
+    record = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "component": "orchestrator",
+        "event": event,
+        "data": data,
+    }
+    _trace_logger.info(_json.dumps(record, default=str))
 
 POOL_MANAGEMENT_ENDPOINT = os.getenv("POOL_MANAGEMENT_ENDPOINT", "")
 
@@ -196,10 +211,10 @@ class SessionManager:
             resp = await self._http.post(reset_url)
             resp.raise_for_status()
         except Exception:
-            logger.debug("Session reset failed for %s during delete", session_id, exc_info=True)
-        finally:
-            self._sessions.discard(session_id)
-            self._deleted_sessions.add(session_id)
+            logger.warning("Session reset failed for %s during delete", session_id, exc_info=True)
+            return
+        self._sessions.discard(session_id)
+        self._deleted_sessions.add(session_id)
 
     async def send_message(self, session_id: str, prompt: str) -> AsyncGenerator[str, None]:
         """Stream SSE events from the session container to the frontend."""
@@ -252,19 +267,18 @@ class SessionManager:
             raise HTTPException(status_code=413, detail="File too large (50 MB limit)")
         filename = upload_file.filename or "upload"
         content_type = upload_file.content_type or "application/octet-stream"
-        files = {"file": (filename, content, content_type)}
-        resp = await self._http.post(url, files=files)
-        resp.raise_for_status()
-        result = resp.json()
-
-        # Content processing: ADLS upload + Content Understanding markdown conversion.
-        # Both are required — there is no fallback path without CU.
         if not (self._content_processor and self._content_processor.enabled):
             from fastapi import HTTPException
             raise HTTPException(
                 status_code=503,
                 detail="Document processing is not available. Azure Content Understanding and ADLS must be configured.",
             )
+        files = {"file": (filename, content, content_type)}
+        resp = await self._http.post(url, files=files)
+        resp.raise_for_status()
+        result = resp.json()
+        _trace("fs.upload", session_id=session_id, filename=filename,
+               size=len(content), status=resp.status_code)
 
         async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
             """Upload the converted markdown to the session container."""
@@ -295,14 +309,28 @@ class SessionManager:
         url = self._pool_url("/files", session_id)
         resp = await self._http.get(url)
         resp.raise_for_status()
-        return resp.json()
+        result = resp.json()
+        files = result.get("files", [])
+        _trace("fs.list", session_id=session_id, file_count=len(files),
+               filenames=[f["filename"] for f in files])
+        return result
 
     async def get_file_content(self, session_id: str, filename: str) -> dict:
         """Proxy GET /files/content to the session container."""
         from urllib.parse import quote
+        _trace("fs.content_request", session_id=session_id, filename=filename)
         url = self._pool_url("/files/content", session_id)
         # Append filename directly to preserve the identifier param already in the URL.
         # httpx params= replaces the entire query string, which would drop identifier.
-        resp = await self._http.get(f"{url}&filename={quote(filename, safe='')}")
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = await self._http.get(f"{url}&filename={quote(filename, safe='')}")
+            resp.raise_for_status()
+        except Exception as exc:
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            _trace("fs.content_error", session_id=session_id, filename=filename,
+                   status=status, error=str(exc))
+            raise
+        result = resp.json()
+        _trace("fs.content_response", session_id=session_id, filename=filename,
+               size=result.get("size"), mime_type=result.get("mime_type"))
+        return result

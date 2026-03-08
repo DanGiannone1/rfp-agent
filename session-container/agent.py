@@ -56,7 +56,7 @@ def _trace(event: str, **data) -> None:
     _trace_logger.info(_json.dumps(record, default=str))
 
 
-SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
+SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
 SEARCH_KB_NAME = os.getenv("AZURE_SEARCH_KB_NAME", "rfp-knowledge")
 SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY", "")
 
@@ -87,11 +87,16 @@ You run inside an isolated container with full shell access. You can:
 - **Run complex computations** — pricing models, sensitivity analyses, scoring calculations
 
 When a skill produces structured output (compliance matrices, risk registers, pricing \
-models, scorecards), save it as a file in the working directory in addition to showing \
-it in chat. Use **markdown (.md) for all narrative deliverables** (executive summaries, \
-strategy briefs, compliance reviews), **CSV for scored matrices and data tables**, and \
-**JSON for structured data**. Do not attempt to install packages or generate binary \
-formats (DOCX, PDF, XLSX) — the workspace renderer displays markdown and CSV natively.
+models, scorecards), save it as a file in the working directory. Use **markdown (.md) \
+for all narrative deliverables** (executive summaries, strategy briefs, compliance \
+reviews), **CSV for scored matrices and data tables**, and **JSON for structured data**. \
+Do not attempt to install packages or generate binary formats (DOCX, PDF, XLSX) — the \
+workspace renderer displays markdown and CSV natively.
+
+**Do not reproduce saved file content in chat.** When you save a deliverable, briefly \
+state what you created and any key highlights or next steps — the user can view the \
+full content in the artifact panel. Repeating the full artifact in chat is redundant \
+and clutters the conversation.
 
 ## Getting Started
 
@@ -122,8 +127,8 @@ contains the step-by-step process, scoring framework, and output template you mu
 follow. Do not improvise a workflow when a skill exists for the task — the skill is \
 the authoritative procedure. If a request maps to one of the skills below, read that \
 skill first, then execute it. Skill guides are at \
-`/app/skill-guides/{skill-name}/SKILL.md` (e.g. \
-`/app/skill-guides/bid-no-bid-analysis/SKILL.md`).
+`/app/skills/{skill-name}/SKILL.md` (e.g. \
+`/app/skills/bid-no-bid-analysis/SKILL.md`).
 
 The available skills are:
 
@@ -274,6 +279,7 @@ class AgentSession:
     def __init__(self, working_dir: str, token: str | None = None):
         self._working_dir = working_dir
         self._initial_token = token
+        self._token = token
         self._client: CopilotClient | None = None
         self._session = None
         self._unsubscribe = None
@@ -296,14 +302,25 @@ class AgentSession:
         """Current activity: 'idle', 'thinking', 'tool:<name>', or 'error'."""
         return self._status
 
+    @property
+    def token(self) -> str | None:
+        return self._token
+
+    def set_token(self, token: str | None) -> None:
+        if token:
+            self._token = token
+        else:
+            self._token = None
+
     async def __aenter__(self) -> "AgentSession":
-        token = self._initial_token or os.getenv("AZURE_OPENAI_TOKEN")
+        token = self._token or self._initial_token or os.getenv("AZURE_OPENAI_TOKEN")
         if not token:
             self._credential = DefaultAzureCredential()
             tok = await self._credential.get_token(
                 "https://cognitiveservices.azure.com/.default"
             )
             token = tok.token
+        self._token = token
 
         self._client = CopilotClient(
             {"cli_args": ["--allow-all-tools", "--allow-all-paths"]}
@@ -339,36 +356,35 @@ class AgentSession:
             "on_permission_request": lambda _req, _ctx: {"kind": "approved"},
         }
 
-        # MCP servers — knowledge base via Foundry IQ (always required).
-        # Prefer an explicit API key (local dev); fall back to managed identity (production).
-        kb_url = (
-            f"{SEARCH_ENDPOINT}/knowledgebases/{SEARCH_KB_NAME}"
-            f"/mcp?api-version=2025-11-01-preview"
-        )
-        if SEARCH_KEY:
-            mcp_servers = {
-                "knowledge_base": {
-                    "type": "http",
-                    "url": kb_url,
-                    "headers": {"api-key": SEARCH_KEY},
-                    "tools": ["knowledge_base_retrieve"],
-                }
-            }
-        else:
-            search_credential = self._credential or DefaultAzureCredential()
-            search_tok = await search_credential.get_token(
-                "https://search.azure.com/.default"
+        # MCP servers — knowledge base via Foundry IQ (optional).
+        if SEARCH_ENDPOINT:
+            kb_url = (
+                f"{SEARCH_ENDPOINT}/knowledgebases/{SEARCH_KB_NAME}"
+                f"/mcp?api-version=2025-11-01-preview"
             )
-            mcp_servers = {
-                "knowledge_base": {
-                    "type": "http",
-                    "url": kb_url,
-                    "headers": {"Authorization": f"Bearer {search_tok.token}"},
-                    "tools": ["knowledge_base_retrieve"],
+            if SEARCH_KEY:
+                mcp_servers = {
+                    "knowledge_base": {
+                        "type": "http",
+                        "url": kb_url,
+                        "headers": {"api-key": SEARCH_KEY},
+                        "tools": ["knowledge_base_retrieve"],
+                    }
                 }
-            }
-
-        session_config["mcp_servers"] = mcp_servers
+            else:
+                search_credential = self._credential or DefaultAzureCredential()
+                search_tok = await search_credential.get_token(
+                    "https://search.azure.com/.default"
+                )
+                mcp_servers = {
+                    "knowledge_base": {
+                        "type": "http",
+                        "url": kb_url,
+                        "headers": {"Authorization": f"Bearer {search_tok.token}"},
+                        "tools": ["knowledge_base_retrieve"],
+                    }
+                }
+            session_config["mcp_servers"] = mcp_servers
 
         self._session = await self._client.create_session(session_config)
 
@@ -501,6 +517,10 @@ class AgentSession:
             _log_event(f"[ERROR] {msg}")
             _trace("agent.error", message=msg)
             self._enqueue(RunErrorEvent(message=msg))
+            self._enqueue(RunFinishedEvent(
+                thread_id=self._thread_id,
+                run_id=self._run_id,
+            ))
             self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
             return
 

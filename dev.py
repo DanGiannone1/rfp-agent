@@ -21,6 +21,14 @@ if not (ROOT / ".env").exists():
 load_dotenv(ROOT / ".env")
 os.environ["POOL_MANAGEMENT_ENDPOINT"] = "http://localhost:8080"
 os.environ["WORKSPACE"] = str(ROOT / "workspace")
+
+# Trace logging — fresh file each dev session
+logs_dir = ROOT / "logs"
+logs_dir.mkdir(exist_ok=True)
+trace_file = logs_dir / "trace.jsonl"
+trace_file.write_text("")  # truncate
+os.environ["LOG_TRACE"] = "true"
+os.environ["LOG_TRACE_DIR"] = str(logs_dir)
 workspace = ROOT / "workspace"
 # Clean workspace on startup so sessions don't see stale files
 if workspace.exists():
@@ -65,6 +73,7 @@ print()
 print("  Frontend:  http://localhost:3000")
 print("  API:       http://localhost:8000")
 print("  Session:   http://localhost:8080")
+print(f"  Trace log: {trace_file}")
 print()
 
 for p in procs:
