@@ -3,16 +3,11 @@
 import { useState, useEffect, useRef } from "react";
 import { listFiles } from "@/lib/api";
 import type { FileInfo } from "@/lib/types";
+import { formatSize } from "@/lib/utils";
 
 interface DocumentPanelProps {
   sessionId: string | null;
   refreshKey: number;
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 const CONVERTING_WINDOW_MS = 120_000;
@@ -81,12 +76,12 @@ export default function DocumentPanel({ sessionId, refreshKey }: DocumentPanelPr
   }
 
   return (
-    <div data-testid="document-panel" className="border-t border-white/10 bg-black/30">
+    <div data-testid="document-panel" className="border-t border-border-subtle bg-surface-1">
       <div className="mx-auto w-full max-w-4xl px-4 py-2">
         <button
           data-testid="document-panel-toggle"
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center gap-2 py-1 text-sm text-white/85 transition hover:text-white"
+          className="flex w-full items-center gap-2 py-1 text-sm text-text-primary/90 transition hover:text-text-primary"
         >
           <svg
             width="12"
@@ -112,19 +107,19 @@ export default function DocumentPanel({ sessionId, refreshKey }: DocumentPanelPr
                 <div
                   key={file.filename}
                   data-testid="document-item"
-                  className="flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.03] px-3 py-1.5 text-xs"
+                  className="flex items-center gap-2 rounded-xl border border-border-subtle bg-surface-2 px-3 py-1.5 text-xs"
                 >
-                  <span data-testid="document-name" className="max-w-[170px] truncate text-app-fg" title={file.filename}>
+                  <span data-testid="document-name" className="max-w-[170px] truncate text-text-primary" title={file.filename}>
                     {file.filename}
                   </span>
-                  <span className="text-app-muted">{formatSize(file.size)}</span>
+                  <span className="text-text-secondary">{formatSize(file.size)}</span>
 
                   {file.has_markdown ? (
-                    <span data-testid="conversion-done" className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                    <span data-testid="conversion-done" className="rounded-full bg-brand-success/15 px-2 py-0.5 text-[10px] font-medium text-brand-success">
                       Converted
                     </span>
                   ) : isConverting ? (
-                    <span data-testid="conversion-converting" className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                    <span data-testid="conversion-converting" className="rounded-full bg-brand-warning/15 px-2 py-0.5 text-[10px] font-medium text-brand-warning">
                       Converting...
                     </span>
                   ) : (

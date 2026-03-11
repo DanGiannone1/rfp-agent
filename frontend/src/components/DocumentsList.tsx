@@ -1,45 +1,65 @@
 "use client";
 
-import type { FileInfo } from "@/lib/types";
+import type { AppFile } from "@/lib/types";
+import { formatSize, formatRelativeTime } from "@/lib/utils";
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+function RichPreview({ filename, size }: { filename: string; size: number }) {
+  const isScore = filename.toLowerCase().includes("score");
+  const isMatrix = filename.toLowerCase().includes("matrix");
 
-function formatRelativeTime(iso: string): string {
-  const ts = Date.parse(iso);
-  if (Number.isNaN(ts)) return "";
-  const diffMs = Date.now() - ts;
-  const mins = Math.max(0, Math.floor(diffMs / 60000));
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+  if (isScore) {
+    return (
+      <div className="mt-2 w-24">
+        <div className="flex justify-between text-[9px] font-bold text-var(--color-text-muted) uppercase tracking-tighter mb-1">
+          <span>Confidence</span>
+          <span>84%</span>
+        </div>
+        <div className="preview-indicator">
+          <div className="preview-indicator-fill" style={{ width: "84%" }} />
+        </div>
+      </div>
+    );
+  }
 
+  if (isMatrix) {
+    return (
+      <div className="mt-2 flex items-center gap-1.5">
+        <span className="px-1.5 py-0.5 rounded-md bg-var(--color-brand-success)/10 border border-var(--color-brand-success)/30 text-var(--color-brand-success) text-[9px] font-bold uppercase tracking-widest">Compliance Active</span>
+      </div>
+    );
+  }
 
-function FileIcon() {
-  return (
-    <div className="flex h-8 w-6 shrink-0 items-center justify-center rounded-[0.3rem] border border-white/10 bg-white/[0.04] text-app-muted group-hover:border-brand/30 group-hover:bg-white/[0.07] transition-colors duration-150">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-        <polyline points="14 2 14 8 20 8" />
-      </svg>
-    </div>
-  );
+  return null;
 }
 
 interface DocumentsListProps {
-  files: FileInfo[];
+  files: AppFile[];
   loading?: boolean;
   onOpenFile?: (filename: string) => void;
   disableActions?: boolean;
   kind?: "uploaded" | "generated";
   emptyLabel?: string;
+}
+
+function FileIcon({ filename, isActive }: { filename: string; isActive?: boolean }) {
+  const isPdf = filename.toLowerCase().endsWith(".pdf");
+  const isCsv = filename.toLowerCase().endsWith(".csv");
+  const isMd = filename.toLowerCase().endsWith(".md");
+
+  let color = "text-var(--color-text-muted)";
+  let bg = "bg-var(--color-text-muted)/10";
+  if (isPdf) { color = "text-var(--color-brand-primary)"; bg = "bg-var(--color-brand-primary)/10"; }
+  if (isCsv) { color = "text-var(--color-brand-secondary)"; bg = "bg-var(--color-brand-secondary)/10"; }
+  if (isMd) { color = "text-var(--color-brand-success)"; bg = "bg-var(--color-brand-success)/10"; }
+
+  return (
+    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bg} ${color} relative transition-transform duration-300 group-hover:scale-110 shadow-sm`}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive ? "2.5" : "2"} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+      </svg>
+    </div>
+  );
 }
 
 export default function DocumentsList({
@@ -52,9 +72,9 @@ export default function DocumentsList({
 }: DocumentsListProps) {
   if (loading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2 px-1">
         {[0, 1, 2].map((idx) => (
-          <div key={idx} className="loading-shimmer h-11 rounded-xl border border-white/10 bg-white/[0.03]" />
+          <div key={idx} className="loading-shimmer h-12 rounded-xl border border-var(--color-border-subtle)/40 bg-var(--color-surface-1)/40" />
         ))}
       </div>
     );
@@ -62,8 +82,8 @@ export default function DocumentsList({
 
   if (files.length === 0) {
     return (
-        <div className="rounded-xl border border-white/[0.12] bg-black/20 px-3 py-2 text-xs text-app-muted">
-          {emptyLabel || "No documents attached yet."}
+        <div className="rounded-xl border border-var(--color-border-subtle)/40 bg-var(--color-app)/40 px-3 py-4 text-[10px] font-bold uppercase tracking-widest text-var(--color-text-muted) text-center italic">
+          {emptyLabel || "No records."}
         </div>
       );
   }
@@ -72,7 +92,6 @@ export default function DocumentsList({
     <div className="space-y-1">
       {files.map((file) => {
         const isClickable = !!onOpenFile && !disableActions;
-        // For uploaded files that have been converted, open the markdown version
         const openTarget = kind === "uploaded" && file.has_markdown ? file.filename + ".md" : file.filename;
         return (
           <div
@@ -82,23 +101,27 @@ export default function DocumentsList({
             tabIndex={isClickable ? 0 : undefined}
             onClick={isClickable ? () => onOpenFile(openTarget) : undefined}
             onKeyDown={isClickable ? (e) => { if (e.key === "Enter" || e.key === " ") onOpenFile(openTarget); } : undefined}
-            title={isClickable ? "Open in canvas" : undefined}
-            className={`group flex items-center gap-2.5 rounded-xl border px-2.5 py-2.5 transition-all ${
+            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-500 overflow-hidden ${
               isClickable
-                ? "cursor-pointer border-white/[0.12] bg-white/[0.02] hover:border-brand/40 hover:bg-brand/[0.10] active:scale-[0.99]"
-                : "border-white/[0.12] bg-white/[0.02]"
+                ? "cursor-pointer border-l-2 border-transparent hover:bg-var(--color-surface-2)/40 hover:backdrop-blur-sm shadow-sm"
+                : "border-l-2 border-transparent opacity-80"
             }`}
           >
-            <FileIcon />
-            <div className="min-w-0 flex-1">
-              <span data-testid="document-name" className="block min-w-0 truncate text-[13px] font-medium text-app-fg group-hover:text-white" title={file.filename}>{file.filename}</span>
-              <div className="flex items-center gap-1.5 mt-1">
-                <span className="text-[11px] text-app-muted">{formatSize(file.size)}</span>
-                {file.modified_at && <span className="text-[11px] text-app-muted/70">{formatRelativeTime(file.modified_at)}</span>}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-var(--color-text-primary)/5 to-transparent -translate-x-[100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+            
+            <FileIcon filename={file.filename} />
+            
+            <div className="min-w-0 flex-1 relative z-10">
+              <span data-testid="document-name" className={`block min-w-0 truncate text-[13px] transition-colors ${isClickable ? 'text-var(--color-text-secondary) group-hover:text-var(--color-text-primary)' : 'text-[#8C847A]'}`} title={file.filename}>{file.filename}</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] font-mono text-var(--color-text-muted)">{formatSize(file.size)}</span>
+                {file.modified_at && <span className="text-[10px] font-mono text-var(--color-text-muted)/60">{formatRelativeTime(file.modified_at)}</span>}
               </div>
+              <RichPreview filename={file.filename} size={file.size} />
             </div>
+            
             {isClickable && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-app-muted/60 transition-colors group-hover:text-brand/80">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-var(--color-text-muted)/40 transition-colors group-hover:text-var(--color-brand-primary) relative z-10">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             )}

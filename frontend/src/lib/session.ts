@@ -23,7 +23,17 @@ export function getStoredMessages(): ChatMessage[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = sessionStorage.getItem(MESSAGES_KEY);
-    return raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+    if (!raw) return [];
+    const messages = JSON.parse(raw) as ChatMessage[];
+    // Sanitize: restore any "running" tool calls to "done" (page may have closed mid-turn)
+    return messages.map(msg => ({
+      ...msg,
+      parts: msg.parts.map(part =>
+        part.type === "tool_call" && part.status === "running"
+          ? { ...part, status: "done" as const }
+          : part
+      ),
+    }));
   } catch {
     return [];
   }

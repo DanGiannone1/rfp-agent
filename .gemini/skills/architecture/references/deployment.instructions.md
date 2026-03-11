@@ -17,47 +17,45 @@ description: Azure deployment resources and commands for the RFP Agent — ACR b
 
 Easy Auth is disabled; IP restriction is used instead.
 
-## CRITICAL: Never Use :latest for ACA Deployments
-
-`az containerapp update --image repo:latest` is **silently broken** for all ACA services — not just session pools. ACA resolves the tag to a digest at revision creation time and caches it. If the image string in the command hasn't changed since the last revision, ACA no-ops: no new revision, no image pull, old code keeps running. This is a [known unfixed ACA bug since 2022](https://github.com/microsoft/azure-container-apps/issues/311).
-
-**Fix: always use git SHA tags.** A changed image string forces a new revision.
-
-## Build + Deploy (use git SHA)
+## Build (Run in Parallel)
 
 ```bash
-SHA=$(git rev-parse --short HEAD)
+TAG="deploy-$(date +%Y%m%d-%H%M%S)"
 
-# Build all three in parallel (cloud-side builds)
 az acr build --registry rfpagentacr \
-  --image rfp-session:$SHA --image rfp-session:latest \
+  --image rfp-session:latest --image rfp-session:$TAG \
   --file session-container/Dockerfile session-container/
 
 az acr build --registry rfpagentacr \
-  --image rfp-orchestrator:$SHA --image rfp-orchestrator:latest \
+  --image rfp-orchestrator:latest \
   --file Dockerfile .
 
 az acr build --registry rfpagentacr \
-  --image rfp-frontend:$SHA --image rfp-frontend:latest \
+  --image rfp-frontend:latest \
   --build-arg "NEXT_PUBLIC_API_URL=https://rfpagent-app.kindground-24020708.eastus2.azurecontainerapps.io" \
   --file frontend/Dockerfile frontend/
+```
 
-# Deploy using SHA tag — ACA sees a changed string, creates a new revision
+## Update (Run Sequentially)
+
+```bash
+# IMPORTANT: Never use :latest for session pools — ACA caches tag resolution
 az containerapp sessionpool update \
-  --name rfpagent-sessions --resource-group rfpagent-rg \
-  --image rfpagentacr.azurecr.io/rfp-session:$SHA \
+  --name rfpagent-sessions \
+  --resource-group rfpagent-rg \
+  --image rfpagentacr.azurecr.io/rfp-session:$TAG \
   --cooldown-period 300 --max-sessions 20 --ready-sessions 5
 
 az containerapp update \
-  --name rfpagent-app --resource-group rfpagent-rg \
-  --image rfpagentacr.azurecr.io/rfp-orchestrator:$SHA
+  --name rfpagent-app \
+  --resource-group rfpagent-rg \
+  --image rfpagentacr.azurecr.io/rfp-orchestrator:latest
 
 az containerapp update \
-  --name rfpagent-frontend --resource-group rfpagent-rg \
-  --image rfpagentacr.azurecr.io/rfp-frontend:$SHA
+  --name rfpagent-frontend \
+  --resource-group rfpagent-rg \
+  --image rfpagentacr.azurecr.io/rfp-frontend:latest
 ```
-
-Session pool update takes ~2-3 minutes (InProgress → Succeeded) while it reprovisions containers. Orchestrator and frontend update in ~30s.
 
 ## Full Deployment Script
 

@@ -68,33 +68,28 @@ export default function MessageList({ messages, onSuggestion }: MessageListProps
       aria-label="Chat messages"
       aria-live="polite"
     >
-      <div className="mx-auto w-full max-w-4xl px-4 py-5 md:py-7">
+      <div className="mx-auto w-full max-w-3xl px-4 py-5 md:py-10">
         {messages.length === 0 ? (
-          <div className="mx-auto flex min-h-[52vh] max-w-3xl flex-col items-center justify-center">
-            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-brand/20 ring-1 ring-brand/35 idle-breathe">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-brand-strong">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <polyline points="9 13 11 15 15 11"/>
-              </svg>
-            </div>
-            <h2 className="text-xl font-semibold text-app-fg">Your RFP is ready. Where do you want to start?</h2>
-            <p className="mt-1.5 text-sm text-app-muted">Pick a starting point or type your own request.</p>
+          <div className="mx-auto flex min-h-[50vh] flex-col justify-center">
+            <h2 className="text-3xl font-extrabold tracking-tight text-text-primary uppercase md:text-5xl">Your RFP is ready.</h2>
+            <p className="mt-4 text-lg text-text-secondary">Select an action to begin analysis.</p>
 
             {onSuggestion && (
-              <div className="mt-8 grid w-full grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+              <div className="mt-10 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
                 {SUGGESTIONS.map((s, i) => (
                   <button
                     key={s.prompt}
                     type="button"
                     onClick={() => onSuggestion(s.prompt)}
-                    style={{ animationDelay: `${i * 60}ms` }}
-                    className="interactive-chip animate-fade-in flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-left transition hover:border-brand/40 hover:bg-brand/8 active:bg-brand/15"
+                    style={{ animationDelay: `${i * 40}ms` }}
+                    className="interactive-chip animate-fade-in group flex flex-col items-start gap-3 rounded-2xl border border-border-subtle bg-surface-1 p-5 text-left transition hover:border-brand-primary hover:bg-surface-2"
                   >
-                    <SuggestionIcon icon={s.icon} />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-text-primary group-hover:bg-brand-primary group-hover:text-black transition-colors">
+                      <SuggestionIcon icon={s.icon} />
+                    </div>
                     <div>
-                      <p className="text-[14px] font-medium text-app-fg">{s.label}</p>
-                      <p className="mt-0.5 text-[12px] leading-snug text-app-muted">{s.description}</p>
+                      <p className="text-[15px] font-bold tracking-wide text-text-primary group-hover:text-brand-primary transition-colors">{s.label}</p>
+                      <p className="mt-1.5 text-[13px] leading-relaxed text-text-secondary">{s.description}</p>
                     </div>
                   </button>
                 ))}
@@ -127,7 +122,7 @@ export default function MessageList({ messages, onSuggestion }: MessageListProps
             bottomRef.current?.scrollIntoView({ behavior: "smooth" });
             setShowJumpToLatest(false);
           }}
-          className="interactive-control animate-fade-in fixed bottom-28 left-1/2 z-20 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-white/15 bg-black/85 px-3 py-2 text-xs text-app-fg shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur md:bottom-32 md:left-auto md:right-8 md:translate-x-0"
+          className="interactive-control animate-fade-in fixed bottom-28 left-1/2 z-20 -translate-x-1/2 flex items-center gap-1.5 rounded-full border border-border-subtle bg-surface-2/95 px-3 py-2 text-xs text-text-primary shadow-[0_10px_30px_rgba(0,0,0,.35)] backdrop-blur md:bottom-32 md:left-auto md:right-8 md:translate-x-0"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           Jump to latest

@@ -4,6 +4,10 @@ import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
+import { File, Copy, Download, Maximize2, MessageSquare } from "lucide-react";
+import BespokeIcon from "./ui/BespokeIcon";
+import { isMarkdown, isCsv } from "@/lib/utils";
+import CsvTable from "./CsvTable";
 
 interface ArtifactCanvasProps {
   filename: string | null;
@@ -12,43 +16,6 @@ interface ArtifactCanvasProps {
   loading: boolean;
   error: string | null;
   onClose: () => void;
-}
-
-function isMarkdown(filename: string | null, mimeType?: string): boolean {
-  if (!filename) return false;
-  return filename.toLowerCase().endsWith(".md") || (mimeType || "").includes("markdown");
-}
-
-function isCsv(filename: string | null): boolean {
-  return !!filename && filename.toLowerCase().endsWith(".csv");
-}
-
-function CsvTable({ content }: { content: string }) {
-  const rows = content.trim().split("\n").map((line) => line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, "")));
-  if (rows.length === 0) return <pre className="text-xs text-app-muted">Empty CSV</pre>;
-  const [header, ...body] = rows;
-  return (
-    <div className="table-wrapper">
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr>
-            {header.map((cell, i) => (
-              <th key={i} className="bg-brand/15 px-3 py-2 text-left font-semibold text-app-fg">{cell}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {body.map((row, ri) => (
-            <tr key={ri} className="border-t border-white/8">
-              {row.map((cell, ci) => (
-                <td key={ci} className="px-3 py-1.5 text-app-muted-strong">{cell}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 }
 
 export default function ArtifactCanvas({
@@ -83,77 +50,78 @@ export default function ArtifactCanvas({
     setTimeout(() => setDownloaded(false), 1800);
   }
 
-  const iconBtnClass = "interactive-control rounded-lg border border-white/15 bg-white/[0.04] p-1.5 text-app-muted-strong hover:text-app-fg";
-
   return (
-    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 border-l border-white/10 bg-[#10151f]">
-      <div className="flex items-center justify-between border-b border-white/[0.15] px-4 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-sm font-semibold text-app-fg" title={filename}>{filename}</h3>
-            <span className="shrink-0 rounded-md bg-white/[0.10] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-app-muted-strong">
-              {filename.split('.').pop()?.toUpperCase() ?? 'FILE'}
-            </span>
+    <aside className="hidden lg:flex lg:flex-col flex-1 min-w-0 bg-var(--color-surface-canvas)/80 backdrop-blur-[50px] rounded-[2rem] border border-var(--color-border-subtle)/50 shadow-2xl relative overflow-hidden h-full">
+      {/* Background Accent */}
+      <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-var(--color-brand-primary)/5 to-transparent pointer-events-none" />
+
+      <div className="relative z-10 flex items-center justify-between border-b border-var(--color-border-subtle)/40 px-8 py-4 bg-white/[0.01]">
+        <div className="flex items-center gap-4">
+          <div className="p-2 rounded-xl bg-var(--color-brand-primary)/10 text-var(--color-brand-primary) shadow-[inset_0_0_10px_rgba(217,93,57,0.1)] border border-var(--color-brand-primary)/20 transition-transform hover:scale-105">
+            <BespokeIcon icon={File} size={18} glowColor="rgba(217, 93, 57, 0.4)" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <h3 className="truncate text-[15px] font-bold text-var(--color-text-primary) tracking-tight" title={filename}>{filename}</h3>
+            <span className="text-[10px] font-mono text-var(--color-text-muted) uppercase tracking-[0.2em] mt-0.5">/deliverables/</span>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-3">
           {!loading && !error && content && (
-            <>
-              <button type="button" onClick={handleCopy} title={copied ? "Copied!" : "Copy"} className={iconBtnClass}>
-                {copied ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                )}
+            <div className="flex items-center gap-1 bg-var(--color-app)/80 backdrop-blur-md p-1 rounded-xl border border-var(--color-border-subtle)/50 shadow-inner">
+              <button type="button" onClick={handleCopy} title={copied ? "Copied!" : "Copy"} className="p-2 text-var(--color-text-muted) hover:text-var(--color-brand-primary) hover:bg-var(--color-brand-primary)/10 rounded-lg transition-all">
+                {copied ? <BespokeIcon icon={Maximize2} size={16} /> : <Copy size={16} />}
               </button>
-              <button type="button" onClick={handleDownload} title={downloaded ? "Downloaded!" : "Download"} className={iconBtnClass}>
-                {downloaded ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                )}
+              <button type="button" onClick={handleDownload} title={downloaded ? "Downloaded!" : "Download"} className="p-2 text-var(--color-text-muted) hover:text-var(--color-brand-primary) hover:bg-var(--color-brand-primary)/10 rounded-lg transition-all">
+                <Download size={16} />
               </button>
-            </>
+            </div>
           )}
-          <button type="button" onClick={onClose} title="Close" className={iconBtnClass}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          
+          <button 
+            type="button" 
+            onClick={onClose}
+            className="flex items-center gap-2 bg-[linear-gradient(110deg,#F4F1EA,45%,#ffffff,55%,#F4F1EA)] bg-[length:200%_100%] animate-shimmer text-[#141210] hover:brightness-110 text-[11px] font-bold px-5 py-2.5 rounded-xl transition-all shadow-[0_0_20px_rgba(244,241,234,0.15)] hover:shadow-[0_0_25px_rgba(244,241,234,0.25)] hover:-translate-y-0.5"
+          >
+            <MessageSquare size={14} fill="currentColor" />
+            DISCUSS
           </button>
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto px-6 py-6">
+      <div className="relative z-10 min-h-0 flex-1 overflow-auto custom-scrollbar px-12 py-12">
         {loading && (
-          <div className="space-y-3 pt-2">
-            <div className="loading-shimmer h-6 w-48 rounded-lg border border-white/10 bg-white/[0.03]" />
-            <div className="loading-shimmer h-4 w-full rounded-lg border border-white/10 bg-white/[0.03]" />
-            <div className="loading-shimmer h-4 w-5/6 rounded-lg border border-white/10 bg-white/[0.03]" />
-            <div className="loading-shimmer h-4 w-4/6 rounded-lg border border-white/10 bg-white/[0.03]" />
-            <div className="loading-shimmer mt-4 h-24 w-full rounded-xl border border-white/10 bg-white/[0.03]" />
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div className="loading-shimmer h-12 w-64 rounded-xl bg-var(--color-surface-1)/40 border border-var(--color-border-subtle)/40" />
+            <div className="space-y-3">
+              <div className="loading-shimmer h-4 w-full rounded-lg bg-var(--color-surface-1)/40 border border-var(--color-border-subtle)/40" />
+              <div className="loading-shimmer h-4 w-5/6 rounded-lg bg-var(--color-surface-1)/40 border border-var(--color-border-subtle)/40" />
+            </div>
+            <div className="loading-shimmer h-64 w-full rounded-2xl bg-var(--color-surface-1)/40 border border-var(--color-border-subtle)/40" />
           </div>
         )}
 
         {!loading && error && (
-          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-            {error}
+          <div className="max-w-xl mx-auto rounded-2xl border border-var(--color-brand-warning)/30 bg-var(--color-brand-warning)/10 p-6 text-center shadow-xl animate-fade-in">
+            <p className="text-sm font-bold text-var(--color-text-primary) uppercase tracking-widest">{error}</p>
           </div>
         )}
 
         {!loading && !error && (
-          isMarkdown(filename, mimeType) ? (
-            <article className="prose prose-message prose-canvas mx-auto max-w-[68ch]">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                {content || "_Empty artifact_"}
-              </ReactMarkdown>
-            </article>
-          ) : isCsv(filename) ? (
-            <div className="mx-auto max-w-full">
+          <div className="max-w-5xl mx-auto">
+            {isMarkdown(filename, mimeType) ? (
+              <article className="prose prose-message prose-canvas canvas-content">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                  {content || "_Empty artifact_"}
+                </ReactMarkdown>
+              </article>
+            ) : isCsv(filename) ? (
               <CsvTable content={content || ""} />
-            </div>
-          ) : (
-            <pre className="overflow-x-auto rounded-xl border border-white/12 bg-black/25 p-3 text-xs text-app-fg whitespace-pre-wrap">
-              {content || "Empty artifact"}
-            </pre>
-          )
+            ) : (
+              <pre className="overflow-x-auto rounded-2xl border border-var(--color-border-subtle)/60 bg-var(--color-surface-canvas) p-8 text-[13px] text-var(--color-text-secondary) font-mono leading-relaxed shadow-inner">
+                {content || "Empty artifact"}
+              </pre>
+            )}
+          </div>
         )}
       </div>
     </aside>

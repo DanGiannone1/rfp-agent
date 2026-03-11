@@ -11,6 +11,16 @@ export default defineConfig({
 
   projects: [
     {
+      name: "debug",
+      testMatch: "artifact_debug.spec.ts",
+      use: {
+        baseURL: APP_URL,
+        browserName: "chromium",
+        headless: true,
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
       name: "comprehensive",
       testMatch: "comprehensive.spec.ts",
       use: {

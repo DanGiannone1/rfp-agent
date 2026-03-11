@@ -19,6 +19,11 @@
 #
 set -euo pipefail
 
+# Unique tag for this deploy — ACA only creates a new revision when the image
+# string changes. Using :latest is unreliable because ACA caches the resolved
+# digest; a SHA-based tag guarantees a new revision on every deploy.
+SHA=$(git rev-parse --short HEAD)
+
 # ── Configuration ─────────────────────────────────────────────────────────
 PREFIX="${PREFIX:-rfpagent}"
 LOCATION="${LOCATION:-eastus2}"
@@ -34,6 +39,7 @@ AZURE_DEPLOYMENT="${AZURE_DEPLOYMENT:-gpt-5-codex}"
 COSMOS_ENDPOINT="${COSMOS_ENDPOINT:-}"
 ADLS_ACCOUNT_NAME="${ADLS_ACCOUNT_NAME:-${PREFIX}adls}"
 ADLS_FILESYSTEM="${ADLS_FILESYSTEM:-documents}"
+AZURE_SEARCH_KB_NAME="${AZURE_SEARCH_KB_NAME:-rfp-knowledge}"
 
 # Optional: restrict ingress to a specific IP (e.g. your office/home IP).
 # Leave blank to allow all traffic.
@@ -119,6 +125,9 @@ if [ -n "$AOAI_RESOURCE_NAME" ]; then
             --scope "$AOAI_ID" \
             -o none
     fi
+else
+    echo "ERROR: Could not parse Cognitive Services resource name from AZURE_ENDPOINT=$AZURE_ENDPOINT"
+    exit 1
 fi
 
 # ── 4b. ADLS Gen2 Storage ────────────────────────────────────────────────
@@ -130,6 +139,13 @@ az storage account create \
     --sku Standard_LRS \
     --kind StorageV2 \
     --hns true \
+    -o none
+
+echo ">>> Ensuring ADLS public network access is enabled..."
+az storage account update \
+    --name "$ADLS_ACCOUNT_NAME" \
+    --resource-group "$RG" \
+    --public-network-access Enabled \
     -o none
 
 echo ">>> Creating ADLS filesystem..."
@@ -189,9 +205,10 @@ az containerapp env create \
 
 # ── 6. Build & Push Session Container Image ─────────────────────────────
 echo ">>> Building session container image..."
-SESSION_IMAGE="$ACR_LOGIN_SERVER/rfp-session:latest"
+SESSION_IMAGE="$ACR_LOGIN_SERVER/rfp-session:$SHA"
 az acr build \
     --registry "$ACR_NAME" \
+    --image "rfp-session:$SHA" \
     --image "rfp-session:latest" \
     --file session-container/Dockerfile \
     session-container/ \
@@ -222,9 +239,10 @@ if ! az containerapp sessionpool create \
         "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
         "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
         "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
-        "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
+        "AZURE_SEARCH_KB_NAME=$AZURE_SEARCH_KB_NAME" \
         "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
         "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
+        "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
     -o none 2>/dev/null; then
     echo "    Session pool exists, updating..."
     az containerapp sessionpool update \
@@ -238,9 +256,10 @@ if ! az containerapp sessionpool create \
             "AZURE_ENDPOINT=$AZURE_ENDPOINT" \
             "AZURE_DEPLOYMENT=$AZURE_DEPLOYMENT" \
             "AZURE_SEARCH_ENDPOINT=$SEARCH_ENDPOINT" \
-            "AZURE_SEARCH_KB_NAME=rfp-knowledge" \
+            "AZURE_SEARCH_KB_NAME=$AZURE_SEARCH_KB_NAME" \
             "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
             "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
+            "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
         -o none
 fi
 
@@ -269,6 +288,7 @@ az role assignment create \
 echo ">>> Building orchestrator image..."
 az acr build \
     --registry "$ACR_NAME" \
+    --image "rfp-orchestrator:$SHA" \
     --image "rfp-orchestrator:latest" \
     --file Dockerfile \
     . \
@@ -276,7 +296,7 @@ az acr build \
 
 # ── 10. Deploy Orchestrator as Container App ─────────────────────────────
 echo ">>> Deploying orchestrator container app..."
-ORCHESTRATOR_IMAGE="$ACR_LOGIN_SERVER/rfp-orchestrator:latest"
+ORCHESTRATOR_IMAGE="$ACR_LOGIN_SERVER/rfp-orchestrator:$SHA"
 
 if ! az containerapp create \
     --name "$APP_NAME" \
@@ -350,7 +370,7 @@ fi
 
 # ── 12. Build & Push Frontend Image ─────────────────────────────────────
 echo ">>> Building frontend image..."
-FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:latest"
+FRONTEND_IMAGE="$ACR_LOGIN_SERVER/rfp-frontend:$SHA"
 
 # Derive redirect URI from frontend URL if not explicitly provided
 FRONTEND_URL_PREVIEW="${FRONTEND_NAME}.$(az containerapp env show --name "$ENV_NAME" --resource-group "$RG" --query "properties.defaultDomain" -o tsv)"
@@ -358,6 +378,7 @@ RESOLVED_REDIRECT_URI="${ENTRA_REDIRECT_URI:-https://$FRONTEND_URL_PREVIEW}"
 
 az acr build \
     --registry "$ACR_NAME" \
+    --image "rfp-frontend:$SHA" \
     --image "rfp-frontend:latest" \
     --file frontend/Dockerfile \
     --build-arg "NEXT_PUBLIC_API_URL=https://$APP_URL" \
@@ -448,7 +469,7 @@ echo "Managed Identity:         $IDENTITY_CLIENT_ID"
 echo ""
 echo "AI Search (knowledge base):"
 echo "  Endpoint:               $SEARCH_ENDPOINT"
-echo "  KB Name:                rfp-knowledge"
+echo "  KB Name:                $AZURE_SEARCH_KB_NAME"
 echo ""
 if [ -n "$ENTRA_TENANT_ID" ]; then
 echo "Entra ID (auth):"

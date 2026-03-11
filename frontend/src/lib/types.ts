@@ -13,19 +13,10 @@ export type MessagePart =
   | { type: "text"; content: string }
   | { type: "tool_call"; tool: string; toolCallId: string; status: "running" | "done"; args?: string };
 
-export interface ToolActivity {
-  tool: string;
-  toolCallId: string;
-  status: "running" | "done";
-  args?: string;
-}
-
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
-  content: string;
   isStreaming: boolean;
-  toolActivity: ToolActivity[];
   parts: MessagePart[];
 }
 
@@ -35,4 +26,20 @@ export interface FileInfo {
   modified_at: string;
   has_markdown: boolean;
   origin?: "uploaded" | "generated";
+}
+
+export interface AppFile {
+  filename: string;
+  size: number;
+  modified_at: string;
+  origin: "uploaded" | "generated";
+  status: "pending" | "ready";
+  has_markdown: boolean;
+}
+
+export interface IntakeState {
+  sessionState: "preparing" | "ready" | "error";
+  uploadState: "idle" | "uploading";
+  error: string | null;
+  filename: string | null;
 }

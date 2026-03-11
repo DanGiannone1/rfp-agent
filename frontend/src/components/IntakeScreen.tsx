@@ -1,33 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { IntakeState } from "@/lib/types";
+import { ACCEPTED_EXTENSIONS } from "@/lib/constants";
+import { isAllowedFile } from "@/lib/utils";
+import GlassPanel from "./ui/GlassPanel";
 
 interface IntakeScreenProps {
-  sessionState: "preparing" | "ready" | "error";
-  uploadState: "idle" | "uploading";
-  selectedFileName: string | null;
-  uploadError: string | null;
-  sessionError: string | null;
+  intake: IntakeState;
   statusMessage: string | null;
   onUpload: (file: File) => Promise<void>;
   onRetrySession: () => void;
 }
 
-const ACCEPTED_EXTENSIONS = [
-  ".pdf", ".doc", ".docx", ".txt", ".csv", ".json", ".xml", ".md", ".xlsx", ".pptx", ".xls", ".rtf", ".html", ".htm",
-];
-
-function isAllowedFile(filename: string): boolean {
-  const lower = filename.toLowerCase();
-  return ACCEPTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
-}
-
 export default function IntakeScreen({
-  sessionState,
-  uploadState,
-  selectedFileName,
-  uploadError,
-  sessionError,
+  intake,
   statusMessage,
   onUpload,
   onRetrySession,
@@ -36,16 +23,16 @@ export default function IntakeScreen({
   const [isDragOver, setIsDragOver] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const preparing = sessionState === "preparing";
-  const ready = sessionState === "ready";
-  const uploading = uploadState === "uploading";
+  const preparing = intake.sessionState === "preparing";
+  const ready = intake.sessionState === "ready";
+  const uploading = intake.uploadState === "uploading";
   const busy = preparing || uploading;
 
   async function pickAndUpload(file: File | null) {
     if (!file) return;
     setLocalError(null);
     if (!isAllowedFile(file.name)) {
-      setLocalError("This file type is not supported. Please upload PDF, DOCX, XLSX, TXT, CSV, JSON, XML, MD, PPTX, RTF, or HTML.");
+      setLocalError("Unsupported file type.");
       return;
     }
     await onUpload(file);
@@ -58,18 +45,22 @@ export default function IntakeScreen({
     await pickAndUpload(e.dataTransfer.files?.[0] || null);
   }
 
-  const activeStatus = localError || uploadError || sessionError || statusMessage;
+  const activeStatus = localError || intake.error || statusMessage;
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app p-4 text-app-fg">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(79,133,255,.20),transparent_38%)]" />
-
-      <section className="relative z-10 w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.03] p-5 shadow-[0_30px_80px_rgba(0,0,0,.45)] backdrop-blur-xl md:p-8">
-        <header className="mb-6">
-          <p className="text-[13px] font-medium uppercase tracking-[0.16em] text-app-muted">Meridian & Associates</p>
-          <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Win more contracts, faster.</h1>
-          <p className="mt-2 max-w-2xl text-sm text-app-muted-strong">
-            Upload any RFP and the AI agent instantly generates compliance matrices, bid scoring, executive summaries, and risk analysis — all in one workspace.
+    <main className="relative flex min-h-screen items-center justify-center bg-app p-4 text-text-primary font-sans overflow-hidden">
+      <div className="ambient-orb-1 animate-blob" />
+      <div className="ambient-orb-2 animate-blob" />
+      
+      <GlassPanel variant="heavy" className="relative z-10 w-full max-w-2xl p-6 md:p-12 rounded-[2.5rem]">
+        <header className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-primary/10 border border-brand-primary/20 mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-primary animate-pulse" />
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-primary">Meridian & Associates</p>
+          </div>
+          <h1 className="mt-2 text-4xl font-black uppercase tracking-tight md:text-6xl text-text-primary">Win More.<br/>Faster.</h1>
+          <p className="mx-auto mt-6 max-w-xl text-[15px] text-text-secondary leading-relaxed">
+            Upload any RFP. Our intelligence engine instantly generates compliance matrices, scoring models, and strategic summaries in one premium workspace.
           </p>
         </header>
 
@@ -78,9 +69,11 @@ export default function IntakeScreen({
           tabIndex={ready && !busy ? 0 : -1}
           aria-disabled={!ready || busy}
           aria-label="Upload RFP file"
-          className={`rounded-2xl border-2 border-dashed py-10 px-6 text-center transition-all duration-200 md:py-14 md:px-8 ${
-            isDragOver ? "border-brand bg-brand/10 scale-[1.02]" : "border-white/20 bg-black/20 scale-100"
-          } ${!ready || busy ? "opacity-70" : "cursor-pointer"}`}
+          className={`relative overflow-hidden border-2 border-dashed py-14 px-6 text-center transition-all duration-500 md:py-20 md:px-8 rounded-3xl ${
+            isDragOver 
+              ? "border-brand-primary bg-brand-primary/5 scale-[1.02] shadow-[0_0_40px_rgba(217,93,57,0.15)]" 
+              : "border-border-subtle bg-app/40 scale-100 hover:border-brand-primary/50 hover:bg-surface-1/60"
+          } ${!ready || busy ? "opacity-50" : "cursor-pointer"} shadow-inner group`}
           onClick={() => {
             if (!ready || busy) return;
             fileRef.current?.click();
@@ -115,8 +108,9 @@ export default function IntakeScreen({
             }}
           />
 
-          <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-brand/20 text-brand-strong ${preparing ? "agent-working" : ""}`}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className={`mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-primary to-brand-warning text-white shadow-[0_0_30px_rgba(217,93,57,0.3)] relative ${preparing ? "agent-working" : ""}`}>
+            <div className="absolute inset-0 bg-white/20 rounded-2xl blur-[2px]" />
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="relative z-10">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
               <path d="M12 18v-6" />
@@ -124,60 +118,54 @@ export default function IntakeScreen({
             </svg>
           </div>
 
-          <h2 className="text-lg font-medium">
-            {preparing ? "Preparing your session..." : uploading ? "Converting document..." : "Drop an RFP file here"}
+          <h2 className="text-xl font-bold uppercase tracking-wide text-text-primary">
+            {preparing ? "Booting Engine..." : uploading ? "Parsing Data..." : "Drop RFP Document"}
           </h2>
-          <p className="mt-2 text-sm text-app-muted">
-            {preparing
-              ? "This usually takes a few seconds."
-              : uploading
-                ? selectedFileName ? `Processing ${selectedFileName}` : "Uploading and extracting content..."
-                : "or click to choose from your device"}
+          <p className="mt-3 text-sm font-medium text-text-muted">
+            {preparing ? "Initializing sandbox." : uploading ? "Extracting content..." : "or click to browse"}
           </p>
-          {uploading && (
-            <p className="mt-2 text-xs text-app-muted/70">Large documents can take 1–2 minutes to process.</p>
-          )}
         </div>
 
-        <p className="mt-2 text-[11px] text-app-muted/60">
-            Accepts PDF, DOCX, XLSX, PPTX, TXT, CSV, JSON, XML, MD, RTF, HTML
+        <div className="mt-10 flex flex-col items-center gap-5 border-t border-border-subtle pt-10 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted opacity-60">
+            Accepts PDF, DOCX, XLSX, TXT, CSV, JSON, MD, RTF, HTML
           </p>
-        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-white/8 pt-4">
-          {["End-to-end encrypted", "Session-isolated sandbox", "Files auto-deleted after 24h", "SOC 2 Type II"].map((item) => (
-            <span key={item} className="flex items-center gap-1.5 text-[11px] text-app-muted/60">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500/70"><polyline points="20 6 9 17 4 12"/></svg>
-              {item}
-            </span>
-          ))}
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            {["Encrypted", "Isolated", "SOC 2 Type II"].map((item) => (
+              <span key={item} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-text-muted">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-success shadow-[0_0_8px_rgba(122,155,118,0.5)]" />
+                {item}
+              </span>
+            ))}
+          </div>
         </div>
 
-        {selectedFileName && (
-          <p className="mt-3 text-xs text-app-muted">Selected file: <span className="text-app-fg">{selectedFileName}</span></p>
+        {intake.filename && (
+          <div className="mt-8 p-4 bg-app/60 rounded-2xl border border-brand-primary/20 flex items-center justify-center gap-3 animate-fade-in">
+            <span className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Target:</span>
+            <span className="text-sm font-bold text-brand-primary truncate max-w-xs">{intake.filename}</span>
+          </div>
         )}
 
         {activeStatus && (
-          <p className={`mt-4 rounded-xl border px-3 py-2 text-sm ${
-            sessionError || uploadError || localError
-              ? "border-red-500/30 bg-red-500/10 text-red-300"
-              : "border-amber-500/30 bg-amber-500/10 text-amber-200"
-          }`}>
-            {activeStatus}
-          </p>
+          <div className="mt-6 border-l-2 border-brand-primary bg-brand-primary/5 p-4 rounded-r-xl">
+            <p className="text-[13px] font-medium text-text-primary">{activeStatus}</p>
+          </div>
         )}
 
-        <div className="mt-5 flex justify-end">
-          {(sessionError || sessionState === "error") && (
+        <div className="mt-8 flex justify-center">
+          {(intake.error || intake.sessionState === "error") && (
             <button
               type="button"
               data-testid="intake-retry-button"
               onClick={onRetrySession}
-              className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-semibold text-app-fg transition hover:bg-white/10"
+              className="bg-brand-primary px-8 py-3 text-xs font-bold uppercase tracking-[0.2em] text-white hover:bg-brand-warning transition-all rounded-xl shadow-[0_4px_20px_rgba(217,93,57,0.3)] hover:scale-105 active:scale-95"
             >
-              Retry session setup
+              Retry Connection
             </button>
           )}
         </div>
-      </section>
+      </GlassPanel>
     </main>
   );
 }

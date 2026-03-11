@@ -122,7 +122,8 @@ class ContentProcessor:
             try:
                 markdown = file_bytes.decode("utf-8")
             except UnicodeDecodeError:
-                markdown = None
+                logger.warning("UTF-8 decode failed for %s; using replacement characters", filename)
+                markdown = file_bytes.decode("utf-8", errors="replace")
         else:
             # Binary file — convert via Content Understanding
             try:
