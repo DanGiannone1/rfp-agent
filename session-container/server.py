@@ -23,9 +23,10 @@ from logging.handlers import RotatingFileHandler
 from ag_ui.core.events import RunErrorEvent, RunFinishedEvent
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agent import AgentSession, _sse_event
+from tracing import setup_tracing
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -66,6 +67,7 @@ WORKSPACE = os.getenv("WORKSPACE", "/workspace")
 UPLOAD_MANIFEST = ".uploaded_files.json"
 
 app = FastAPI(title="RFP Session")
+setup_tracing(app)
 
 # ── Module-level singleton ────────────────────────────────────────────────
 _session: AgentSession | None = None
@@ -97,7 +99,7 @@ async def _destroy_session_locked() -> None:
 
 # ── Request models ────────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(..., min_length=1, max_length=50000)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
@@ -115,21 +117,24 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     async def generate():
         try:
             async with _lock:
-                session = await _get_or_create_session(token=token)
-                if token and session.token != token:
-                    await _destroy_session_locked()
+                try:
                     session = await _get_or_create_session(token=token)
-                async with asyncio.timeout(chat_timeout):
-                    async for event in session.send(req.prompt):
-                        yield event
-        except asyncio.TimeoutError:
-            logger.warning("Chat stream timed out after %ds", chat_timeout)
-            await _destroy_session_locked()
-            yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
-        except Exception:
-            logger.exception("Chat stream failed")
-            await _destroy_session_locked()
-            yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
+                    if token and session.token != token:
+                        await _destroy_session_locked()
+                        session = await _get_or_create_session(token=token)
+                    async with asyncio.timeout(chat_timeout):
+                        async for event in session.send(req.prompt):
+                            yield event
+                except asyncio.TimeoutError:
+                    logger.warning("Chat stream timed out after %ds", chat_timeout)
+                    await _destroy_session_locked()
+                    yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
+                except Exception:
+                    logger.exception("Chat stream failed")
+                    await _destroy_session_locked()
+                    yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
+        except GeneratorExit:
+            pass
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
@@ -137,7 +142,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
 UPLOAD_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
 ALLOWED_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".txt", ".csv", ".json", ".xml",
-    ".md", ".xlsx", ".pptx", ".xls", ".rtf", ".html", ".htm",
+    ".md", ".xlsx", ".pptx", ".xls", ".rtf",
 }
 
 
