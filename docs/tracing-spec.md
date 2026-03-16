@@ -125,14 +125,15 @@ Tracing is **opt-in**: if `APPLICATIONINSIGHTS_CONNECTION_STRING` is not set or 
 
 ---
 
-## Goals
+## "Sense-level" Tracing Strategy
 
-- Per-turn parent spans with session/thread/run metadata
-- Per-tool-call child spans with tool name and arguments
-- Visible in Foundry portal Observability > Traces within ~2 minutes of execution
-- Zero impact on existing behaviour when not configured
-- Packages are optional extras, not required dependencies
-- Local dev works without any tracing config
+To avoid hitting the 8KB span attribute limit while maintaining high visibility, we capture:
+
+1. **Assistant Thoughts**: The first 200 characters of the assistant's initial response delta.
+2. **Tool Calls**: Full tool name and truncated arguments (up to 1,000 characters).
+3. **Tool Results**: The first 200 characters of the tool's output.
+
+This provides enough context to understand the agent's logic without cluttering Application Insights with massive document blobs.
 
 ## Out of scope (this iteration)
 

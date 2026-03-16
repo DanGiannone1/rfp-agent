@@ -28,6 +28,7 @@ from ag_ui.core.events import (
 from azure.identity.aio import DefaultAzureCredential
 from dotenv import load_dotenv
 
+from tracing import attach_context, get_current_context, get_tracer, truncate
 from copilot import CopilotClient
 from copilot.generated.session_events import SessionEventType
 
@@ -297,6 +298,10 @@ class AgentSession:
         self._current_message_id: str = ""
         self._message_started: bool = False
 
+        # Tracing state tracked per turn
+        self._otel_ctx = None
+        self._active_spans = {}  # call_id -> span
+
     @property
     def status(self) -> str:
         """Current activity: 'idle', 'thinking', 'tool:<name>', or 'error'."""
@@ -343,7 +348,7 @@ class AgentSession:
                 "type": "openai",
                 "base_url": os.environ["AZURE_ENDPOINT"],
                 "bearer_token": token,
-                "wire_api": "responses",
+                "wire_api": "chat",
             },
             "system_message": {
                 "mode": "append",
@@ -408,121 +413,157 @@ class AgentSession:
     def _on_event(self, event) -> None:
         """Push events into the async queue from the SDK's internal thread."""
 
-        if event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
-            self._status = "thinking"
-            delta = getattr(event.data, "delta_content", None) or ""
-            if not delta:
-                return
+        # Tracing: Attach parent turn context to the current SDK background thread
+        with attach_context(self._otel_ctx):
+            if event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
+                self._status = "thinking"
+                delta = getattr(event.data, "delta_content", None) or ""
+                if not delta:
+                    return
 
-            # Emit TextMessageStartEvent on first delta
-            if not self._message_started:
-                self._current_message_id = str(uuid.uuid4())
-                self._message_started = True
-                _log_event(f"[THINKING] {delta[:120]}")
-                _trace("agent.thinking", text=delta[:120])
-                self._enqueue(TextMessageStartEvent(
+                # Emit TextMessageStartEvent on first delta
+                if not self._message_started:
+                    self._current_message_id = str(uuid.uuid4())
+                    self._message_started = True
+                    _log_event(f"[THINKING] {delta[:120]}")
+                    _trace("agent.thinking", text=delta[:120])
+                    self._enqueue(TextMessageStartEvent(
+                        message_id=self._current_message_id,
+                        role="assistant",
+                    ))
+
+                    # Tracing: Snapshot first thoughts
+                    get_tracer().start_span(
+                        "agent.thinking",
+                        attributes={"thought.preview": truncate(delta, 200)}
+                    ).end()
+
+                self._enqueue(TextMessageContentEvent(
                     message_id=self._current_message_id,
-                    role="assistant",
+                    delta=delta,
                 ))
 
-            self._enqueue(TextMessageContentEvent(
-                message_id=self._current_message_id,
-                delta=delta,
-            ))
+            elif event.type == SessionEventType.ASSISTANT_MESSAGE:
+                # End the current text message
+                if self._message_started:
+                    self._enqueue(TextMessageEndEvent(
+                        message_id=self._current_message_id,
+                    ))
+                    self._message_started = False
 
-        elif event.type == SessionEventType.ASSISTANT_MESSAGE:
-            # End the current text message
-            if self._message_started:
-                self._enqueue(TextMessageEndEvent(
-                    message_id=self._current_message_id,
-                ))
-                self._message_started = False
+            elif event.type == SessionEventType.TOOL_EXECUTION_START:
+                tool = getattr(event.data, "tool_name", None) or "unknown"
+                call_id = getattr(event.data, "tool_call_id", None) or str(uuid.uuid4())
+                self._tool_names[call_id] = (tool, _time.monotonic())
+                # Internal SDK tools — track them but don't surface to the frontend
+                if tool in ("report_intent",):
+                    return
 
-        elif event.type == SessionEventType.TOOL_EXECUTION_START:
-            tool = getattr(event.data, "tool_name", None) or "unknown"
-            call_id = getattr(event.data, "tool_call_id", None) or str(uuid.uuid4())
-            self._tool_names[call_id] = (tool, _time.monotonic())
-            # Internal SDK tools — track them but don't surface to the frontend
-            if tool in ("report_intent",):
-                return
-            self._status = f"tool:{tool}"
-            self._enqueue(ToolCallStartEvent(
-                tool_call_id=call_id,
-                tool_call_name=tool,
-                parent_message_id=self._current_message_id or None,
-            ))
-            # Forward arguments so the frontend can show human-readable context
-            args = getattr(event.data, "arguments", None)
-            args_str = (args if isinstance(args, str) else _json.dumps(args)) if args else None
-            if args_str:
-                self._enqueue(ToolCallArgsEvent(
-                    tool_call_id=call_id,
-                    delta=args_str,
-                ))
-            _log_event(f"[TOOL] >>> {tool}  args={args_str or '{}'}")
-            _trace("agent.tool_start", tool=tool, call_id=call_id, args=args_str or "{}")
+                # Tracing: Start tool call span
+                args = getattr(event.data, "arguments", None)
+                args_str = (args if isinstance(args, str) else _json.dumps(args)) if args else None
 
-        elif event.type == SessionEventType.TOOL_EXECUTION_COMPLETE:
-            call_id = getattr(event.data, "tool_call_id", None)
-            if not call_id:
-                # Recover the UUID assigned at start by matching on tool name
-                tool_name_hint = getattr(event.data, "tool_name", None)
-                if tool_name_hint:
-                    call_id = next(
-                        (k for k, (n, _) in self._tool_names.items() if n == tool_name_hint),
-                        None,
-                    )
-            entry = self._tool_names.pop(call_id, None) if call_id else None
-            tool = entry[0] if entry else (getattr(event.data, "tool_name", None) or "unknown")
-            duration = _time.monotonic() - entry[1] if entry else 0.0
-            # Suppress end event for internal tools that were filtered at start
-            if tool in ("report_intent",):
-                return
-            self._status = "thinking"
-            self._tools_called += 1
-            if call_id:
-                self._enqueue(ToolCallEndEvent(tool_call_id=call_id))
-            _log_event(f"[TOOL] <<< {tool}  duration={duration:.2f}s")
-            _trace("agent.tool_end", tool=tool, call_id=call_id, duration_s=round(duration, 2))
-
-        elif event.type == SessionEventType.SESSION_IDLE:
-            self._status = "idle"
-            turn_duration = _time.monotonic() - self._turn_start
-            _log_event(
-                f"[TURN END] duration={turn_duration:.2f}s"
-                f"  tools={self._tools_called}"
-            )
-            _trace("agent.turn_end", duration_s=round(turn_duration, 2),
-                   tools_called=self._tools_called)
-            self._enqueue(RunFinishedEvent(
-                thread_id=self._thread_id,
-                run_id=self._run_id,
-            ))
-            self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
-            return
-
-        elif event.type == SessionEventType.SESSION_ERROR:
-            self._status = "error"
-            msg = getattr(event.data, "message", None) or "Unknown error"
-            if (
-                "too many requests" in msg.lower()
-                or "429" in msg
-                or "rate limit" in msg.lower()
-                or "capierror" in msg.lower()
-            ):
-                msg = (
-                    "The AI service is temporarily rate-limited. "
-                    "Please wait 30–60 seconds and try again."
+                tool_span = get_tracer().start_span(
+                    "agent.tool_call",
+                    attributes={
+                        "gen_ai.call.type": "tool",
+                        "tool.name": tool,
+                        "tool.call_id": call_id,
+                        "tool.arguments": truncate(args_str or "{}", 1000),
+                    }
                 )
-            _log_event(f"[ERROR] {msg}")
-            _trace("agent.error", message=msg)
-            self._enqueue(RunErrorEvent(message=msg))
-            self._enqueue(RunFinishedEvent(
-                thread_id=self._thread_id,
-                run_id=self._run_id,
-            ))
-            self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
-            return
+                self._active_spans[call_id] = tool_span
+
+                self._status = f"tool:{tool}"
+                self._enqueue(ToolCallStartEvent(
+                    tool_call_id=call_id,
+                    tool_call_name=tool,
+                    parent_message_id=self._current_message_id or None,
+                ))
+                # Forward arguments so the frontend can show human-readable context
+                if args_str:
+                    self._enqueue(ToolCallArgsEvent(
+                        tool_call_id=call_id,
+                        delta=args_str,
+                    ))
+                _log_event(f"[TOOL] >>> {tool}  args={args_str or '{}'}")
+                _trace("agent.tool_start", tool=tool, call_id=call_id, args=args_str or "{}")
+
+            elif event.type == SessionEventType.TOOL_EXECUTION_COMPLETE:
+                call_id = getattr(event.data, "tool_call_id", None)
+                if not call_id:
+                    # Recover the UUID assigned at start by matching on tool name
+                    tool_name_hint = getattr(event.data, "tool_name", None)
+                    if tool_name_hint:
+                        call_id = next(
+                            (k for k, (n, _) in self._tool_names.items() if n == tool_name_hint),
+                            None,
+                        )
+                entry = self._tool_names.pop(call_id, None) if call_id else None
+                tool = entry[0] if entry else (getattr(event.data, "tool_name", None) or "unknown")
+                duration = _time.monotonic() - entry[1] if entry else 0.0
+
+                # Tracing: End tool call span with result preview
+                if call_id in self._active_spans:
+                    result = getattr(event.data, "result", None) or ""
+                    span = self._active_spans.pop(call_id)
+                    span.set_attribute("tool.result_preview", truncate(result, 200))
+                    span.end()
+
+                # Suppress end event for internal tools that were filtered at start
+                if tool in ("report_intent",):
+                    return
+                self._status = "thinking"
+                self._tools_called += 1
+                if call_id:
+                    self._enqueue(ToolCallEndEvent(tool_call_id=call_id))
+                _log_event(f"[TOOL] <<< {tool}  duration={duration:.2f}s")
+                _trace("agent.tool_end", tool=tool, call_id=call_id, duration_s=round(duration, 2))
+
+            elif event.type == SessionEventType.SESSION_IDLE:
+                self._status = "idle"
+                turn_duration = _time.monotonic() - self._turn_start
+                _log_event(
+                    f"[TURN END] duration={turn_duration:.2f}s"
+                    f"  tools={self._tools_called}"
+                )
+                _trace("agent.turn_end", duration_s=round(turn_duration, 2),
+                       tools_called=self._tools_called)
+                self._enqueue(RunFinishedEvent(
+                    thread_id=self._thread_id,
+                    run_id=self._run_id,
+                ))
+                self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
+                return
+
+            elif event.type == SessionEventType.SESSION_ERROR:
+                self._status = "error"
+                msg = getattr(event.data, "message", None) or "Unknown error"
+
+                # Tracing: Close any dangling tool spans
+                for call_id, span in self._active_spans.items():
+                    span.record_exception(Exception(msg))
+                    span.end()
+                self._active_spans.clear()
+
+                if (
+                    "too many requests" in msg.lower()
+                    or "429" in msg
+                    or "rate limit" in msg.lower()
+                ):
+                    msg = (
+                        "The AI service is temporarily rate-limited. "
+                        "Please wait 30–60 seconds and try again."
+                    )
+                _log_event(f"[ERROR] {msg}")
+                _trace("agent.error", message=msg)
+                self._enqueue(RunErrorEvent(message=msg))
+                self._enqueue(RunFinishedEvent(
+                    thread_id=self._thread_id,
+                    run_id=self._run_id,
+                ))
+                self._loop.call_soon_threadsafe(self._queue.put_nowait, None)
+                return
 
     async def send(self, prompt: str) -> AsyncGenerator[str, None]:
         """Send a prompt and yield SSE-formatted AG-UI events until the session is idle."""
@@ -541,19 +582,39 @@ class AgentSession:
         _log_event(f"[TURN START] thread={self._thread_id} run={self._run_id}")
         _trace("agent.turn_start", thread_id=self._thread_id, run_id=self._run_id)
 
+        # Tracing: Start turn span and capture context for the SDK callback thread
+        tracer = get_tracer()
+        turn_span = tracer.start_span(
+            "agent.turn",
+            attributes={
+                "thread_id": self._thread_id,
+                "run_id": self._run_id,
+                "gen_ai.system": "gh-copilot-sdk",
+                "gen_ai.request.model": os.getenv("AZURE_DEPLOYMENT", "unknown"),
+                "gen_ai.operation.name": "chat",
+            }
+        )
+        self._otel_ctx = get_current_context()
+
         # Emit RunStartedEvent
         yield _sse_event(RunStartedEvent(
             thread_id=self._thread_id,
             run_id=self._run_id,
         ))
 
-        await self._session.send({"prompt": prompt})
+        try:
+            await self._session.send({"prompt": prompt})
 
-        while True:
-            item = await self._queue.get()
-            if item is None:
-                break
-            yield _sse_event(item)
+            while True:
+                item = await self._queue.get()
+                if item is None:
+                    break
+                yield _sse_event(item)
+        except Exception as exc:
+            turn_span.record_exception(exc)
+            raise
+        finally:
+            turn_span.end()
 
 async def run_analysis(prompt: str, working_dir: str) -> AsyncGenerator[str, None]:
     """Run a single-turn RFP analysis, yielding SSE-formatted AG-UI events.
