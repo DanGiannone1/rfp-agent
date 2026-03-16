@@ -94,6 +94,8 @@ test.describe("Visual Verification", () => {
     // ── Phase 1: IntakeScreen ──
     console.log("Phase 1: IntakeScreen");
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
+    await page.evaluate(() => sessionStorage.clear());
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
 
     // Wait for session to be ready (the upload drop zone should be clickable)
     // Handle retry button if session creation fails (pool exhaustion)
@@ -115,6 +117,7 @@ test.describe("Visual Verification", () => {
       } catch {
         console.log(`  Session not ready after attempt ${attempt + 1}, reloading...`);
         if (attempt < 4) {
+          await page.evaluate(() => sessionStorage.clear());
           await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
           await page.waitForTimeout(2_000);
         } else {
@@ -257,9 +260,9 @@ test.describe("Visual Verification", () => {
 
     // ── Phase 6: New chat ──
     console.log("Phase 6: New chat");
-    // Set up dialog handler before clicking
-    page.on("dialog", (dialog) => dialog.accept());
     await page.locator('[data-testid="new-chat-button"]').click();
+    // Confirm via the React modal (not a browser dialog)
+    await page.getByRole("button", { name: "Start new chat" }).click();
 
     // Wait for IntakeScreen to appear and session to be ready (with retry handling)
     await page.locator('[data-testid="intake-upload-input"]').waitFor({ state: "attached", timeout: 30_000 });

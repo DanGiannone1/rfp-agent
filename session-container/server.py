@@ -106,6 +106,14 @@ class ChatRequest(BaseModel):
 @app.post("/chat/stream")
 async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     """Run a full agent turn, streaming SSE events as they happen."""
+    # Reject immediately if another turn is already in progress.
+    if _lock.locked():
+        raise HTTPException(status_code=409, detail="Session is busy")
+
+    # Acquire the lock eagerly so no other request can slip through between
+    # the locked() check above and the generator starting to iterate.
+    await _lock.acquire()
+
     # Token forwarded from the orchestrator via header (never in the body).
     token = request.headers.get("X-Cogservices-Token") or None
 
@@ -116,25 +124,26 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
 
     async def generate():
         try:
-            async with _lock:
-                try:
+            try:
+                session = await _get_or_create_session(token=token)
+                if token and session.token != token:
+                    await _destroy_session_locked()
                     session = await _get_or_create_session(token=token)
-                    if token and session.token != token:
-                        await _destroy_session_locked()
-                        session = await _get_or_create_session(token=token)
-                    async with asyncio.timeout(chat_timeout):
-                        async for event in session.send(req.prompt):
-                            yield event
-                except asyncio.TimeoutError:
-                    logger.warning("Chat stream timed out after %ds", chat_timeout)
-                    await _destroy_session_locked()
-                    yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
-                except Exception:
-                    logger.exception("Chat stream failed")
-                    await _destroy_session_locked()
-                    yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
+                async with asyncio.timeout(chat_timeout):
+                    async for event in session.send(req.prompt):
+                        yield event
+            except asyncio.TimeoutError:
+                logger.warning("Chat stream timed out after %ds", chat_timeout)
+                await _destroy_session_locked()
+                yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
+            except Exception:
+                logger.exception("Chat stream failed")
+                await _destroy_session_locked()
+                yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
         except GeneratorExit:
             pass
+        finally:
+            _lock.release()
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 

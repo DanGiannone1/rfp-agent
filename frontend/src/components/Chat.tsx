@@ -173,7 +173,7 @@ export default function Chat() {
             <h2 className="text-lg font-bold text-text-primary uppercase tracking-wide">Reset Session?</h2>
             <p className="mt-3 text-sm text-text-muted leading-relaxed">This will purge current memory.</p>
             <div className="mt-8 flex flex-col gap-2">
-              <button type="button" onClick={() => { setConfirmNewChat(false); void doNewChat(); }} className="interactive-control w-full rounded-xl bg-brand-warning py-3 text-xs font-bold uppercase tracking-widest text-white shadow-lg hover:brightness-110">Confirm Purge</button>
+              <button type="button" onClick={() => { setConfirmNewChat(false); void doNewChat(); }} className="interactive-control w-full rounded-xl bg-brand-warning py-3 text-xs font-bold uppercase tracking-widest text-white shadow-lg hover:brightness-110">Start new chat</button>
               <button type="button" onClick={() => setConfirmNewChat(false)} className="interactive-control w-full rounded-xl border border-border-subtle py-3 text-xs font-bold uppercase tracking-widest text-text-muted hover:bg-surface-2">Cancel</button>
             </div>
           </div>

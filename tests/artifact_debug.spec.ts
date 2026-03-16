@@ -1,13 +1,23 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
+import fs from "fs";
 
-const FRONTEND = "https://rfpagent-frontend.kindground-24020708.eastus2.azurecontainerapps.io";
 const RFP_FILE = "/tmp/test-rfp-c.txt";
 
-test.use({
-  baseURL: FRONTEND,
-  browserName: "chromium",
-  viewport: { width: 1440, height: 900 },
+test.beforeAll(() => {
+  if (!fs.existsSync(RFP_FILE)) {
+    fs.writeFileSync(RFP_FILE, [
+      "REQUEST FOR PROPOSAL",
+      "Title: Cloud Infrastructure Modernization",
+      "Budget: $3,000,000",
+      "Deadline: Q4 2026",
+      "Requirements:",
+      "- Multi-cloud deployment across AWS and Azure",
+      "- SOC 2 Type II compliance",
+      "- 99.99% uptime SLA",
+      "- Zero-downtime migration capability",
+    ].join("\n"));
+  }
 });
 
 test("Executive summary skill produces response and check artifact rendering", async ({ page }) => {
@@ -39,6 +49,7 @@ test("Executive summary skill produces response and check artifact rendering", a
       break;
     } catch {
       if (attempt < 4) {
+        await page.evaluate(() => sessionStorage.clear());
         await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
         await page.waitForTimeout(2_000);
       } else {

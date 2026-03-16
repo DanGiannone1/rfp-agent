@@ -116,6 +116,13 @@ export default function DocumentsList({
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[10px] font-mono text-var(--color-text-muted)">{formatSize(file.size)}</span>
                 {file.modified_at && <span className="text-[10px] font-mono text-var(--color-text-muted)/60">{formatRelativeTime(file.modified_at)}</span>}
+                {kind === "uploaded" && (
+                  file.has_markdown ? (
+                    <span data-testid="conversion-done" className="rounded-full bg-brand-success/15 px-2 py-0.5 text-[10px] font-medium text-brand-success">Converted</span>
+                  ) : (
+                    <span data-testid="conversion-converting" className="rounded-full bg-brand-warning/15 px-2 py-0.5 text-[10px] font-medium text-brand-warning">Converting...</span>
+                  )
+                )}
               </div>
               <RichPreview filename={file.filename} size={file.size} />
             </div>
