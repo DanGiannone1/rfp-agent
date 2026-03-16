@@ -15,7 +15,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from session_manager import SessionManager
 
@@ -102,9 +102,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["content-type"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 @app.middleware("http")
@@ -126,7 +135,7 @@ async def trace_requests(request, call_next):
 # Request / Response models
 # ---------------------------------------------------------------------------
 class SendMessageRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(..., min_length=1, max_length=50000)
 
 
 # ---------------------------------------------------------------------------
@@ -205,11 +214,10 @@ async def get_file_content(session_id: str, filename: str) -> dict:
         return await session_manager.get_file_content(session_id, filename)
     except Exception as exc:
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
-            detail = exc.response.text
             try:
-                detail = exc.response.json().get("detail", detail)
+                detail = exc.response.json().get("detail", "Request failed")
             except Exception:
-                pass
+                detail = "Request failed"
             raise HTTPException(status_code=exc.response.status_code, detail=detail)
         raise
 
@@ -226,11 +234,10 @@ async def upload_file(session_id: str, file: UploadFile) -> dict:
         result = await session_manager.upload_file(session_id, file)
     except Exception as exc:
         if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code < 500:
-            detail = exc.response.text
             try:
-                detail = exc.response.json().get("detail", detail)
+                detail = exc.response.json().get("detail", "Upload failed")
             except Exception:
-                pass
+                detail = "Upload failed"
             raise HTTPException(status_code=exc.response.status_code, detail=detail)
         raise
     return result

@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application code
-COPY agent.py server.py ./
+COPY agent.py server.py tracing.py ./
 COPY skills/ ./skills/
 COPY tools/ ./tools/
 
