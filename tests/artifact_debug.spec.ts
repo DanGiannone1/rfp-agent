@@ -21,7 +21,7 @@ test.beforeAll(() => {
 });
 
 test("Executive summary skill produces response and check artifact rendering", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
 
   // Step 1: Navigate, clear sessionStorage, reload
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
@@ -107,8 +107,8 @@ test("Executive summary skill produces response and check artifact rendering", a
   await page.screenshot({ path: "/tmp/exec-summary-03-streaming.png", fullPage: true });
   console.log("Screenshot 3: During streaming");
 
-  // Wait for response to complete (input re-enabled) - up to 120s
-  await expect(input).toBeEnabled({ timeout: 120_000 });
+  // Wait for response to complete (input re-enabled) - up to 240s (skills with gpt-4.1 are slower)
+  await expect(input).toBeEnabled({ timeout: 240_000 });
   await page.screenshot({ path: "/tmp/exec-summary-04-complete.png", fullPage: true });
   console.log("Screenshot 4: Response complete");
 
