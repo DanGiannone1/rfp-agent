@@ -3,6 +3,7 @@ import { AGUIEvent, AppFile, ChatMessage, IntakeState, MessagePart } from "@/lib
 import { streamSSE } from "@/lib/sse";
 import { createSession, getFileContent, getSession, listFiles, uploadFile } from "@/lib/api";
 import { clearSessionId, getSessionId, getStoredMessages, storeSessionId, storeMessages } from "@/lib/session";
+import { friendlyError } from "@/lib/utils";
 
 type ChatStage = "intake" | "chat";
 
@@ -254,14 +255,6 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, timeoutMessage: 
     const timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
     promise.then((value) => { clearTimeout(timer); resolve(value); }).catch((error) => { clearTimeout(timer); reject(error); });
   });
-}
-
-function friendlyError(err: unknown, fallback: string): string {
-  if (!(err instanceof Error)) return fallback;
-  const msg = err.message.toLowerCase();
-  if (msg.includes("timeout")) return "The request took too long. Please try again.";
-  if (msg.includes("failed to fetch")) return "Network issue. Check your connection.";
-  return fallback;
 }
 
 export function useAgentSession() {
