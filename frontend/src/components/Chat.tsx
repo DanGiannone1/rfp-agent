@@ -43,7 +43,7 @@ export default function Chat() {
 
   const uploadedFiles = state.files.filter(f => f.origin === "uploaded");
   const generatedFiles = state.files.filter(f => f.origin === "generated");
-  const filesLoading = state.files.length === 0;
+  const filesLoading = state.isInitializing;
 
   const handleOpenFile = useCallback(async (filename: string) => {
     if (!state.sessionId) return;

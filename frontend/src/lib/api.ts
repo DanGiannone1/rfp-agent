@@ -45,7 +45,9 @@ export async function uploadFile(
 export async function listFiles(
   sessionId: string,
 ): Promise<{ files: FileInfo[] }> {
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files`);
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files`, {
+    signal: AbortSignal.timeout(15_000),
+  });
   if (!res.ok) throw new Error(`Failed to list files: ${res.status}`);
   return res.json();
 }
@@ -62,7 +64,9 @@ export async function getFileContent(
   filename: string,
 ): Promise<FileContentResponse> {
   const params = new URLSearchParams({ filename });
-  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files/content?${params.toString()}`);
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}/files/content?${params.toString()}`, {
+    signal: AbortSignal.timeout(30_000),
+  });
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`Failed to load file content (${res.status}): ${detail}`);

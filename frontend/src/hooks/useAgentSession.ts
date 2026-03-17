@@ -271,8 +271,10 @@ export function useAgentSession() {
   const [isChatUploading, setIsChatUploading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const streamingRef = useRef(false);
 
   useEffect(() => { sessionIdRef.current = state.sessionId; }, [state.sessionId]);
+  useEffect(() => { streamingRef.current = state.isStreaming; }, [state.isStreaming]);
 
   const refreshFiles = useCallback(async (sessionId: string) => {
     const data = await listFiles(sessionId);
@@ -303,14 +305,14 @@ export function useAgentSession() {
     const storedId = getSessionId();
     if (storedId) {
       try {
-        const meta = await getSession(storedId);
+        const meta = await withTimeout(getSession(storedId), SESSION_TIMEOUT_MS, "Session check timed out");
         if (meta) {
           const msgs = getStoredMessages();
           dispatch({ type: "RESTORE_SESSION", sessionId: meta.session_id, messages: msgs });
           try { await refreshFiles(meta.session_id); } catch { }
           return;
         }
-      } catch { }
+      } catch { /* session dead or unreachable — fall through to create new */ }
     }
     clearSessionId();
     try {
@@ -399,7 +401,7 @@ export function useAgentSession() {
   }, [refreshFiles]);
 
   const handleSend = useCallback(async (content: string) => {
-    if (!state.sessionId || state.isStreaming) return;
+    if (!state.sessionId || state.isStreaming || streamingRef.current) return;
     dispatch({ type: "USER_SEND", content });
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -420,7 +422,9 @@ export function useAgentSession() {
     try {
       await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
       try { await refreshFiles(state.sessionId); } catch { }
-    } catch (err) { console.error("Chat upload failed:", err); } finally { setIsChatUploading(false); setChatUploadName(null); }
+    } catch (err) {
+      dispatch({ type: "ERROR", message: friendlyError(err, "File upload failed.") });
+    } finally { setIsChatUploading(false); setChatUploadName(null); }
   }, [state.sessionId, refreshFiles]);
 
   return {

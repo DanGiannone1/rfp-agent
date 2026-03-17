@@ -3,6 +3,8 @@ import { AGUIEvent } from "./types";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const INACTIVITY_TIMEOUT_MS = 120_000; // abort if no data for 2 minutes
+
 export async function* streamSSE(
   prompt: string,
   signal: AbortSignal,
@@ -29,37 +31,51 @@ export async function* streamSSE(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let inactivityTimer: ReturnType<typeof setTimeout> | undefined;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  function resetInactivityTimer() {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => reader.cancel(), INACTIVITY_TIMEOUT_MS);
+  }
 
-    buffer += decoder.decode(value, { stream: true });
+  resetInactivityTimer();
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop()!;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data: ")) continue;
-      const data = trimmed.slice(6);
+      resetInactivityTimer();
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop()!;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data:")) continue;
+        const data = trimmed.startsWith("data: ") ? trimmed.slice(6) : trimmed.slice(5);
+        try {
+          const event = JSON.parse(data) as AGUIEvent;
+          yield event;
+        } catch {
+          // skip malformed lines
+        }
+      }
+    }
+
+    // process any remaining buffer
+    const remaining = buffer.trim();
+    if (remaining.startsWith("data:")) {
+      const data = remaining.startsWith("data: ") ? remaining.slice(6) : remaining.slice(5);
       try {
         const event = JSON.parse(data) as AGUIEvent;
         yield event;
       } catch {
-        // skip malformed lines
+        // skip
       }
     }
-  }
-
-  // process any remaining buffer
-  if (buffer.trim().startsWith("data: ")) {
-    const data = buffer.trim().slice(6);
-    try {
-      const event = JSON.parse(data) as AGUIEvent;
-      yield event;
-    } catch {
-      // skip
-    }
+  } finally {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
   }
 }

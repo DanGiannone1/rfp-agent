@@ -26,7 +26,7 @@ SHA=$(git rev-parse --short HEAD)
 
 # ── Configuration ─────────────────────────────────────────────────────────
 PREFIX="${PREFIX:-rfpagent}"
-LOCATION="${LOCATION:-eastus2}"
+LOCATION="${LOCATION:-eastus}"
 RG="${PREFIX}-rg"
 IDENTITY_NAME="${PREFIX}-identity"
 ACR_NAME="${PREFIX}acr"
@@ -35,7 +35,7 @@ SESSION_POOL_NAME="${PREFIX}-sessions"
 APP_NAME="${PREFIX}-app"
 FRONTEND_NAME="${PREFIX}-frontend"
 
-AZURE_DEPLOYMENT="${AZURE_DEPLOYMENT:-gpt-5-codex}"
+AZURE_DEPLOYMENT="${AZURE_DEPLOYMENT:-gpt-4.1}"
 COSMOS_ENDPOINT="${COSMOS_ENDPOINT:-}"
 ADLS_ACCOUNT_NAME="${ADLS_ACCOUNT_NAME:-${PREFIX}adls}"
 ADLS_FILESYSTEM="${ADLS_FILESYSTEM:-documents}"
@@ -165,7 +165,7 @@ az role assignment create \
     -o none
 
 # ── 4c. Azure AI Search (Foundry IQ agentic retrieval) ────────────────
-SEARCH_NAME="${PREFIX}-search"
+SEARCH_NAME="${PREFIX}-srch"
 echo ">>> Creating Azure AI Search service..."
 az search service create \
     --name "$SEARCH_NAME" \
@@ -388,7 +388,7 @@ az acr build \
     frontend/ \
     -o none
 
-# ── 12. Deploy Frontend as Container App ────────────────────────────────
+# ── 13. Deploy Frontend as Container App ────────────────────────────────
 echo ">>> Deploying frontend container app..."
 
 if ! az containerapp create \
@@ -419,7 +419,7 @@ FRONTEND_URL=$(az containerapp show \
 
 echo "    Frontend URL: https://$FRONTEND_URL"
 
-# ── 13. Update orchestrator CORS with frontend URL ─────────────────────
+# ── 14. Update orchestrator CORS with frontend URL ─────────────────────
 echo ">>> Updating orchestrator CORS..."
 az containerapp update \
     --name "$APP_NAME" \
@@ -438,7 +438,7 @@ az containerapp ingress cors enable \
     --allow-credentials true \
     -o none
 
-# ── 14. IP Restrictions ──────────────────────────────────────────────────
+# ── 15. IP Restrictions ──────────────────────────────────────────────────
 if [ -n "$ALLOWED_IP" ]; then
     echo ">>> Restricting ingress to $ALLOWED_IP..."
     az containerapp ingress access-restriction set \
@@ -458,7 +458,7 @@ else
     echo ">>> Skipping IP restriction (ALLOWED_IP not set)."
 fi
 
-# ── 15. Summary ─────────────────────────────────────────────────────────
+# ── 16. Summary ─────────────────────────────────────────────────────────
 echo ""
 echo "=== Deployment Complete ==="
 echo ""

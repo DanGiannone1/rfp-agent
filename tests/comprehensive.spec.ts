@@ -148,15 +148,15 @@ async function navigateToChatViaIntake(
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
   await page.evaluate(() => sessionStorage.clear());
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
-  // Session pool cooldown is 300s so we retry patiently (15 attempts × ~15s = ~225s max)
-  for (let attempt = 0; attempt < 15; attempt++) {
+  // Session pool cooldown is 300s so we retry patiently (25 attempts × ~20s = ~500s max)
+  for (let attempt = 0; attempt < 25; attempt++) {
     // Check if retry button appeared (session creation failed)
     const retryBtn = page.getByTestId("intake-retry-button");
     const retryVisible = await retryBtn.isVisible().catch(() => false);
     if (retryVisible) {
-      console.log(`  Session failed, clicking retry (attempt ${attempt + 1}/15)`);
+      console.log(`  Session failed, clicking retry (attempt ${attempt + 1}/25)`);
       await retryBtn.click();
-      await page.waitForTimeout(10_000);
+      await page.waitForTimeout(15_000);
       continue;
     }
     try {
@@ -165,17 +165,17 @@ async function navigateToChatViaIntake(
           const el = document.querySelector('[aria-label="Upload RFP file"]');
           return el && el.getAttribute("aria-disabled") === "false";
         },
-        { timeout: 15_000 },
+        { timeout: 20_000 },
       );
       break;
     } catch {
-      if (attempt < 14) {
-        console.log(`  Session not ready, retrying (attempt ${attempt + 1}/15)`);
-        // Reload and try again
+      if (attempt < 24) {
+        console.log(`  Session not ready, retrying (attempt ${attempt + 1}/25)`);
+        await page.evaluate(() => sessionStorage.clear());
         await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
         await page.waitForTimeout(5_000);
       } else {
-        throw new Error("Session did not become ready after 15 attempts");
+        throw new Error("Session did not become ready after 25 attempts");
       }
     }
   }

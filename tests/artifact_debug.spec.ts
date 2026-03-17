@@ -109,8 +109,8 @@ test("Executive summary skill produces response and check artifact rendering", a
   await page.screenshot({ path: "/tmp/exec-summary-03-streaming.png", fullPage: true });
   console.log("Screenshot 3: During streaming");
 
-  // Wait for response to complete (input re-enabled) - up to 240s (skills with gpt-4.1 are slower)
-  await expect(input).toBeEnabled({ timeout: 240_000 });
+  // Wait for response to complete (input re-enabled) - skills with gpt-4.1 can take 4+ minutes
+  await expect(input).toBeEnabled({ timeout: 280_000 });
   await page.screenshot({ path: "/tmp/exec-summary-04-complete.png", fullPage: true });
   console.log("Screenshot 4: Response complete");
 

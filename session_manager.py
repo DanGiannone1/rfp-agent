@@ -208,15 +208,14 @@ class SessionManager:
 
     async def delete_session(self, session_id: str) -> None:
         """Delete session and best-effort reset container context."""
+        self._sessions.discard(session_id)
+        self._deleted_sessions.add(session_id)
         reset_url = self._pool_url("/reset", session_id)
         try:
             resp = await self._http.post(reset_url)
             resp.raise_for_status()
         except Exception:
             logger.warning("Session reset failed for %s during delete", session_id, exc_info=True)
-            return
-        self._sessions.discard(session_id)
-        self._deleted_sessions.add(session_id)
 
     async def send_message(self, session_id: str, prompt: str) -> AsyncGenerator[str, None]:
         """Stream SSE events from the session container to the frontend."""
