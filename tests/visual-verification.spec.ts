@@ -2,6 +2,7 @@ import { test, expect, Page } from "@playwright/test";
 import * as path from "path";
 import * as fs from "fs";
 
+const API = process.env.API_URL ?? "http://localhost:8000";
 const SCREENSHOTS = path.join(__dirname, "..", "screenshots");
 const RFP_CONTENT = `REQUEST FOR PROPOSAL (RFP)
 Title: Enterprise Cloud Migration Platform
@@ -66,6 +67,16 @@ async function waitForStreamingDone(page: Page) {
 async function uploadViaIntake(page: Page, filePath: string) {
   const input = page.locator('[data-testid="intake-upload-input"]');
   await input.setInputFiles(filePath);
+}
+
+/** Delete the current browser session to free the pool slot. */
+async function cleanupBrowserSession(page: Page): Promise<void> {
+  try {
+    const sid = await page.evaluate(() => sessionStorage.getItem("rfp_agent_session_id"));
+    if (sid) await fetch(`${API}/sessions/${sid}`, { method: "DELETE" });
+  } catch {
+    // best-effort
+  }
 }
 
 test.describe("Visual Verification", () => {
@@ -261,6 +272,8 @@ test.describe("Visual Verification", () => {
 
     // ── Phase 6: New chat ──
     console.log("Phase 6: New chat");
+    // Free the current session slot before creating a new one
+    await cleanupBrowserSession(page);
     await page.locator('[data-testid="new-chat-button"]').click();
     // Confirm via the React modal (not a browser dialog)
     await page.getByRole("button", { name: "Start new chat" }).click();

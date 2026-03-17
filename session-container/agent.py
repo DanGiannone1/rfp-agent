@@ -345,10 +345,13 @@ class AgentSession:
         session_config = {
             "model": os.environ["AZURE_DEPLOYMENT"],
             "provider": {
-                "type": "openai",
+                "type": "azure",
                 "base_url": os.environ["AZURE_ENDPOINT"],
                 "bearer_token": token,
                 "wire_api": "chat",
+                "azure": {
+                    "api_version": "2024-10-21",
+                },
             },
             "system_message": {
                 "mode": "append",

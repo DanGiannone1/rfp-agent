@@ -52,7 +52,8 @@ async function readSSEStream(res: Response): Promise<string> {
 }
 
 async function createSessionViaAPI(): Promise<string> {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // Session pool cooldown is 300s — retry patiently (up to ~330s)
+  for (let attempt = 0; attempt < 35; attempt++) {
     const res = await fetch(`${API}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,13 +63,24 @@ async function createSessionViaAPI(): Promise<string> {
       const body = await res.json();
       return body.session_id;
     }
-    if (attempt < 2) await new Promise((r) => setTimeout(r, 5_000));
+    console.log(`  createSessionViaAPI: attempt ${attempt + 1}/35 failed (${res.status}), waiting 10s...`);
+    await new Promise((r) => setTimeout(r, 10_000));
   }
-  throw new Error("create session failed after 3 attempts");
+  throw new Error("create session failed after 35 attempts");
 }
 
 async function deleteSessionViaAPI(sid: string): Promise<void> {
   await fetch(`${API}/sessions/${sid}`, { method: "DELETE" });
+}
+
+/** Extract session ID from sessionStorage and delete it to free the pool slot. */
+async function cleanupBrowserSession(page: any): Promise<void> {
+  try {
+    const sid = await page.evaluate(() => sessionStorage.getItem("rfp_agent_session_id"));
+    if (sid) await deleteSessionViaAPI(sid);
+  } catch {
+    // best-effort cleanup
+  }
 }
 
 async function uploadFileViaAPI(
@@ -183,6 +195,11 @@ test.beforeAll(() => {
 
 test.afterAll(() => {
   fs.rmSync(sharedTmpDir, { recursive: true, force: true });
+});
+
+// Clean up browser sessions after each test to free pool slots
+test.afterEach(async ({ page }) => {
+  await cleanupBrowserSession(page);
 });
 
 // ---------------------------------------------------------------------------
@@ -410,6 +427,7 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
 // ---------------------------------------------------------------------------
 test.describe.serial("Journey 4: Session Isolation", () => {
   test("New chat clears messages", async ({ page }) => {
+    test.setTimeout(600_000); // pool cooldown can take 300s+
     await navigateToChatViaIntake(page, sharedTmpFile);
 
     const input = page.getByTestId("chat-input");
@@ -436,6 +454,7 @@ test.describe.serial("Journey 4: Session Isolation", () => {
   });
 
   test("New session has no context from previous", async ({ page }) => {
+    test.setTimeout(600_000); // needs two sessions — pool cooldown can take 300s+
     await navigateToChatViaIntake(page, sharedTmpFile);
 
     const input = page.getByTestId("chat-input");

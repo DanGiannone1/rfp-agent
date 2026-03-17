@@ -53,13 +53,13 @@ signal.signal(signal.SIGTERM, cleanup)
 
 print("Starting session container on :8080...")
 procs.append(subprocess.Popen(
-    ["uv", "run", "uvicorn", "server:app", "--port", "8080", "--reload"],
+    ["uv", "run", "uvicorn", "server:app", "--port", "8080"],
     cwd=ROOT / "session-container",
 ))
 
 print("Starting orchestrator on :8000...")
 procs.append(subprocess.Popen(
-    ["uv", "run", "uvicorn", "app:app", "--port", "8000", "--reload"],
+    ["uv", "run", "uvicorn", "app:app", "--port", "8000"],
     cwd=ROOT,
 ))
 

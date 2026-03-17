@@ -169,9 +169,11 @@ class SessionManager:
             except Exception:
                 logger.debug("Reset not available, skipping", exc_info=True)
 
-        # Ping health to allocate (warm up) the container
+        # Ping health to allocate (warm up) the container.
+        # Use a shorter timeout (30s) so the frontend gets a quick error
+        # instead of hanging when the session pool is exhausted.
         url = self._pool_url("/health", session_id)
-        resp = await self._http.get(url)
+        resp = await self._http.get(url, timeout=httpx.Timeout(connect=10, read=30, write=10, pool=10))
         resp.raise_for_status()
 
         self._sessions.add(session_id)

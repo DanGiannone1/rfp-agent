@@ -10,6 +10,18 @@ export default defineConfig({
   workers: 1, // sequential — shared backend state
 
   projects: [
+    // visual and debug run first — they need few sessions and are sensitive
+    // to pool exhaustion. comprehensive runs last and cleans up API sessions.
+    {
+      name: "visual",
+      testMatch: "visual-verification.spec.ts",
+      use: {
+        baseURL: APP_URL,
+        browserName: "chromium",
+        headless: true,
+        viewport: { width: 1440, height: 900 },
+      },
+    },
     {
       name: "debug",
       testMatch: "artifact_debug.spec.ts",
@@ -28,16 +40,6 @@ export default defineConfig({
         browserName: "chromium",
         headless: true,
         viewport: { width: 1280, height: 720 },
-      },
-    },
-    {
-      name: "visual",
-      testMatch: "visual-verification.spec.ts",
-      use: {
-        baseURL: APP_URL,
-        browserName: "chromium",
-        headless: true,
-        viewport: { width: 1440, height: 900 },
       },
     },
   ],

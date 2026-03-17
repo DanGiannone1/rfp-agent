@@ -59,7 +59,7 @@ class ContentProcessor:
 
         managed_identity_client_id = os.getenv("AZURE_CLIENT_ID")
         self._credential = DefaultAzureCredential(
-            managed_identity_client_id=managed_identity_client_id or None
+            managed_identity_client_id=managed_identity_client_id or None,
         )
 
         from azure.storage.filedatalake.aio import DataLakeServiceClient

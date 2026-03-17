@@ -63,7 +63,9 @@ def _trace(event: str, **data) -> None:
 
 _setup_trace_logging()
 
-WORKSPACE = os.getenv("WORKSPACE", "/workspace")
+# In ACA, this is /workspace. In local dev, default to a directory relative to the project root.
+_default_ws = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workspace"))
+WORKSPACE = os.getenv("WORKSPACE", _default_ws)
 UPLOAD_MANIFEST = ".uploaded_files.json"
 
 app = FastAPI(title="RFP Session")
