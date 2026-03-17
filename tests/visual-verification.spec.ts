@@ -90,7 +90,7 @@ test.describe("Visual Verification", () => {
   });
 
   test("Phase 1-6: Full desktop flow", async ({ page }) => {
-    test.setTimeout(300_000);
+    test.setTimeout(600_000);
     // ── Phase 1: IntakeScreen ──
     console.log("Phase 1: IntakeScreen");
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
@@ -99,13 +99,14 @@ test.describe("Visual Verification", () => {
 
     // Wait for session to be ready (the upload drop zone should be clickable)
     // Handle retry button if session creation fails (pool exhaustion)
-    for (let attempt = 0; attempt < 5; attempt++) {
+    // Session pool cooldown is 300s so we retry patiently (15 attempts × ~15s = ~225s max)
+    for (let attempt = 0; attempt < 15; attempt++) {
       const retryBtn = page.locator('[data-testid="intake-retry-button"]');
       const retryVisible = await retryBtn.isVisible().catch(() => false);
       if (retryVisible) {
-        console.log(`  Session failed, clicking retry (attempt ${attempt + 1})`);
+        console.log(`  Session failed, clicking retry (attempt ${attempt + 1}/15)`);
         await retryBtn.click();
-        await page.waitForTimeout(3_000);
+        await page.waitForTimeout(10_000);
         continue;
       }
       try {
@@ -115,13 +116,13 @@ test.describe("Visual Verification", () => {
         }, { timeout: 15_000 });
         break;
       } catch {
-        console.log(`  Session not ready after attempt ${attempt + 1}, reloading...`);
-        if (attempt < 4) {
+        console.log(`  Session not ready after attempt ${attempt + 1}/15, reloading...`);
+        if (attempt < 14) {
           await page.evaluate(() => sessionStorage.clear());
           await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
-          await page.waitForTimeout(2_000);
+          await page.waitForTimeout(5_000);
         } else {
-          throw new Error("Session did not become ready after 5 attempts");
+          throw new Error("Session did not become ready after 15 attempts");
         }
       }
     }
@@ -265,14 +266,15 @@ test.describe("Visual Verification", () => {
     await page.getByRole("button", { name: "Start new chat" }).click();
 
     // Wait for IntakeScreen to appear and session to be ready (with retry handling)
+    // Session pool cooldown is 300s so we retry patiently (15 attempts × ~15s = ~225s max)
     await page.locator('[data-testid="intake-upload-input"]').waitFor({ state: "attached", timeout: 30_000 });
-    for (let attempt = 0; attempt < 5; attempt++) {
+    for (let attempt = 0; attempt < 15; attempt++) {
       const retryBtn = page.locator('[data-testid="intake-retry-button"]');
       const retryVisible = await retryBtn.isVisible().catch(() => false);
       if (retryVisible) {
-        console.log(`  New chat session failed, clicking retry (attempt ${attempt + 1})`);
+        console.log(`  New chat session failed, clicking retry (attempt ${attempt + 1}/15)`);
         await retryBtn.click();
-        await page.waitForTimeout(3_000);
+        await page.waitForTimeout(10_000);
         continue;
       }
       try {
@@ -282,10 +284,11 @@ test.describe("Visual Verification", () => {
         }, { timeout: 15_000 });
         break;
       } catch {
-        if (attempt < 4) {
-          await page.waitForTimeout(2_000);
+        if (attempt < 14) {
+          console.log(`  New chat session not ready, retrying (attempt ${attempt + 1}/15)`);
+          await page.waitForTimeout(5_000);
         } else {
-          throw new Error("New chat session did not become ready after 5 attempts");
+          throw new Error("New chat session did not become ready after 15 attempts");
         }
       }
     }

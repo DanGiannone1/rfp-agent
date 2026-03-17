@@ -29,13 +29,14 @@ test("Executive summary skill produces response and check artifact rendering", a
   await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
 
   // Wait for upload button to be ready (with retry for session creation)
-  for (let attempt = 0; attempt < 5; attempt++) {
+  // Session pool cooldown is 300s so we retry patiently (15 attempts × ~15s = ~225s max)
+  for (let attempt = 0; attempt < 15; attempt++) {
     const retryBtn = page.getByTestId("intake-retry-button");
     const retryVisible = await retryBtn.isVisible().catch(() => false);
     if (retryVisible) {
-      console.log(`Session failed, clicking retry (attempt ${attempt + 1})`);
+      console.log(`Session failed, clicking retry (attempt ${attempt + 1}/15)`);
       await retryBtn.click();
-      await page.waitForTimeout(3_000);
+      await page.waitForTimeout(10_000);
       continue;
     }
     try {
@@ -48,12 +49,13 @@ test("Executive summary skill produces response and check artifact rendering", a
       );
       break;
     } catch {
-      if (attempt < 4) {
+      if (attempt < 14) {
+        console.log(`Session not ready, retrying (attempt ${attempt + 1}/15)`);
         await page.evaluate(() => sessionStorage.clear());
         await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
-        await page.waitForTimeout(2_000);
+        await page.waitForTimeout(5_000);
       } else {
-        throw new Error("Session did not become ready after 5 attempts");
+        throw new Error("Session did not become ready after 15 attempts");
       }
     }
   }
