@@ -401,7 +401,7 @@ export function useAgentSession() {
     abortRef.current = controller;
     try {
       for await (const event of streamSSE(content, controller.signal, state.sessionId)) { handleAGUIEvent(event); }
-      dispatch({ type: "DONE" });
+      if (streamingRef.current) dispatch({ type: "DONE" });
     } catch (err: unknown) {
       if (err instanceof Error && err.name === "AbortError") return;
       dispatch({ type: "ERROR", message: friendlyError(err, "Message failed.") });

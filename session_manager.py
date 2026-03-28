@@ -115,7 +115,9 @@ class SessionManager:
         self._sessions: set[str] = set()
         # Tracks session IDs explicitly deleted via API so validate_session
         # doesn't rehydrate them from a generic health probe in local dev.
+        # Capped to prevent unbounded growth; oldest entries are evicted.
         self._deleted_sessions: set[str] = set()
+        self._max_deleted_tracking = 10_000
         self._cogservices_credential: DefaultAzureCredential | None = None
         self._cogservices_token: str | None = None
         self._cogservices_expires_on: float = 0
@@ -219,6 +221,11 @@ class SessionManager:
         """Delete session and best-effort reset container context."""
         self._sessions.discard(session_id)
         self._deleted_sessions.add(session_id)
+        if len(self._deleted_sessions) > self._max_deleted_tracking:
+            # Evict roughly half to avoid doing this on every delete
+            keep = self._max_deleted_tracking // 2
+            evict = list(self._deleted_sessions)[:len(self._deleted_sessions) - keep]
+            self._deleted_sessions -= set(evict)
         reset_url = self._pool_url("/reset", session_id)
         try:
             resp = await self._http.post(reset_url)

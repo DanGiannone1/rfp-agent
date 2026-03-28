@@ -12,7 +12,6 @@ import { friendlyError } from "@/lib/utils";
 import MessageList from "./MessageList";
 import InputBar from "./InputBar";
 import IntakeScreen from "./IntakeScreen";
-import DocumentsDrawer from "./DocumentsDrawer";
 import ArtifactsPanel from "./ArtifactsPanel";
 import ArtifactCanvas from "./ArtifactCanvas";
 
@@ -30,7 +29,6 @@ export default function Chat() {
     startSession
   } = useAgentSession();
 
-  const [documentsOpen, setDocumentsOpen] = useState(false);
   const [artifact, setArtifact] = useState<{
     filename: string | null;
     content: string;
@@ -154,16 +152,6 @@ export default function Chat() {
         main={main}
         canvas={canvas}
         isCanvasOpen={!!artifact.filename}
-      />
-
-      <DocumentsDrawer 
-        open={documentsOpen} 
-        uploadedFiles={uploadedFiles} 
-        generatedFiles={generatedFiles} 
-        loading={filesLoading} 
-        onOpenFile={handleOpenFile} 
-        disableActions={state.isStreaming} 
-        onClose={() => setDocumentsOpen(false)} 
       />
 
       {confirmNewChat && (

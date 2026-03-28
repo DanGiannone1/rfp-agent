@@ -3,34 +3,6 @@
 import type { AppFile } from "@/lib/types";
 import { formatSize, formatRelativeTime } from "@/lib/utils";
 
-function RichPreview({ filename, size }: { filename: string; size: number }) {
-  const isScore = filename.toLowerCase().includes("score");
-  const isMatrix = filename.toLowerCase().includes("matrix");
-
-  if (isScore) {
-    return (
-      <div className="mt-2 w-24">
-        <div className="flex justify-between text-[9px] font-bold text-var(--color-text-muted) uppercase tracking-tighter mb-1">
-          <span>Confidence</span>
-          <span>84%</span>
-        </div>
-        <div className="preview-indicator">
-          <div className="preview-indicator-fill" style={{ width: "84%" }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (isMatrix) {
-    return (
-      <div className="mt-2 flex items-center gap-1.5">
-        <span className="px-1.5 py-0.5 rounded-md bg-var(--color-brand-success)/10 border border-var(--color-brand-success)/30 text-var(--color-brand-success) text-[9px] font-bold uppercase tracking-widest">Compliance Active</span>
-      </div>
-    );
-  }
-
-  return null;
-}
 
 interface DocumentsListProps {
   files: AppFile[];
@@ -124,7 +96,6 @@ export default function DocumentsList({
                   )
                 )}
               </div>
-              <RichPreview filename={file.filename} size={file.size} />
             </div>
             
             {isClickable && (

@@ -38,7 +38,19 @@ function DataCell({ value, column }: { value: string; column: string }) {
 }
 
 export default function CsvTable({ content }: { content: string }) {
-  const rows = content.trim().split("\n").map((line) => line.split(",").map((cell) => cell.trim().replace(/^"|"$/g, "")));
+  const rows = content.trim().split("\n").map((line) => {
+    const cells: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === "," && !inQuotes) { cells.push(current.trim()); current = ""; continue; }
+      current += ch;
+    }
+    cells.push(current.trim());
+    return cells;
+  });
   if (rows.length === 0) return <pre className="text-xs text-text-muted">Empty CSV</pre>;
   const [header, ...body] = rows;
   return (
