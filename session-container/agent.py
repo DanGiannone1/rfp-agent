@@ -311,12 +311,6 @@ class AgentSession:
     def token(self) -> str | None:
         return self._token
 
-    def set_token(self, token: str | None) -> None:
-        if token:
-            self._token = token
-        else:
-            self._token = None
-
     async def __aenter__(self) -> "AgentSession":
         token = self._token or self._initial_token or os.getenv("AZURE_OPENAI_TOKEN")
         if not token:

@@ -302,7 +302,7 @@ export function useAgentSession() {
         if (meta) {
           const msgs = getStoredMessages();
           dispatch({ type: "RESTORE_SESSION", sessionId: meta.session_id, messages: msgs });
-          try { await refreshFiles(meta.session_id); } catch { }
+          try { await refreshFiles(meta.session_id); } catch (e) { console.warn("Failed to refresh files on restore", e); }
           return;
         }
       } catch { /* session dead or unreachable — fall through to create new */ }
@@ -343,7 +343,7 @@ export function useAgentSession() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const sid = state.sessionId;
     async function tick() {
-      try { await refreshFiles(sid); if (cancelled) return; } catch { }
+      try { await refreshFiles(sid); if (cancelled) return; } catch (e) { console.warn("File poll failed", e); }
       if (!cancelled) timer = setTimeout(tick, 10_000);
     }
     tick();
@@ -357,7 +357,7 @@ export function useAgentSession() {
     dispatch({ type: "FILE_PENDING", filename: file.name, size: file.size });
     try {
       await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-      try { await refreshFiles(state.sessionId); } catch { }
+      try { await refreshFiles(state.sessionId); } catch (e) { console.warn("Failed to refresh files after upload", e); }
       dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle" });
       dispatch({ type: "SET_STAGE", stage: "chat" });
     } catch (err) { dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle", error: friendlyError(err, "Upload failed.") }); }
@@ -414,7 +414,7 @@ export function useAgentSession() {
     dispatch({ type: "FILE_PENDING", filename: file.name, size: file.size });
     try {
       await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-      try { await refreshFiles(state.sessionId); } catch { }
+      try { await refreshFiles(state.sessionId); } catch (e) { console.warn("Failed to refresh files after chat upload", e); }
     } catch (err) {
       dispatch({ type: "ERROR", message: friendlyError(err, "File upload failed.") });
     } finally { setIsChatUploading(false); setChatUploadName(null); }

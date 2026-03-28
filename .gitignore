@@ -231,12 +231,22 @@ logs/
 # Claude Code local settings
 .claude/
 
-# Temporary test scripts
+# Temporary test scripts and output
 azure-verify.mjs
 capture-angles.mjs
 capture-chat.mjs
 refactor-colors.js
+verify-localhost.mjs
+test-req-extraction.mjs
+e2e_test.txt
+e2e_final.txt
+local_verify.txt
+test.txt
+test_e2e.txt
+test_rfp.txt
+verify.txt
 
-# New screenshot directories
+# Screenshot directories
 screenshots-test/
 screenshots-agent-a/
+screenshots-verification/

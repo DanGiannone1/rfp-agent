@@ -16,6 +16,9 @@ COPY app.py session_manager.py content_processing.py ./
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+RUN adduser --disabled-password --gecos "" --uid 1000 appuser
+USER appuser
+
 EXPOSE 8000
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

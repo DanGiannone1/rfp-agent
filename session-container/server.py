@@ -153,7 +153,7 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
 UPLOAD_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
 ALLOWED_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".txt", ".csv", ".json", ".xml",
-    ".md", ".xlsx", ".pptx", ".xls", ".rtf",
+    ".md", ".xlsx", ".pptx", ".xls", ".rtf", ".html", ".htm",
 }
 
 
@@ -191,7 +191,6 @@ async def upload(file: UploadFile) -> dict:
         while chunk := await file.read(8192):
             bytes_written += len(chunk)
             if bytes_written > UPLOAD_MAX_BYTES:
-                f.close()
                 os.remove(real_dest)
                 raise HTTPException(status_code=413, detail="File too large (50 MB limit)")
             f.write(chunk)

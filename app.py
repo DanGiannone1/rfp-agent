@@ -90,13 +90,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="RFP Agent", lifespan=lifespan)
 
-# CORS: allow localhost for dev, plus configurable FRONTEND_URL for production
-cors_origins = [
-    "http://localhost:3000",
-]
+# CORS: allow localhost only in dev, plus configurable FRONTEND_URL for production
+cors_origins = []
 frontend_url = os.getenv("FRONTEND_URL")
 if frontend_url:
     cors_origins.append(frontend_url)
+else:
+    # No FRONTEND_URL set — assume local development
+    cors_origins.append("http://localhost:3000")
 
 app.add_middleware(
     CORSMiddleware,
@@ -113,6 +114,7 @@ async def security_headers(request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
     return response
 
 

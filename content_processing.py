@@ -180,7 +180,8 @@ class ContentProcessor:
             binary_input=file_bytes,
         )
         # Hard cap: CU can take 60-90s for large PDFs but should never exceed 3 minutes.
-        result = await asyncio.wait_for(poller.result(), timeout=180.0)
+        cu_timeout = float(os.getenv("CU_TIMEOUT_SECONDS", "180"))
+        result = await asyncio.wait_for(poller.result(), timeout=cu_timeout)
         if result.contents:
             return result.contents[0].markdown
         return None

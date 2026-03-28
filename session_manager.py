@@ -5,6 +5,7 @@ never runs the Copilot SDK directly — it streams SSE from the session
 container's /chat/stream endpoint and passes events through to the frontend.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -80,9 +81,12 @@ class _SessionPoolAuth(httpx.Auth):
         if self._token and time.time() < self._expires_on - 60:
             return
         if self._credential is None:
-            self._credential = DefaultAzureCredential()
-        tok = await self._credential.get_token(
-            "https://dynamicsessions.io/.default"
+            self._credential = DefaultAzureCredential(
+                managed_identity_client_id=os.getenv("AZURE_CLIENT_ID") or None,
+            )
+        tok = await asyncio.wait_for(
+            self._credential.get_token("https://dynamicsessions.io/.default"),
+            timeout=30,
         )
         self._token = tok.token
         self._expires_on = tok.expires_on
@@ -129,9 +133,14 @@ class SessionManager:
         if self._cogservices_token and time.time() < self._cogservices_expires_on - 60:
             return self._cogservices_token
         if self._cogservices_credential is None:
-            self._cogservices_credential = DefaultAzureCredential()
-        tok = await self._cogservices_credential.get_token(
-            "https://cognitiveservices.azure.com/.default"
+            self._cogservices_credential = DefaultAzureCredential(
+                managed_identity_client_id=os.getenv("AZURE_CLIENT_ID") or None,
+            )
+        tok = await asyncio.wait_for(
+            self._cogservices_credential.get_token(
+                "https://cognitiveservices.azure.com/.default"
+            ),
+            timeout=30,
         )
         self._cogservices_token = tok.token
         self._cogservices_expires_on = tok.expires_on
@@ -244,7 +253,11 @@ class SessionManager:
                         "Session container returned %s for %s: %s",
                         resp.status_code, session_id, detail,
                     )
-                    yield _agui_error(f"Session error: {detail}")
+                    # Sanitize: only forward detail for 4xx; hide internal details for 5xx
+                    if resp.status_code >= 500:
+                        yield _agui_error("Session error: an internal error occurred. Please retry.")
+                    else:
+                        yield _agui_error(f"Session error: {detail}")
                     yield _agui_finished()
                     return
 
