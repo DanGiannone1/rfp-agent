@@ -50,6 +50,9 @@ class _NoopSpan:
     def set_attribute(self, key: str, value: Any):
         pass
 
+    def add_event(self, name: str, attributes: Optional[dict[str, Any]] = None):
+        pass
+
     def record_exception(self, exception: Exception):
         pass
 
@@ -155,6 +158,22 @@ def attach_context(otel_ctx: Optional[Any]) -> Generator[None, None, None]:
             yield
         finally:
             context.detach(token)
+    except ImportError:
+        yield
+
+
+@contextmanager
+def use_span(span: Optional[Any]) -> Generator[None, None, None]:
+    """Set a span as current without ending it on scope exit."""
+    if not _enabled or span is None:
+        yield
+        return
+
+    try:
+        from opentelemetry.trace import use_span as otel_use_span
+
+        with otel_use_span(span, end_on_exit=False):
+            yield
     except ImportError:
         yield
 
