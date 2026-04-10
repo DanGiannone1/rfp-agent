@@ -2,9 +2,13 @@
 
 These instructions mirror CLAUDE.md for GitHub Copilot CLI.
 
-# CLAUDE.md
+The project localhost validation skill lives at `.github/skills/localhost-ui-validation/SKILL.md`. Use it for any user-visible localhost testing or debugging.
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to GitHub Copilot CLI when working with code in this repository.
+
+## Boundary With Runtime Agent
+
+The shipped RFP application agent has its own runtime prompt and skills under `session-container/agent.py` and `session-container/skills/`. Those files define product behavior for end users. Do not treat them as contributor instructions for repository work. Follow `AGENTS.md` for shared coding-agent policy.
 
 ## Core Principles
 

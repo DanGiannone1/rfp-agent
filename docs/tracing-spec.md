@@ -18,6 +18,30 @@ LOG_AGENT_EVENTS=true
 
 Then start with `uv run dev.py` (see [Starting services correctly](#starting-services-correctly) below).
 
+In local dev, creating a new session now truncates `logs/trace.jsonl` before the
+session is allocated. This keeps the trace file focused on the latest browser run.
+That reset is intentionally scoped to local development and does not apply to
+production-style HTTPS session-pool deployments.
+
+When `uv run dev.py` is used, the session container also writes a per-session raw
+SDK event dump to `<LOG_RAW_SDK_EVENTS_DIR>/sdk-events/{session_id}.jsonl` (or
+`LOG_TRACE_DIR` if `LOG_RAW_SDK_EVENTS_DIR` is unset). This file includes turn
+start records, the original prompt, every incoming GitHub Copilot SDK event with
+its payload, and the final turn status. Use this file when the UI looks wrong and
+you need to compare the browser view against the underlying SDK event stream.
+
+You can resolve the live paths for a session via:
+
+```bash
+curl http://localhost:8000/sessions/<session_id>/trace
+```
+
+The endpoint returns the active local file locations used for trace output (or `null`
+if the corresponding logger is disabled).
+
+Creating or deleting a session also clears the corresponding raw SDK trace file in local
+dev so each run starts from a clean slate.
+
 ### What gets logged
 
 ```
@@ -112,6 +136,12 @@ Sample output from a real bid/no-bid analysis run (City of Lakewood audit RFP):
 For a repeatable investigation, the existing `tests/comprehensive.spec.ts` Journey 2
 ("Upload Document and Discuss") is the closest match — upload a `.txt` RFP file and
 send a message. The `navigateToChatViaIntake` helper handles session retry logic.
+
+To inspect raw SDK events for the session in real time:
+
+```bash
+tail -f logs/sdk-events/<session_id>.jsonl
+```
 
 ---
 

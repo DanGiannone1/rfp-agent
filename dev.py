@@ -29,12 +29,19 @@ trace_file = logs_dir / "trace.jsonl"
 trace_file.write_text("")  # truncate
 os.environ["LOG_TRACE"] = "true"
 os.environ["LOG_TRACE_DIR"] = str(logs_dir)
+os.environ["LOG_RAW_SDK_EVENTS"] = "true"
+os.environ["LOG_RAW_SDK_EVENTS_DIR"] = str(logs_dir)
 workspace = ROOT / "workspace"
 # Clean workspace on startup so sessions don't see stale files
 if workspace.exists():
     import shutil
     shutil.rmtree(workspace)
 workspace.mkdir(exist_ok=True)
+sdk_events_dir = logs_dir / "sdk-events"
+if sdk_events_dir.exists():
+    import shutil
+    shutil.rmtree(sdk_events_dir)
+sdk_events_dir.mkdir(exist_ok=True)
 
 procs: list[subprocess.Popen] = []
 

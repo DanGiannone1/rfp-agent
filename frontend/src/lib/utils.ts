@@ -36,6 +36,17 @@ export function isCsv(filename: string | null): boolean {
 
 export function friendlyError(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
+  const detailMatch = err.message.match(/:\s*([\s\S]+)$/);
+  if (detailMatch) {
+    const rawDetail = detailMatch[1].trim();
+    try {
+      const parsed = JSON.parse(rawDetail) as { detail?: unknown };
+      if (typeof parsed.detail === "string" && parsed.detail.trim()) return parsed.detail;
+    } catch { }
+    if (rawDetail && !/^\d+$/.test(rawDetail) && !rawDetail.startsWith("<!DOCTYPE")) {
+      return rawDetail;
+    }
+  }
   const msg = err.message.toLowerCase();
   if (msg.includes("timeout")) return "The request took too long. Please try again.";
   if (msg.includes("failed to fetch")) return "Network issue. Check your connection.";

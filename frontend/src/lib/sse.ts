@@ -3,7 +3,11 @@ import { AGUIEvent } from "./types";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const INACTIVITY_TIMEOUT_MS = 120_000; // abort if no data for 2 minutes
+// Long-form RFP analysis can legitimately go quiet for several minutes while the
+// model reads a large embedded document and prepares the first response chunk.
+const INACTIVITY_TIMEOUT_MS = Number(
+  process.env.NEXT_PUBLIC_SSE_INACTIVITY_TIMEOUT_MS || "600000",
+);
 
 export async function* streamSSE(
   prompt: string,

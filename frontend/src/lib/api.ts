@@ -6,6 +6,7 @@ const API_BASE =
 export interface SessionMetadata {
   session_id: string;
   status: string;
+  files?: FileInfo[];
 }
 
 export async function getSession(sessionId: string): Promise<SessionMetadata | null> {
@@ -40,6 +41,16 @@ export async function uploadFile(
     throw new Error(`Upload failed (${res.status}): ${detail}`);
   }
   return res.json();
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 404) {
+    const detail = await res.text();
+    throw new Error(`Delete session failed (${res.status}): ${detail}`);
+  }
 }
 
 export async function listFiles(

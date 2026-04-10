@@ -19,9 +19,9 @@ Parse an RFP into discrete, actionable requirements. Classify each by priority, 
 
 ### 1. Read the Full RFP
 
-Do not use search (grep) to extract requirements before you have read the full RFP. Read end-to-end first, then extract.
+Do not rely on search or partial reads to extract requirements before you have read the full RFP. Read end-to-end first, then extract.
 
-Use `bash` or `str_replace_editor` to read the complete RFP document end-to-end before any keyword search. Pay special attention to:
+Use `read_full_file` to read the complete RFP document end-to-end before extracting requirements. Pay special attention to:
 - Scope of work / statement of work sections
 - Technical requirements
 - Staffing and qualification requirements
@@ -68,7 +68,7 @@ Suggest which response section each requirement should be addressed in, creating
 
 ### 6. Save Output
 
-Save the requirements matrix to the working directory as `requirements_matrix.md` so the user can download it and it appears in the artifacts panel. Downstream skills (compliance review, draft generation, response strategy) will reference this file.
+Save the requirements matrix to the working directory as `requirements_matrix.md` so the user can download it and it appears in the artifacts panel. Other workflows may use this file if it exists, but they should not require it before doing useful work from the RFP itself.
 
 ## Output Format
 
@@ -106,6 +106,4 @@ Save the requirements matrix to the working directory as `requirements_matrix.md
 
 ## Tools to Use
 
-- **bash / str_replace_editor**: Read the full RFP thoroughly end-to-end
-- **grep**: Optional, only to confirm you did not miss requirements after manual extraction
-- **glob**: Find all related RFP documents, attachments, and exhibits
+- **read_full_file**: Read the full RFP and any uploaded exhibits thoroughly end-to-end

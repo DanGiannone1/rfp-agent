@@ -20,7 +20,7 @@ Evaluate whether Meridian & Associates LLP should pursue an RFP opportunity by s
 
 ### 1. Gather RFP Context
 
-Use `bash` or `glob` to list files in the working directory. Read the RFP document(s) to identify:
+Read the uploaded RFP document(s) end-to-end with `read_full_file`. If the uploaded RFP is the only visible file in the workspace, call `read_full_file` without a path and start the analysis directly. Identify:
 - Issuing organization and industry
 - Scope of work and service lines requested
 - Contract value (if stated) and duration
@@ -76,6 +76,7 @@ Rate the opportunity on six dimensions. For each, provide a numeric score and a 
 ## Bid/No-Bid Scorecard
 
 **RFP:** [RFP Title / Number]
+[Optional metadata lines only when known from the RFP or KB, for example:]
 **Issuing Organization:** [Name]
 **Due Date:** [Date]
 **Estimated Value:** [Value]
@@ -109,13 +110,13 @@ Rate the opportunity on six dimensions. For each, provide a numeric score and a 
 - [Action items if Go/Conditional Go, or suggested alternative if No-Go]
 ```
 
+Do not use placeholder values such as "Not specified", "Unknown", or "TBD". Omit unknown fields entirely.
+
 ### 6. Save Output
 
 Save the scorecard to the working directory as `bid_no_bid_scorecard.md` so the user can download it and it appears in the artifacts panel.
 
 ## Tools to Use
 
-- **bash / glob**: List and read RFP files in the working directory
-- **str_replace_editor**: Read specific sections of documents
-- **grep**: Search for key terms (evaluation criteria, qualifications, deadlines, pricing)
+- **read_full_file**: Read the uploaded RFP and any standard analysis artifacts end-to-end
 - **knowledge_base_retrieve**: Search past proposals and firm capability documents for precedent

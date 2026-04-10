@@ -40,6 +40,13 @@ COSMOS_ENDPOINT="${COSMOS_ENDPOINT:-}"
 ADLS_ACCOUNT_NAME="${ADLS_ACCOUNT_NAME:-${PREFIX}adls}"
 ADLS_FILESYSTEM="${ADLS_FILESYSTEM:-documents}"
 AZURE_SEARCH_KB_NAME="${AZURE_SEARCH_KB_NAME:-rfp-knowledge}"
+LOG_ANALYTICS_WORKSPACE_NAME="${LOG_ANALYTICS_WORKSPACE_NAME:-${PREFIX}-logs}"
+APPINSIGHTS_NAME="${APPINSIGHTS_NAME:-${PREFIX}-insights}"
+APPLICATIONINSIGHTS_CONNECTION_STRING="${APPLICATIONINSIGHTS_CONNECTION_STRING:-}"
+OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-rfp-agent-session}"
+OTEL_SERVICE_NAMESPACE="${OTEL_SERVICE_NAMESPACE:-rfp-agent}"
+OTEL_SERVICE_VERSION="${OTEL_SERVICE_VERSION:-$SHA}"
+OTEL_DEPLOYMENT_ENVIRONMENT="${OTEL_DEPLOYMENT_ENVIRONMENT:-azure}"
 
 # Optional: restrict ingress to a specific IP (e.g. your office/home IP).
 # Leave blank to allow all traffic.
@@ -59,11 +66,68 @@ echo "Location:        $LOCATION"
 echo "ACR:             $ACR_NAME"
 echo "Session Pool:    $SESSION_POOL_NAME"
 echo "App:             $APP_NAME"
+if [ -n "$APPLICATIONINSIGHTS_CONNECTION_STRING" ]; then
+    echo "Tracing:         enabled"
+else
+    echo "Tracing:         provision App Insights"
+fi
 echo ""
 
 # ── 1. Resource Group ────────────────────────────────────────────────────
 echo ">>> Creating resource group..."
 az group create --name "$RG" --location "$LOCATION" -o none
+
+# ── 1b. Observability (Application Insights + Log Analytics) ───────────────
+echo ">>> Ensuring Log Analytics workspace..."
+az monitor log-analytics workspace create \
+    --resource-group "$RG" \
+    --workspace-name "$LOG_ANALYTICS_WORKSPACE_NAME" \
+    --location "$LOCATION" \
+    -o none
+
+LOG_ANALYTICS_WORKSPACE_ID=$(az monitor log-analytics workspace show \
+    --resource-group "$RG" \
+    --workspace-name "$LOG_ANALYTICS_WORKSPACE_NAME" \
+    --query id -o tsv)
+
+LOG_ANALYTICS_SHARED_KEY=$(az monitor log-analytics workspace get-shared-keys \
+    --resource-group "$RG" \
+    --workspace-name "$LOG_ANALYTICS_WORKSPACE_NAME" \
+    --query primarySharedKey -o tsv)
+
+if [ -z "$APPLICATIONINSIGHTS_CONNECTION_STRING" ]; then
+    echo ">>> Ensuring Application Insights CLI extension is installed..."
+    az extension add --name application-insights --upgrade -y >/dev/null
+
+    if ! az monitor app-insights component show \
+        --app "$APPINSIGHTS_NAME" \
+        --resource-group "$RG" \
+        -o none >/dev/null 2>&1; then
+        echo ">>> Creating Application Insights resource..."
+        az monitor app-insights component create \
+            --app "$APPINSIGHTS_NAME" \
+            --resource-group "$RG" \
+            --location "$LOCATION" \
+            --workspace "$LOG_ANALYTICS_WORKSPACE_ID" \
+            -o none
+    else
+        echo ">>> Reusing existing Application Insights resource..."
+    fi
+
+    APPLICATIONINSIGHTS_CONNECTION_STRING=$(az monitor app-insights component show \
+        --app "$APPINSIGHTS_NAME" \
+        --resource-group "$RG" \
+        --query connectionString -o tsv)
+
+    if [ -z "$APPLICATIONINSIGHTS_CONNECTION_STRING" ]; then
+        echo "ERROR: Failed to provision Application Insights or retrieve its connection string."
+        exit 1
+    fi
+fi
+
+if [ -n "$APPLICATIONINSIGHTS_CONNECTION_STRING" ]; then
+    echo "    App Insights: $APPINSIGHTS_NAME"
+fi
 
 # ── 2. User-Assigned Managed Identity ────────────────────────────────────
 echo ">>> Creating managed identity..."
@@ -196,12 +260,21 @@ az role assignment create \
     -o none
 
 # ── 5. Container Apps Environment ────────────────────────────────────────
-echo ">>> Creating Container Apps environment..."
-az containerapp env create \
+if az containerapp env show \
     --name "$ENV_NAME" \
     --resource-group "$RG" \
-    --location "$LOCATION" \
-    -o none
+    -o none >/dev/null 2>&1; then
+    echo ">>> Reusing Container Apps environment..."
+else
+    echo ">>> Creating Container Apps environment..."
+    az containerapp env create \
+        --name "$ENV_NAME" \
+        --resource-group "$RG" \
+        --location "$LOCATION" \
+        --logs-workspace-id "$LOG_ANALYTICS_WORKSPACE_ID" \
+        --logs-workspace-key "$LOG_ANALYTICS_SHARED_KEY" \
+        -o none
+fi
 
 # ── 6. Build & Push Session Container Image ─────────────────────────────
 echo ">>> Building session container image..."
@@ -243,6 +316,11 @@ if ! az containerapp sessionpool create \
         "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
         "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
         "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
+        "APPLICATIONINSIGHTS_CONNECTION_STRING=$APPLICATIONINSIGHTS_CONNECTION_STRING" \
+        "OTEL_SERVICE_NAME=$OTEL_SERVICE_NAME" \
+        "OTEL_SERVICE_NAMESPACE=$OTEL_SERVICE_NAMESPACE" \
+        "OTEL_SERVICE_VERSION=$OTEL_SERVICE_VERSION" \
+        "OTEL_DEPLOYMENT_ENVIRONMENT=$OTEL_DEPLOYMENT_ENVIRONMENT" \
     -o none 2>/dev/null; then
     echo "    Session pool exists, updating..."
     az containerapp sessionpool update \
@@ -260,6 +338,11 @@ if ! az containerapp sessionpool create \
             "ADLS_ACCOUNT_NAME=$ADLS_ACCOUNT_NAME" \
             "ADLS_FILESYSTEM=$ADLS_FILESYSTEM" \
             "AZURE_CLIENT_ID=$IDENTITY_CLIENT_ID" \
+            "APPLICATIONINSIGHTS_CONNECTION_STRING=$APPLICATIONINSIGHTS_CONNECTION_STRING" \
+            "OTEL_SERVICE_NAME=$OTEL_SERVICE_NAME" \
+            "OTEL_SERVICE_NAMESPACE=$OTEL_SERVICE_NAMESPACE" \
+            "OTEL_SERVICE_VERSION=$OTEL_SERVICE_VERSION" \
+            "OTEL_DEPLOYMENT_ENVIRONMENT=$OTEL_DEPLOYMENT_ENVIRONMENT" \
         -o none
 fi
 
@@ -466,6 +549,10 @@ echo "Frontend URL:             https://$FRONTEND_URL"
 echo "Orchestrator URL:         https://$APP_URL"
 echo "Pool Management Endpoint: $POOL_ENDPOINT"
 echo "Managed Identity:         $IDENTITY_CLIENT_ID"
+if [ -n "$APPLICATIONINSIGHTS_CONNECTION_STRING" ]; then
+echo "Application Insights:     $APPINSIGHTS_NAME"
+echo "Log Analytics workspace:  $LOG_ANALYTICS_WORKSPACE_NAME"
+fi
 echo ""
 echo "AI Search (knowledge base):"
 echo "  Endpoint:               $SEARCH_ENDPOINT"
@@ -479,6 +566,9 @@ echo "  Redirect URI:           $RESOLVED_REDIRECT_URI"
 else
 echo "Entra ID: not configured (pass ENTRA_TENANT_ID / ENTRA_CLIENT_ID to enable)"
 fi
+echo ""
+echo "Foundry tracing note: connect the Application Insights resource to your Foundry project"
+echo "from Foundry portal -> Observability/Tracing before expecting traces in Foundry."
 echo ""
 echo "Next step: run 'uv run python setup_knowledge_base.py' to create the knowledge base."
 echo ""

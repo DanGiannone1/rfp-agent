@@ -1,7 +1,7 @@
 """Lightweight FastAPI server that runs inside each ACA session container.
 
-One container = one user. The module-level ``_session`` singleton holds the
-persistent AgentSession so multi-turn context is preserved across requests.
+One container can host multiple logical identifiers in local mode.
+Each identifier maps to isolated workspace and session state.
 
 Endpoints:
     POST /chat/stream — streams SSE events for an agent turn
@@ -16,87 +16,130 @@ import json
 import logging
 import mimetypes
 import os
+import re
+import sys
 import uuid
-from datetime import datetime, timezone
-from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from ag_ui.core.events import RunErrorEvent, RunFinishedEvent
 from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from agent import AgentSession, _sse_event
+from trace_logging import setup_trace_logging, trace_event
 from tracing import setup_tracing
+from upload_policy import ALLOWED_UPLOAD_EXTENSIONS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Trace logging (opt-in via LOG_TRACE=true)
-# ---------------------------------------------------------------------------
-_trace_logger = logging.getLogger("trace")
-
-
-def _setup_trace_logging() -> None:
-    trace_dir = os.getenv("LOG_TRACE_DIR")
-    if os.getenv("LOG_TRACE", "").lower() != "true" or not trace_dir:
-        return
-    path = os.path.join(trace_dir, "trace.jsonl")
-    handler = RotatingFileHandler(path, maxBytes=50 * 1024 * 1024, backupCount=1)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    _trace_logger.addHandler(handler)
-    _trace_logger.setLevel(logging.INFO)
-    _trace_logger.propagate = False
-
-
-def _trace(event: str, **data) -> None:
-    if not _trace_logger.handlers:
-        return
-    record = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "component": "session",
-        "event": event,
-        "data": data,
-    }
-    _trace_logger.info(json.dumps(record, default=str))
-
-
-_setup_trace_logging()
+setup_trace_logging()
 
 # In ACA, this is /workspace. In local dev, default to a directory relative to the project root.
 _default_ws = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "workspace"))
 WORKSPACE = os.getenv("WORKSPACE", _default_ws)
 UPLOAD_MANIFEST = ".uploaded_files.json"
-
+_SESSION_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 app = FastAPI(title="RFP Session")
 setup_tracing(app)
 
-# ── Module-level singleton ────────────────────────────────────────────────
-_session: AgentSession | None = None
-_lock = asyncio.Lock()
-_manifest_lock = asyncio.Lock()
+def _normalize_session_id(raw_session_id: str | None) -> str:
+    if raw_session_id and _SESSION_ID_RE.fullmatch(raw_session_id):
+        return raw_session_id
+    raise HTTPException(status_code=400, detail="Invalid session identifier")
 
 
-async def _get_or_create_session(token: str | None = None) -> AgentSession:
-    """Lazy-init the AgentSession singleton on first request."""
-    global _session
-    if _session is None:
-        _session = AgentSession(WORKSPACE, token=token)
-        await _session.__aenter__()
-        logger.info("AgentSession initialised (workspace=%s)", WORKSPACE)
-    return _session
+def _session_workspace(session_id: str) -> str:
+    return os.path.join(WORKSPACE, session_id)
 
 
-async def _destroy_session_locked() -> None:
-    """Destroy singleton agent session; caller must hold _lock."""
-    global _session
-    if _session is None:
+def _session_exists(session_id: str) -> bool:
+    return session_id in _sessions or Path(_session_workspace(session_id)).exists()
+
+
+def _require_existing_session(session_id: str) -> None:
+    if _session_exists(session_id):
+        return
+    raise HTTPException(status_code=404, detail="Session not found")
+
+
+def _get_identifier(request: Request) -> str:
+    return _normalize_session_id(request.query_params.get("identifier"))
+
+
+def _workspace_for_request(request: Request) -> str:
+    return _session_workspace(_get_identifier(request))
+
+
+def _session_lock(session_id: str) -> asyncio.Lock:
+    lock = _session_locks.setdefault(session_id, asyncio.Lock())
+    return lock
+
+
+def _manifest_lock(session_id: str) -> asyncio.Lock:
+    lock = _manifest_locks.setdefault(session_id, asyncio.Lock())
+    return lock
+
+
+_sessions: dict[str, AgentSession] = {}
+_session_locks: dict[str, asyncio.Lock] = {}
+_manifest_locks: dict[str, asyncio.Lock] = {}
+
+
+async def _get_or_create_session(token: str | None, session_id: str) -> AgentSession:
+    """Lazy-init the AgentSession for the given session identifier."""
+    session = _sessions.get(session_id)
+    workspace = _session_workspace(session_id)
+    if session is None:
+        os.makedirs(workspace, exist_ok=True)
+        session = AgentSession(workspace, token=token, session_id=session_id)
+        await session.__aenter__()
+        _sessions[session_id] = session
+        logger.info(
+            "AgentSession initialised (workspace=%s, raw_sdk_log=%s)",
+            workspace,
+            session.raw_sdk_log_path,
+        )
+    elif token and session.token != token:
+        await _destroy_session_locked(session_id)
+        session = AgentSession(workspace, token=token, session_id=session_id)
+        await session.__aenter__()
+        _sessions[session_id] = session
+        logger.info(
+            "AgentSession re-initialised (workspace=%s, raw_sdk_log=%s)",
+            workspace,
+            session.raw_sdk_log_path,
+        )
+    return session
+
+
+async def _destroy_session_locked(session_id: str) -> None:
+    """Destroy a session; caller must hold the matching session lock."""
+    session = _sessions.pop(session_id, None)
+    if session is None:
         return
     try:
-        await _session.__aexit__(None, None, None)
+        await session.__aexit__(None, None, None)
     except Exception:
         logger.warning("Error destroying session", exc_info=True)
-    _session = None
+    logger.info("Agent session destroyed (id=%s)", session_id)
+
+
+async def _reset_session_state(session_id: str) -> None:
+    import shutil
+
+    lock = _session_lock(session_id)
+    async with lock:
+        await _destroy_session_locked(session_id)
+        ws = Path(_session_workspace(session_id))
+        if ws.exists():
+            shutil.rmtree(ws)
+        _manifest_locks.pop(session_id, None)
+    _session_locks.pop(session_id, None)
 
 
 # ── Request models ────────────────────────────────────────────────────────
@@ -105,16 +148,52 @@ class ChatRequest(BaseModel):
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────
+@app.post("/session", status_code=201)
+async def create_session(request: Request) -> dict:
+    session_id = _get_identifier(request)
+    workspace = Path(_session_workspace(session_id))
+    workspace.mkdir(parents=True, exist_ok=True)
+    trace_event("session", "session.created", session_id=session_id, workspace=str(workspace))
+    return {"session_id": session_id, "status": "active"}
+
+
+@app.get("/session")
+async def get_session(request: Request) -> dict:
+    session_id = _get_identifier(request)
+    _require_existing_session(session_id)
+    workspace = Path(_session_workspace(session_id))
+    files = sorted(p.name for p in workspace.iterdir() if p.is_file()) if workspace.exists() else []
+    return {
+        "session_id": session_id,
+        "status": "active",
+        "workspace_exists": workspace.exists(),
+        "agent_initialized": session_id in _sessions,
+        "files": files,
+    }
+
+
+@app.delete("/session", status_code=204)
+async def delete_session(request: Request) -> None:
+    session_id = _get_identifier(request)
+    _require_existing_session(session_id)
+    await _reset_session_state(session_id)
+    trace_event("session", "session.deleted", session_id=session_id)
+
+
 @app.post("/chat/stream")
 async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     """Run a full agent turn, streaming SSE events as they happen."""
+    session_id = _get_identifier(request)
+    _require_existing_session(session_id)
+    lock = _session_lock(session_id)
+
     # Reject immediately if another turn is already in progress.
-    if _lock.locked():
+    if lock.locked():
         raise HTTPException(status_code=409, detail="Session is busy")
 
     # Acquire the lock eagerly so no other request can slip through between
     # the locked() check above and the generator starting to iterate.
-    await _lock.acquire()
+    await lock.acquire()
 
     # Token forwarded from the orchestrator via header (never in the body).
     token = request.headers.get("X-Cogservices-Token") or None
@@ -127,40 +206,48 @@ async def chat_stream(req: ChatRequest, request: Request) -> StreamingResponse:
     async def generate():
         try:
             try:
-                session = await _get_or_create_session(token=token)
+                session = await _get_or_create_session(token=token, session_id=session_id)
                 if token and session.token != token:
-                    await _destroy_session_locked()
-                    session = await _get_or_create_session(token=token)
+                    await _destroy_session_locked(session_id)
+                    session = await _get_or_create_session(token=token, session_id=session_id)
+                trace_event(
+                    "session",
+                    "agent.prompt_received",
+                    session_id=session_id,
+                    uploaded_files=sorted(_read_uploaded_manifest(_session_workspace(session_id))),
+                    prompt_length=len(req.prompt),
+                    prompt_preview=req.prompt[:500],
+                )
                 async with asyncio.timeout(chat_timeout):
                     async for event in session.send(req.prompt):
                         yield event
             except asyncio.TimeoutError:
                 logger.warning("Chat stream timed out after %ds", chat_timeout)
-                await _destroy_session_locked()
+                await _destroy_session_locked(session_id)
                 yield _sse_event(RunErrorEvent(message=f"Agent turn timed out after {chat_timeout}s"))
             except Exception:
                 logger.exception("Chat stream failed")
-                await _destroy_session_locked()
+                await _destroy_session_locked(session_id)
                 yield _sse_event(RunErrorEvent(message="Agent turn failed. Please retry."))
         except GeneratorExit:
             pass
         finally:
-            _lock.release()
+            lock.release()
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
 UPLOAD_MAX_BYTES = 50 * 1024 * 1024  # 50 MB
-ALLOWED_EXTENSIONS = {
-    ".pdf", ".doc", ".docx", ".txt", ".csv", ".json", ".xml",
-    ".md", ".xlsx", ".pptx", ".xls", ".rtf", ".html", ".htm",
-}
 
 
 @app.post("/upload")
-async def upload(file: UploadFile) -> dict:
+async def upload(file: UploadFile, request: Request) -> dict:
     """Save an uploaded file to the workspace directory."""
     from pathlib import PurePosixPath
+
+    session_id = _get_identifier(request)
+    _require_existing_session(session_id)
+    workspace = _workspace_for_request(request)
 
     # Sanitize filename — strip path components
     raw_name = file.filename or "upload"
@@ -170,18 +257,18 @@ async def upload(file: UploadFile) -> dict:
 
     # Extension allowlist
     ext = os.path.splitext(safe_name)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=f"File type '{ext}' not allowed",
         )
 
-    os.makedirs(WORKSPACE, exist_ok=True)
-    dest = os.path.join(WORKSPACE, safe_name)
+    os.makedirs(workspace, exist_ok=True)
+    dest = os.path.join(workspace, safe_name)
 
     # Verify resolved path is under WORKSPACE (prevent traversal)
     real_dest = os.path.realpath(dest)
-    real_workspace = os.path.realpath(WORKSPACE)
+    real_workspace = os.path.realpath(workspace)
     if not real_dest.startswith(real_workspace + os.sep) and real_dest != real_workspace:
         raise HTTPException(status_code=400, detail="Invalid file path")
 
@@ -196,12 +283,12 @@ async def upload(file: UploadFile) -> dict:
             f.write(chunk)
 
     logger.info("Uploaded %s (%d bytes)", safe_name, bytes_written)
-    _trace("fs.upload", filename=safe_name, size=bytes_written)
-    async with _manifest_lock:
-        uploaded = _read_uploaded_manifest()
+    trace_event("session", "fs.upload", session_id=session_id, filename=safe_name, size=bytes_written)
+    async with _manifest_lock(session_id):
+        uploaded = _read_uploaded_manifest(workspace)
         uploaded.add(safe_name)
         try:
-            _write_uploaded_manifest(uploaded)
+            _write_uploaded_manifest(workspace, uploaded)
         except Exception:
             # File is on disk — manifest failure is non-fatal; origin will default to "generated"
             logger.warning("Failed to update upload manifest for %s", safe_name, exc_info=True)
@@ -209,16 +296,16 @@ async def upload(file: UploadFile) -> dict:
 
 
 @app.get("/files")
-async def list_files() -> dict:
+async def list_files(request: Request) -> dict:
     """List all files in the workspace with metadata."""
     from datetime import datetime, timezone
     from pathlib import Path
 
-    workspace = Path(WORKSPACE)
-    if not workspace.exists():
-        return {"files": []}
+    session_id = _get_identifier(request)
+    _require_existing_session(session_id)
+    workspace = Path(_workspace_for_request(request))
 
-    uploaded = _read_uploaded_manifest()
+    uploaded = _read_uploaded_manifest(str(workspace))
     files = []
     for entry in sorted(workspace.iterdir()):
         if not entry.is_file():
@@ -226,55 +313,58 @@ async def list_files() -> dict:
         if entry.name == UPLOAD_MANIFEST:
             continue
         stat = entry.stat()
+        is_markdown = entry.suffix.lower() == ".md"
         md_sibling = workspace / f"{entry.name}.md"
         files.append({
             "filename": entry.name,
             "size": stat.st_size,
             "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-            "has_markdown": md_sibling.exists(),
+            "has_markdown": (is_markdown and entry.name in uploaded) or md_sibling.exists(),
             "origin": "uploaded" if entry.name in uploaded else "generated",
         })
 
-    _trace("fs.list", filenames=[f["filename"] for f in files])
+    trace_event("session", "fs.list", session_id=session_id, filenames=[f["filename"] for f in files])
     return {"files": files}
 
 
 @app.get("/files/content")
-async def file_content(filename: str) -> dict:
+async def file_content(filename: str, request: Request) -> dict:
     """Return UTF-8 text content for a workspace file."""
     from pathlib import Path
 
-    _trace("fs.content_request", filename=filename)
+    session_id = _get_identifier(request)
+    _require_existing_session(session_id)
+    trace_event("session", "fs.content_request", session_id=session_id, filename=filename)
 
     if not filename:
         raise HTTPException(status_code=400, detail="filename is required")
 
-    workspace = Path(WORKSPACE).resolve()
+    workspace = Path(_workspace_for_request(request)).resolve()
     target = (workspace / filename).resolve()
 
     if workspace not in target.parents and target != workspace:
-        _trace("fs.content_error", filename=filename, status=400, detail="Invalid file path")
+        trace_event("session", "fs.content_error", session_id=session_id, filename=filename, status=400, detail="Invalid file path")
         raise HTTPException(status_code=400, detail="Invalid file path")
     if not target.exists() or not target.is_file():
-        _trace("fs.content_error", filename=filename, status=404, detail="File not found")
+        trace_event("session", "fs.content_error", session_id=session_id, filename=filename, status=404, detail="File not found")
         raise HTTPException(status_code=404, detail="File not found")
 
     # Keep payload bounded for in-app canvas rendering.
     max_bytes = 2 * 1024 * 1024
     size = target.stat().st_size
     if size > max_bytes:
-        _trace("fs.content_error", filename=filename, status=413, detail="File too large")
+        trace_event("session", "fs.content_error", session_id=session_id, filename=filename, status=413, detail="File too large")
         raise HTTPException(status_code=413, detail="File too large to preview in canvas")
 
     raw = target.read_bytes()
     try:
         content = raw.decode("utf-8")
     except UnicodeDecodeError:
-        _trace("fs.content_error", filename=filename, status=415, detail="Binary file")
+        trace_event("session", "fs.content_error", session_id=session_id, filename=filename, status=415, detail="Binary file")
         raise HTTPException(status_code=415, detail="Binary file preview is not supported")
 
     mime_type = mimetypes.guess_type(target.name)[0] or "text/plain"
-    _trace("fs.content_response", filename=target.name, size=size, mime_type=mime_type)
+    trace_event("session", "fs.content_response", session_id=session_id, filename=target.name, size=size, mime_type=mime_type)
     return {
         "filename": target.name,
         "size": size,
@@ -284,29 +374,16 @@ async def file_content(filename: str) -> dict:
 
 
 @app.post("/reset")
-async def reset() -> dict:
+async def reset(request: Request) -> dict:
     """Reset the session: destroy the agent and clean the workspace.
 
     In production each session gets a fresh container, so this is a no-op.
     In local dev, the single shared container uses this to simulate isolation.
     """
-    global _session
-    import shutil
-    from pathlib import Path
-
-    # Acquire the lock so we don't destroy an agent mid-turn or race with cleanup
-    async with _lock:
-        if _session is not None:
-            await _destroy_session_locked()
-            logger.info("Agent session destroyed")
-
-        # Clean workspace while still holding the lock
-        ws = Path(WORKSPACE)
-        if ws.exists():
-            shutil.rmtree(ws)
-        ws.mkdir(parents=True, exist_ok=True)
-        logger.info("Workspace cleaned: %s", WORKSPACE)
-
+    session_id = _get_identifier(request)
+    await _reset_session_state(session_id)
+    Path(_session_workspace(session_id)).mkdir(parents=True, exist_ok=True)
+    trace_event("session", "session.reset", session_id=session_id)
     return {"status": "reset"}
 
 
@@ -315,12 +392,12 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
-def _manifest_path() -> str:
-    return os.path.join(WORKSPACE, UPLOAD_MANIFEST)
+def _manifest_path(workspace: str) -> str:
+    return os.path.join(workspace, UPLOAD_MANIFEST)
 
 
-def _read_uploaded_manifest() -> set[str]:
-    path = _manifest_path()
+def _read_uploaded_manifest(workspace: str) -> set[str]:
+    path = _manifest_path(workspace)
     try:
         with open(path, encoding="utf-8") as f:
             data = json.load(f)
@@ -330,8 +407,8 @@ def _read_uploaded_manifest() -> set[str]:
     return {n for n in names if isinstance(n, str)}
 
 
-def _write_uploaded_manifest(names: set[str]) -> None:
-    path = _manifest_path()
+def _write_uploaded_manifest(workspace: str, names: set[str]) -> None:
+    path = _manifest_path(workspace)
     payload = {"uploaded_files": sorted(names)}
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f)

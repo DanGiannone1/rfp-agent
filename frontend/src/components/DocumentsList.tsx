@@ -64,7 +64,8 @@ export default function DocumentsList({
     <div className="space-y-1">
       {files.map((file) => {
         const isClickable = !!onOpenFile && !disableActions;
-        const openTarget = kind === "uploaded" && file.has_markdown ? file.filename + ".md" : file.filename;
+        const isMarkdownUpload = kind === "uploaded" && file.filename.toLowerCase().endsWith(".md");
+        const openTarget = kind === "uploaded" && file.has_markdown && !isMarkdownUpload ? file.filename + ".md" : file.filename;
         return (
           <div
             key={file.filename}

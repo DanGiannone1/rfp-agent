@@ -237,6 +237,9 @@ Override defaults via environment variables:
 | `AZURE_DEPLOYMENT` | _(your deployment name)_ | Azure OpenAI model deployment |
 | `ADLS_ACCOUNT_NAME` | _(required for upload)_ | ADLS Gen2 storage account for document storage |
 | `ADLS_FILESYSTEM` | `documents` | ADLS filesystem (container) name |
+| `APPLICATIONINSIGHTS_CONNECTION_STRING` | _(optional)_ | Enables App Insights / Foundry tracing for session-container spans. If omitted, `infra/deploy.sh` provisions App Insights + Log Analytics automatically. |
+
+If you rely on the auto-provision path, `infra/deploy.sh` now creates a Log Analytics workspace and an Application Insights resource, then injects the resulting connection string into the ACA session pool.
 
 ---
 

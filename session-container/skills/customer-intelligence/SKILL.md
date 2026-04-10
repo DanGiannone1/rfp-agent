@@ -20,7 +20,7 @@ Aggregate everything known about a prospective or existing client into a structu
 
 ### 1. Identify the Client
 
-Read the RFP or user input to establish:
+Read the RFP or user input first to establish:
 - Organization name and any parent/subsidiary structure
 - Industry and sector
 - Geographic footprint
@@ -50,6 +50,8 @@ Extract implicit intelligence from the RFP itself:
 - **Budget signals**: Fixed fee vs. hourly, price weight in evaluation, budget range if stated
 - **Urgency indicators**: Timeline, transition requirements, current-state problems
 - **Incumbent dissatisfaction**: Language suggesting desire for change
+
+Use existing workspace artifacts only if they are already present and directly useful. Do not require a response strategy or other prior analysis before producing the client briefing.
 
 ### 4. Build Relationship Timeline
 
@@ -157,6 +159,4 @@ Save the briefing to the working directory as `customer_intelligence.md` so the 
 ## Tools to Use
 
 - **knowledge_base_retrieve**: Primary tool — search for client name, past engagements, proposals, personnel, case studies, and industry references. Run at least 5-6 varied queries for thorough coverage.
-- **bash / str_replace_editor**: Read the RFP for client signals, evaluation criteria, and context clues
-- **grep**: Search RFP for organization names, incumbent references, budget indicators, and priority keywords
-- **glob**: Find all documents related to this client in the working directory
+- **read_full_file**: Read the RFP and any client-specific artifacts in the workspace end-to-end

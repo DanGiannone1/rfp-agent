@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Boundary With Runtime Agent
+
+The shipped RFP application agent has its own runtime prompt and skills under `session-container/agent.py` and `session-container/skills/`. Those files define product behavior for end users. Do not treat them as contributor instructions for repository work. Follow `AGENTS.md` for shared coding-agent policy.
+
 ## Core Principles
 
 These are mandatory. Verify compliance before every action.
@@ -28,6 +32,8 @@ Mark unverified claims with "unverified" or "uncertain". Verify before presentin
 Commit logical units of work. Push after committing. Report status explicitly.
 
 ## Testing
+
+Use the project localhost validation skill at `.claude/skills/localhost-ui-validation/SKILL.md` for any user-visible localhost testing or debugging.
 
 **The only valid form of testing is Playwright against the real frontend, behaving as a real user.**
 

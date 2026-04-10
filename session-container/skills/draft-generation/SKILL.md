@@ -12,13 +12,15 @@ Generate polished draft content for individual proposal sections by combining kn
 ## When to Use
 
 - User asks to "draft", "write", or "generate" a proposal section
-- After requirements extraction and response strategy are established
+- After requirements extraction and response strategy are established, if those artifacts already exist
 - When the user provides a section topic (e.g., "draft the technical approach" or "write the past performance section")
 - When assembling a complete proposal from individual sections
 
 ## Step-by-Step Process
 
 ### 1. Understand the Section Scope
+
+Start with the uploaded RFP itself. Do not block on a requirements matrix or strategy brief if the user asked you to draft and the RFP is already available.
 
 Read the RFP directly to determine what this section must cover — don't rely solely on the requirements matrix. Extract:
 - Which RFP requirements map to this section (cross-reference the matrix if one exists)
@@ -44,11 +46,13 @@ Run multiple searches with different query terms to maximize coverage. For examp
 
 ### 3. Review Working Directory Files
 
-Use `bash` and `glob` to check for:
-- Previously drafted sections that should be consistent with this one
-- Win themes or strategy brief to align messaging
+Use `read_full_file` to review:
+- Previously drafted sections that should be consistent with this one, if present
+- Win themes or strategy brief to align messaging, if present
 - RFP-specific requirements that must be addressed
 - Uploaded reference documents from the user
+
+Do not create or wait for prerequisite artifacts before drafting. Use existing artifacts when they add value; otherwise draft directly from the RFP plus KB evidence.
 
 ### 4. Draft the Section
 
@@ -111,6 +115,4 @@ The following knowledge base materials were referenced in this draft:
 ## Tools to Use
 
 - **knowledge_base_retrieve**: Primary tool — search for past proposals, boilerplate, case studies, personnel bios, methodology descriptions, and approved language. Run multiple queries with varied search terms.
-- **bash / glob**: Read RFP requirements, previously drafted sections, strategy briefs, and uploaded reference materials
-- **str_replace_editor**: Read specific sections of long documents; also used to refine drafts iteratively
-- **grep**: Search for specific terms across working directory files (client name, technical terms, requirement IDs)
+- **read_full_file**: Read RFP requirements, previously drafted sections, strategy briefs, and uploaded reference materials end-to-end

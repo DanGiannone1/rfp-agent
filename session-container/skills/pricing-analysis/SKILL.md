@@ -11,7 +11,7 @@ Develop a structured pricing strategy and financial analysis for the proposed en
 
 ## When to Use
 
-- After response strategy is defined and before final proposal drafting
+- After response strategy is defined and before final proposal drafting, if that strategy artifact already exists
 - User asks for "pricing analysis", "cost model", "ROI analysis", or "fee estimate"
 - When evaluating whether an opportunity meets profitability thresholds
 - When comparing pricing approaches for a competitive bid
@@ -20,13 +20,15 @@ Develop a structured pricing strategy and financial analysis for the proposed en
 
 ### 1. Gather Scope and Pricing Inputs
 
-Read the RFP to extract:
+Read the RFP first to extract:
 - Scope of services requested (service lines, deliverables, duration)
 - Pricing format required (fixed fee, hourly, cost-plus, blended rates)
 - Contract duration and renewal options
 - Travel, technology, or other reimbursable requirements
 - Any pricing constraints or ceilings mentioned
 - Evaluation weight assigned to price vs. technical merit
+
+Use existing strategy or requirements artifacts if they are already in the workspace, but do not require them before producing a pricing analysis.
 
 ### 2. Search Knowledge Base for Precedent
 
@@ -175,7 +177,5 @@ Save the completed analysis to the working directory as `pricing_analysis.md` so
 
 ## Tools to Use
 
-- **bash / str_replace_editor**: Read RFP scope, pricing requirements, and evaluation criteria
-- **grep**: Search for pricing terms, budget references, fee ceilings, evaluation weights
+- **read_full_file**: Read RFP scope, pricing requirements, and evaluation criteria end-to-end
 - **knowledge_base_retrieve**: Search rate cards, past engagement pricing, margin guidance, cost model templates, and discount policies
-- **glob**: Find pricing-related documents and past proposal fee sections

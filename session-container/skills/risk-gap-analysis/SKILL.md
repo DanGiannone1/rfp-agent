@@ -21,9 +21,9 @@ Identify technical risks, compliance gaps, resource constraints, and dependencie
 
 ### 1. Review All Available Inputs
 
-Read the RFP, requirements matrix, strategy brief, and any drafted sections to identify risk sources:
+Read the RFP first, then use any existing requirements matrix, strategy brief, or drafted sections if they are already present. Do not require those artifacts before identifying risks:
 
-Use `bash` and `glob` to find all relevant files. Key areas to examine:
+Use `read_full_file` to review the RFP and any standard analysis artifacts already produced in the workspace. Key areas to examine:
 - Scope of work — are there areas outside Meridian's core competencies?
 - Staffing requirements — can we staff with qualified personnel?
 - Timeline — is the delivery schedule realistic?
@@ -160,7 +160,5 @@ Separate out gaps that need immediate action:
 
 ## Tools to Use
 
+- **read_full_file**: Read RFP terms and conditions, scope documents, and all proposal materials end-to-end
 - **knowledge_base_retrieve**: Search for lessons learned, past risk mitigations, teaming history, capability evidence, and personnel qualifications to assess gaps — use where applicable to validate or refine scores, particularly for capability gaps and personnel risks
-- **bash / glob**: Read RFP terms and conditions, scope documents, and all proposal materials
-- **str_replace_editor**: Examine specific contractual clauses, requirement details, and drafted content
-- **grep**: Search for risk indicators ("penalty", "liquidated damages", "termination", "liability", "warranty", "indemnif", "insurance", "bond")

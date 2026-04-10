@@ -8,11 +8,31 @@ import asyncio
 import logging
 import os
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 from urllib.parse import urlparse
 
 from azure.identity.aio import DefaultAzureCredential
+from upload_policy import normalize_markdown_filename
 
 logger = logging.getLogger(__name__)
+
+_PROTECTED_PDF_MARKERS = (
+    "# this pdf file is protected",
+    "this pdf document has been protected",
+    "does not support opening files protected by microsoft office",
+)
+def _markdown_preview(markdown: str, limit: int = 240) -> str:
+    compact = " ".join(markdown.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 3] + "..."
+
+
+def _diagnose_markdown(markdown: str) -> str | None:
+    lower = markdown.lower()
+    if all(marker in lower for marker in _PROTECTED_PDF_MARKERS):
+        return "protected_pdf_placeholder"
+    return None
 
 
 class ContentProcessor:
@@ -95,6 +115,7 @@ class ContentProcessor:
         file_bytes: bytes,
         content_type: str,
         forward_markdown_fn: Callable[[str, bytes], Awaitable[None]],
+        markdown_filename: str | None = None,
     ) -> dict:
         """Process an uploaded document — never raises, returns a result dict."""
         result = {
@@ -103,6 +124,9 @@ class ContentProcessor:
             "adls_markdown": False,
             "markdown_forwarded": False,
             "error": None,
+            "error_code": None,
+            "diagnostic": None,
+            "markdown_preview": None,
         }
 
         if not self.enabled:
@@ -137,8 +161,21 @@ class ContentProcessor:
             return result
 
         result["markdown_produced"] = True
-        md_filename = f"{filename}.md"
+        md_filename = markdown_filename or normalize_markdown_filename(filename)
         md_bytes = markdown.encode("utf-8")
+        result["markdown_size"] = len(md_bytes)
+        result["markdown_filename"] = md_filename
+        result["markdown_preview"] = _markdown_preview(markdown)
+        result["diagnostic"] = _diagnose_markdown(markdown)
+
+        if result["diagnostic"] == "protected_pdf_placeholder":
+            result["error_code"] = "protected_pdf"
+            result["error"] = (
+                "This PDF appears to be protected or rights-managed, so the extracted markdown "
+                "only contains a protection notice and not the RFP content. Upload an accessible "
+                "PDF or a text-based source document."
+            )
+            return result
 
         # 3. Upload markdown to ADLS
         result["adls_markdown"] = await self._upload_to_adls(

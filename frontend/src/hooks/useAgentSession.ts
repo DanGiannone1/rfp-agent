@@ -1,7 +1,7 @@
 import { useReducer, useRef, useCallback, useEffect, useState } from "react";
 import { AGUIEvent, AppFile, ChatMessage, IntakeState, MessagePart } from "@/lib/types";
 import { streamSSE } from "@/lib/sse";
-import { createSession, getFileContent, getSession, listFiles, uploadFile } from "@/lib/api";
+import { createSession, deleteSession, getSession, listFiles, uploadFile } from "@/lib/api";
 import { clearSessionId, getSessionId, getStoredMessages, storeSessionId, storeMessages } from "@/lib/session";
 import { friendlyError } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ type Action =
   | { type: "RESTORE_SESSION"; sessionId: string; messages: ChatMessage[] }
   | { type: "RESET_FOR_NEW_CHAT" }
   | { type: "FILE_PENDING"; filename: string; size: number }
+  | { type: "FILE_CLEAR_PENDING"; filename: string }
   | { type: "FILES_LOADED"; files: AppFile[] }
   | { type: "INTAKE_SESSION"; sessionState: "preparing" | "ready" | "error"; error?: string }
   | { type: "INTAKE_UPLOAD"; uploadState: "idle" | "uploading"; filename?: string; error?: string };
@@ -41,6 +42,45 @@ interface State {
 
 const SESSION_TIMEOUT_MS = 12_000;
 const UPLOAD_TIMEOUT_MS = 180_000;
+
+function isSingleMarkdownWorkspaceFile(files: Array<{ filename: string; origin?: "uploaded" | "generated" }>): boolean {
+  if (files.length !== 1) return false;
+  const file = files[0];
+  const filename = file.filename.toLowerCase();
+  if (!filename.endsWith(".md") || filename.endsWith(".md.md")) return false;
+  return (file as { origin?: string }).origin === "uploaded";
+}
+
+function canonicalUploadedName(filename: string): string {
+  let stem = filename;
+  while (stem.toLowerCase().endsWith(".md")) {
+    stem = stem.slice(0, -3);
+  }
+  stem = stem.replace(/\.+$/, "");
+  if (!stem) return "document";
+  const lastDot = stem.lastIndexOf(".");
+  if (lastDot > 0) return stem.slice(0, lastDot);
+  return stem;
+}
+
+function normalizeFiles(raw: AppFile[]): AppFile[] {
+  const byName = new Map(raw.map((f) => [f.filename, f]));
+  return raw
+    .filter((f) => {
+      if (!f.filename.endsWith(".md")) return true;
+      const sourceName = f.filename.slice(0, -3);
+      return !byName.has(sourceName);
+    })
+    .map((f): AppFile => ({
+      filename: f.filename,
+      size: f.size,
+      modified_at: f.modified_at,
+      origin: f.origin ?? "generated",
+      status: "ready",
+      has_markdown: f.has_markdown,
+    }))
+    .sort((a, b) => Date.parse(b.modified_at) - Date.parse(a.modified_at));
+}
 
 function updateLastMessage(msgs: ChatMessage[], updater: (msg: ChatMessage) => ChatMessage): ChatMessage[] {
   if (msgs.length === 0) return msgs;
@@ -211,9 +251,17 @@ function reducer(state: State, action: Action): State {
       };
       return { ...state, files: [pending, ...state.files.filter(f => f.filename !== action.filename)] };
     }
+    case "FILE_CLEAR_PENDING":
+      return { ...state, files: state.files.filter((f) => !(f.status === "pending" && f.filename === action.filename)) };
     case "FILES_LOADED": {
       const serverFilenames = new Set(action.files.map(f => f.filename));
-      const stillPending = state.files.filter(f => f.status === "pending" && !serverFilenames.has(f.filename));
+      const serverCanonicalNames = new Set(action.files.map(f => canonicalUploadedName(f.filename)));
+      const stillPending = state.files.filter(
+        (f) =>
+          f.status === "pending" &&
+          !serverFilenames.has(f.filename) &&
+          !serverCanonicalNames.has(canonicalUploadedName(f.filename)),
+      );
       return { ...state, files: [...stillPending, ...action.files] };
     }
     case "INTAKE_SESSION":
@@ -269,27 +317,40 @@ export function useAgentSession() {
   useEffect(() => { sessionIdRef.current = state.sessionId; }, [state.sessionId]);
   useEffect(() => { streamingRef.current = state.isStreaming; }, [state.isStreaming]);
 
+  const clearAndDeleteSession = useCallback(async (sessionId: string | null) => {
+    if (!sessionId) return;
+    clearSessionId();
+    try { await deleteSession(sessionId); } catch { /* best effort cleanup */ }
+  }, []);
+
   const refreshFiles = useCallback(async (sessionId: string) => {
     const data = await listFiles(sessionId);
-    const raw = data.files;
-    const byName = new Map(raw.map(f => [f.filename, f]));
-    const normalized = raw
-      .filter(f => {
-        if (!f.filename.endsWith(".md")) return true;
-        const sourceName = f.filename.slice(0, -3);
-        return !byName.has(sourceName);
-      })
-      .map((f): AppFile => ({
-        filename: f.filename,
-        size: f.size,
-        modified_at: f.modified_at,
-        origin: f.origin ?? "generated",
-        status: "ready",
-        has_markdown: f.has_markdown,
-      }))
-      .sort((a, b) => Date.parse(b.modified_at) - Date.parse(a.modified_at));
-    dispatch({ type: "FILES_LOADED", files: normalized });
+    dispatch({ type: "FILES_LOADED", files: normalizeFiles(data.files as AppFile[]) });
   }, []);
+
+  const restoreStoredSession = useCallback(async (storedId: string): Promise<boolean> => {
+    try {
+      const meta = await withTimeout(getSession(storedId), SESSION_TIMEOUT_MS, "Session check timed out");
+      if (!meta) return false;
+
+      const files = meta.files ?? (await withTimeout(listFiles(storedId), SESSION_TIMEOUT_MS, "Session file check timed out")).files;
+      if (!isSingleMarkdownWorkspaceFile(files)) {
+        await clearAndDeleteSession(storedId);
+        return false;
+      }
+
+      dispatch({ type: "RESTORE_SESSION", sessionId: meta.session_id, messages: getStoredMessages() });
+      dispatch({ type: "FILES_LOADED", files: normalizeFiles(files as AppFile[]) });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [clearAndDeleteSession]);
+
+  const uploadAndRefresh = useCallback(async (sessionId: string, file: File, timeoutMessage: string) => {
+    await withTimeout(uploadFile(sessionId, file), UPLOAD_TIMEOUT_MS, timeoutMessage);
+    await refreshFiles(sessionId);
+  }, [refreshFiles]);
 
   const startSession = useCallback(async () => {
     setStatusMessage(null);
@@ -297,17 +358,9 @@ export function useAgentSession() {
     dispatch({ type: "SET_INITIALIZING", value: true });
     const storedId = getSessionId();
     if (storedId) {
-      try {
-        const meta = await withTimeout(getSession(storedId), SESSION_TIMEOUT_MS, "Session check timed out");
-        if (meta) {
-          const msgs = getStoredMessages();
-          dispatch({ type: "RESTORE_SESSION", sessionId: meta.session_id, messages: msgs });
-          try { await refreshFiles(meta.session_id); } catch (e) { console.warn("Failed to refresh files on restore", e); }
-          return;
-        }
-      } catch { /* session dead or unreachable — fall through to create new */ }
+      if (await restoreStoredSession(storedId)) return;
     }
-    clearSessionId();
+    await clearAndDeleteSession(storedId);
     try {
       const meta = await withTimeout(createSession(), SESSION_TIMEOUT_MS, "Session creation timed out");
       storeSessionId(meta.session_id);
@@ -318,7 +371,7 @@ export function useAgentSession() {
     } finally {
       dispatch({ type: "SET_INITIALIZING", value: false });
     }
-  }, [refreshFiles]);
+  }, [clearAndDeleteSession, restoreStoredSession]);
 
   useEffect(() => { startSession(); }, [startSession]);
 
@@ -337,39 +390,30 @@ export function useAgentSession() {
     return () => { if (timer) clearTimeout(timer); };
   }, [state.isInitializing, state.intake.uploadState, state.intake.error]);
 
-  useEffect(() => {
-    if (!state.sessionId || state.stage !== "chat") return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const sid = state.sessionId;
-    async function tick() {
-      try { await refreshFiles(sid); if (cancelled) return; } catch (e) { console.warn("File poll failed", e); }
-      if (!cancelled) timer = setTimeout(tick, 10_000);
-    }
-    tick();
-    return () => { cancelled = true; if (timer) clearTimeout(timer); };
-  }, [state.sessionId, state.stage, refreshFiles]);
-
   const handleIntakeUpload = useCallback(async (file: File) => {
     if (!state.sessionId) return;
     setStatusMessage(null);
     dispatch({ type: "INTAKE_UPLOAD", uploadState: "uploading", filename: file.name });
     dispatch({ type: "FILE_PENDING", filename: file.name, size: file.size });
     try {
-      await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-      try { await refreshFiles(state.sessionId); } catch (e) { console.warn("Failed to refresh files after upload", e); }
+      await uploadAndRefresh(state.sessionId, file, "Upload timed out");
+      dispatch({ type: "FILE_CLEAR_PENDING", filename: file.name });
       dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle" });
       dispatch({ type: "SET_STAGE", stage: "chat" });
-    } catch (err) { dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle", error: friendlyError(err, "Upload failed.") }); }
-  }, [state.sessionId, refreshFiles]);
+    } catch (err) {
+      dispatch({ type: "FILE_CLEAR_PENDING", filename: file.name });
+      dispatch({ type: "INTAKE_UPLOAD", uploadState: "idle", error: friendlyError(err, "Upload failed.") });
+    }
+  }, [state.sessionId, uploadAndRefresh]);
 
   const doNewChat = useCallback(async () => {
     abortRef.current?.abort(); abortRef.current = null;
-    clearSessionId(); setStatusMessage(null);
+    await clearAndDeleteSession(state.sessionId);
+    setStatusMessage(null);
     dispatch({ type: "RESET_FOR_NEW_CHAT" });
     dispatch({ type: "SET_INITIALIZING", value: true });
     await startSession();
-  }, [startSession]);
+  }, [clearAndDeleteSession, state.sessionId, startSession]);
 
   const handleStop = useCallback(() => {
     if (state.isStreaming) {
@@ -413,12 +457,13 @@ export function useAgentSession() {
     setIsChatUploading(true); setChatUploadName(file.name);
     dispatch({ type: "FILE_PENDING", filename: file.name, size: file.size });
     try {
-      await withTimeout(uploadFile(state.sessionId, file), UPLOAD_TIMEOUT_MS, "Upload timed out");
-      try { await refreshFiles(state.sessionId); } catch (e) { console.warn("Failed to refresh files after chat upload", e); }
+      await uploadAndRefresh(state.sessionId, file, "Upload timed out");
+      dispatch({ type: "FILE_CLEAR_PENDING", filename: file.name });
     } catch (err) {
+      dispatch({ type: "FILE_CLEAR_PENDING", filename: file.name });
       dispatch({ type: "ERROR", message: friendlyError(err, "File upload failed.") });
     } finally { setIsChatUploading(false); setChatUploadName(null); }
-  }, [state.sessionId, refreshFiles]);
+  }, [state.sessionId, uploadAndRefresh]);
 
   return {
     state,

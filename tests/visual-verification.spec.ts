@@ -1,9 +1,13 @@
 import { test, expect, Page } from "@playwright/test";
 import * as path from "path";
 import * as fs from "fs";
-
-const API = process.env.API_URL ?? "http://localhost:8000";
-const SCREENSHOTS = path.join(__dirname, "..", "screenshots");
+import { SCREENSHOT_DIR, getScreenshotPath, ensureScreenshotDir } from "./e2e-screenshot-utils";
+import {
+  cleanupBrowserSession,
+  gotoFreshIntake,
+  waitForStreamingDone,
+} from "./localhost-ui-helpers";
+const SCREENSHOTS = SCREENSHOT_DIR;
 const RFP_CONTENT = `REQUEST FOR PROPOSAL (RFP)
 Title: Enterprise Cloud Migration Platform
 Issuer: ACME Federal Services
@@ -40,43 +44,16 @@ Penetration testing required annually.
 `;
 
 function screenshot(name: string) {
-  return path.join(SCREENSHOTS, name);
+  return getScreenshotPath(name);
 }
 
 async function waitForChatInput(page: Page) {
   return page.locator('[data-testid="chat-input"]').waitFor({ state: "visible", timeout: 60_000 });
 }
 
-async function waitForStreamingDone(page: Page) {
-  // During streaming, stop-button is shown instead of send-button.
-  // Wait for send-button to reappear OR chat-input to be enabled (means streaming finished).
-  // Use a polling approach to be more resilient to HMR/navigation events.
-  const deadline = Date.now() + 180_000;
-  while (Date.now() < deadline) {
-    const sendVisible = await page.locator('[data-testid="send-button"]').isVisible().catch(() => false);
-    const chatEnabled = await page.locator('[data-testid="chat-input"]').isEnabled().catch(() => false);
-    if (sendVisible && chatEnabled) return;
-    // If we got navigated away (back to intake), the stream is effectively done
-    const intakeVisible = await page.locator('[data-testid="intake-upload-input"]').isVisible().catch(() => false);
-    if (intakeVisible) throw new Error("Page navigated back to intake during streaming");
-    await page.waitForTimeout(500);
-  }
-  throw new Error("Streaming did not finish within 180s");
-}
-
 async function uploadViaIntake(page: Page, filePath: string) {
   const input = page.locator('[data-testid="intake-upload-input"]');
   await input.setInputFiles(filePath);
-}
-
-/** Delete the current browser session to free the pool slot. */
-async function cleanupBrowserSession(page: Page): Promise<void> {
-  try {
-    const sid = await page.evaluate(() => sessionStorage.getItem("rfp_agent_session_id"));
-    if (sid) await fetch(`${API}/sessions/${sid}`, { method: "DELETE" });
-  } catch {
-    // best-effort
-  }
 }
 
 test.describe("Visual Verification", () => {
@@ -85,6 +62,8 @@ test.describe("Visual Verification", () => {
   let secondFile: string;
 
   test.beforeAll(() => {
+    ensureScreenshotDir();
+    console.log(`Saving visual screenshots to: ${SCREENSHOTS}`);
     tmpDir = fs.mkdtempSync("/tmp/rfp-visual-");
     rfpFile = path.join(tmpDir, "ACME_Cloud_Migration_RFP.txt");
     fs.writeFileSync(rfpFile, RFP_CONTENT);
@@ -96,6 +75,10 @@ test.describe("Visual Verification", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  test.afterEach(async ({ page }) => {
+    await cleanupBrowserSession(page);
+  });
+
   test.use({
     viewport: { width: 1440, height: 900 },
   });
@@ -104,39 +87,7 @@ test.describe("Visual Verification", () => {
     test.setTimeout(600_000);
     // ── Phase 1: IntakeScreen ──
     console.log("Phase 1: IntakeScreen");
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
-    await page.evaluate(() => sessionStorage.clear());
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
-
-    // Wait for session to be ready (the upload drop zone should be clickable)
-    // Handle retry button if session creation fails (pool exhaustion)
-    // Session pool cooldown is 300s so we retry patiently (15 attempts × ~15s = ~225s max)
-    for (let attempt = 0; attempt < 15; attempt++) {
-      const retryBtn = page.locator('[data-testid="intake-retry-button"]');
-      const retryVisible = await retryBtn.isVisible().catch(() => false);
-      if (retryVisible) {
-        console.log(`  Session failed, clicking retry (attempt ${attempt + 1}/15)`);
-        await retryBtn.click();
-        await page.waitForTimeout(10_000);
-        continue;
-      }
-      try {
-        await page.waitForFunction(() => {
-          const el = document.querySelector('[aria-label="Upload RFP file"]');
-          return el && el.getAttribute("aria-disabled") === "false";
-        }, { timeout: 15_000 });
-        break;
-      } catch {
-        console.log(`  Session not ready after attempt ${attempt + 1}/15, reloading...`);
-        if (attempt < 14) {
-          await page.evaluate(() => sessionStorage.clear());
-          await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
-          await page.waitForTimeout(5_000);
-        } else {
-          throw new Error("Session did not become ready after 15 attempts");
-        }
-      }
-    }
+    await gotoFreshIntake(page);
 
     await page.screenshot({ path: screenshot("01-intake-screen.png"), fullPage: true });
 
@@ -250,14 +201,13 @@ test.describe("Visual Verification", () => {
     // The InputBar has a hidden file input with aria-label="Upload file"
     const chatFileInput = page.locator('input[type="file"][aria-label="Upload file"]');
     await chatFileInput.setInputFiles(secondFile);
+    await page.locator('[data-testid="send-button"]').click();
 
-    // Wait for upload to complete - look for the second file name in documents
-    await page.waitForTimeout(5000);
-    // Refresh files by waiting a bit
+    // Wait for the attachment chip to clear and the uploaded file list to refresh
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: screenshot("07-multiple-files.png"), fullPage: true });
 
-    // Wait for the second file to appear in the panel (may need polling refresh)
-    // Use page.evaluate to count DOM elements directly since panel uses hidden+lg:flex
+    // Wait for the second file to appear in the panel.
     let docCount = 0;
     for (let attempt = 0; attempt < 6; attempt++) {
       docCount = await page.evaluate(() =>
@@ -268,7 +218,8 @@ test.describe("Visual Verification", () => {
       await page.waitForTimeout(3000);
     }
     console.log(`  Document items in panel: ${docCount}`);
-    console.log(`  ${docCount >= 2 ? "PASS" : "WARN"}: multiple files in panel (found ${docCount})`);
+    expect(docCount).toBeGreaterThanOrEqual(2);
+    console.log("  PASS: multiple files in panel");
 
     // ── Phase 6: New chat ──
     console.log("Phase 6: New chat");

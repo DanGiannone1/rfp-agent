@@ -8,12 +8,14 @@ function toolLabelForStatus(name: string, status: "running" | "done"): string {
   const normalized = name.includes("-") ? name.substring(name.indexOf("-") + 1) : name;
   const labels: Record<string, Record<string, string>> = {
     running: {
-      search: "Searching", read_file: "Reading unit", write_file: "Writing artifact", 
-      knowledge_base_retrieve: "Searching vault", bash: "Executing command"
+      search: "Searching", read_file: "Reading unit", read_full_file: "Reading full document",
+      write_file: "Writing artifact", knowledge_base_retrieve: "Searching vault",
+      bash: "Executing command", view: "Reading source"
     },
     done: {
-      search: "Search complete", read_file: "Read complete", write_file: "Artifact written",
-      knowledge_base_retrieve: "Vault search complete", bash: "Command executed"
+      search: "Search complete", read_file: "Read complete", read_full_file: "Full document read",
+      write_file: "Artifact written", knowledge_base_retrieve: "Vault search complete",
+      bash: "Command executed", view: "Source read"
     },
   };
   return labels[status][normalized] || labels[status][name] || normalized;
@@ -29,7 +31,14 @@ function toolContext(name: string, args: string | undefined): string | null {
       case "bash": return p.command || null;
       case "knowledge_base_retrieve": return p.query || null;
       case "read_file": return p.path || null;
+      case "read_full_file": return p.path || null;
       case "write_file": return p.path || null;
+      case "view": {
+        if (Array.isArray(p.view_range) && p.view_range.length === 2) {
+          return `${p.path || ""} [${p.view_range[0]}-${p.view_range[1]}]`;
+        }
+        return p.path || null;
+      }
       default: return null;
     }
   } catch { return null; }

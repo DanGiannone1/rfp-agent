@@ -65,7 +65,11 @@ export default function Chat() {
     const newest = generatedFiles[0]?.filename;
     if (!newest || lastAutoOpenedGenerated.current === newest) return;
     lastAutoOpenedGenerated.current = newest;
-    void handleOpenFile(newest);
+    queueMicrotask(() => {
+      if (!state.isStreaming && !artifact.filename && generatedFiles[0]?.filename === newest) {
+        void handleOpenFile(newest);
+      }
+    });
   }, [generatedFiles, state.isStreaming, artifact.filename, handleOpenFile]);
 
   const handleNewChat = useCallback(() => {

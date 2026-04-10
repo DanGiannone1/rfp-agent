@@ -1,6 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
+if (!process.env.E2E_SCREENSHOT_RUN_ID) {
+  process.env.E2E_SCREENSHOT_RUN_ID = `run-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+}
 
 export default defineConfig({
   testDir: "./tests",
@@ -25,6 +28,16 @@ export default defineConfig({
     {
       name: "debug",
       testMatch: "artifact_debug.spec.ts",
+      use: {
+        baseURL: APP_URL,
+        browserName: "chromium",
+        headless: true,
+        viewport: { width: 1440, height: 900 },
+      },
+    },
+    {
+      name: "starter-prompts",
+      testMatch: "starter-prompts-ui.spec.ts",
       use: {
         baseURL: APP_URL,
         browserName: "chromium",

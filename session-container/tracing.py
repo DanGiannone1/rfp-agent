@@ -17,6 +17,27 @@ _enabled = False
 _tracer = None
 
 
+def _resource_attributes() -> dict[str, str]:
+    """Build a stable OpenTelemetry resource description for the session app."""
+    attrs = {
+        "service.name": os.getenv("OTEL_SERVICE_NAME", "rfp-agent-session"),
+        "service.namespace": os.getenv("OTEL_SERVICE_NAMESPACE", "rfp-agent"),
+    }
+
+    service_version = os.getenv("OTEL_SERVICE_VERSION") or os.getenv("SERVICE_VERSION")
+    if service_version:
+        attrs["service.version"] = service_version
+
+    deployment_env = (
+        os.getenv("OTEL_DEPLOYMENT_ENVIRONMENT")
+        or os.getenv("DEPLOYMENT_ENVIRONMENT")
+    )
+    if deployment_env:
+        attrs["deployment.environment.name"] = deployment_env
+
+    return attrs
+
+
 class _NoopSpan:
     """Stub span that absorbs all OTel calls silently."""
 
@@ -62,9 +83,19 @@ def setup_tracing(app: Optional[FastAPI] = None) -> None:
         from azure.monitor.opentelemetry import configure_azure_monitor
         from opentelemetry import trace
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.sdk.resources import Resource
+
+        resource_attrs = _resource_attributes()
 
         # 1. Configure Azure Monitor (SDK + Exporter)
-        configure_azure_monitor(connection_string=conn_str)
+        configure_azure_monitor(
+            connection_string=conn_str,
+            resource=Resource.create(resource_attrs),
+            disable_logging=True,
+            disable_metrics=True,
+            enable_live_metrics=False,
+            instrumentation_options={"fastapi": {"enabled": False}},
+        )
 
         # 2. Instrument FastAPI if app is provided
         if app:
@@ -73,7 +104,12 @@ def setup_tracing(app: Optional[FastAPI] = None) -> None:
         # 3. Initialize global tracer
         _tracer = trace.get_tracer("rfp-agent.session-container")
         _enabled = True
-        logger.info("Tracing enabled: Data sent to Application Insights.")
+        logger.info(
+            "Tracing enabled: service=%s version=%s env=%s",
+            resource_attrs.get("service.name"),
+            resource_attrs.get("service.version", "unknown"),
+            resource_attrs.get("deployment.environment.name", "unknown"),
+        )
 
     except ImportError:
         logger.warning(

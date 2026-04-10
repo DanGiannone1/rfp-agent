@@ -1,8 +1,13 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
 import fs from "fs";
-
-const API = process.env.API_URL ?? "http://localhost:8000";
+import {
+  cleanupBrowserSession,
+  createSessionViaAPI,
+  deleteSessionViaAPI,
+  gotoAndUpload,
+  API,
+} from "./localhost-ui-helpers";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -49,38 +54,6 @@ async function readSSEStream(res: Response): Promise<string> {
     // stream may close abruptly after final event
   }
   return text;
-}
-
-async function createSessionViaAPI(): Promise<string> {
-  // Session pool cooldown is 300s — retry patiently (up to ~330s)
-  for (let attempt = 0; attempt < 35; attempt++) {
-    const res = await fetch(`${API}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    if (res.status === 201) {
-      const body = await res.json();
-      return body.session_id;
-    }
-    console.log(`  createSessionViaAPI: attempt ${attempt + 1}/35 failed (${res.status}), waiting 10s...`);
-    await new Promise((r) => setTimeout(r, 10_000));
-  }
-  throw new Error("create session failed after 35 attempts");
-}
-
-async function deleteSessionViaAPI(sid: string): Promise<void> {
-  await fetch(`${API}/sessions/${sid}`, { method: "DELETE" });
-}
-
-/** Extract session ID from sessionStorage and delete it to free the pool slot. */
-async function cleanupBrowserSession(page: any): Promise<void> {
-  try {
-    const sid = await page.evaluate(() => sessionStorage.getItem("rfp_agent_session_id"));
-    if (sid) await deleteSessionViaAPI(sid);
-  } catch {
-    // best-effort cleanup
-  }
 }
 
 async function uploadFileViaAPI(
@@ -142,46 +115,7 @@ async function navigateToChatViaIntake(
   page: any,
   filePath: string,
 ): Promise<void> {
-  // Navigate first so we have a valid origin, then clear sessionStorage
-  // to ensure intake always starts fresh (avoids RESTORE_SESSION setting
-  // stage:"chat" on reload when handleNewChat already stored a new session).
-  await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
-  await page.evaluate(() => sessionStorage.clear());
-  await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 });
-  // Session pool cooldown is 300s so we retry patiently (25 attempts × ~20s = ~500s max)
-  for (let attempt = 0; attempt < 25; attempt++) {
-    // Check if retry button appeared (session creation failed)
-    const retryBtn = page.getByTestId("intake-retry-button");
-    const retryVisible = await retryBtn.isVisible().catch(() => false);
-    if (retryVisible) {
-      console.log(`  Session failed, clicking retry (attempt ${attempt + 1}/25)`);
-      await retryBtn.click();
-      await page.waitForTimeout(15_000);
-      continue;
-    }
-    try {
-      await page.waitForFunction(
-        () => {
-          const el = document.querySelector('[aria-label="Upload RFP file"]');
-          return el && el.getAttribute("aria-disabled") === "false";
-        },
-        { timeout: 20_000 },
-      );
-      break;
-    } catch {
-      if (attempt < 24) {
-        console.log(`  Session not ready, retrying (attempt ${attempt + 1}/25)`);
-        await page.evaluate(() => sessionStorage.clear());
-        await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 });
-        await page.waitForTimeout(5_000);
-      } else {
-        throw new Error("Session did not become ready after 25 attempts");
-      }
-    }
-  }
-  const intakeInput = page.getByTestId("intake-upload-input");
-  await intakeInput.setInputFiles(filePath);
-  await expect(page.getByTestId("chat-input")).toBeVisible({ timeout: 30_000 });
+  await gotoAndUpload(page, filePath);
 }
 
 // Shared temp file used by tests that just need to get past IntakeScreen
@@ -312,7 +246,7 @@ test.describe.serial("Journey 2: Upload Document and Discuss", () => {
       timeout: 30_000,
     });
     await expect(
-      page.getByTestId("artifacts-panel").getByTestId("document-name").filter({ hasText: "rfp-document.txt" }).first(),
+      page.getByTestId("artifacts-panel").getByTestId("document-name").filter({ hasText: "rfp-document.md" }).first(),
     ).toBeAttached();
 
     // Input is enabled — user drives the conversation
@@ -383,20 +317,22 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
     expect(body.markdown_ready).toBe(true);
 
     // Poll until has_markdown appears on the file listing
+    const markdownName = `${path.basename(pdfName, ".pdf")}.md`;
     const files = await pollFiles(
       sessionId,
-      (f) => f.some((file: any) => file.filename === pdfName && file.has_markdown === true),
+      (f) => f.some((file: any) => file.filename === markdownName),
       120_000,
       3_000,
     );
-    const file = files.find((f: any) => f.filename === pdfName);
-    expect(file.has_markdown).toBe(true);
+    const file = files.find((f: any) => f.filename === markdownName);
+    expect(file).toBeTruthy();
   });
 
   test("Markdown content is non-trivial", async () => {
     const res = await fetch(`${API}/sessions/${sessionId}/files`);
     const body = await res.json();
-    const mdFile = body.files.find((f: any) => f.filename === `${pdfName}.md`);
+    const mdName = `${path.basename(pdfName, ".pdf")}.md`;
+    const mdFile = body.files.find((f: any) => f.filename === mdName);
     expect(mdFile).toBeTruthy();
     // CU should produce substantial markdown from a real PDF (>1 KB)
     expect(mdFile.size).toBeGreaterThan(1000);
@@ -414,11 +350,11 @@ test.describe.serial("Journey 3: Document Conversion Pipeline", () => {
   test("Markdown sibling hidden in artifacts panel", async () => {
     const res = await fetch(`${API}/sessions/${sessionId}/files`);
     const body = await res.json();
-    const mdFile = body.files.find((f: any) => f.filename === `${pdfName}.md`);
+    const mdName = `${path.basename(pdfName, ".pdf")}.md`;
+    const mdFile = body.files.find((f: any) => f.filename === mdName);
     expect(mdFile).toBeTruthy();
     const origFile = body.files.find((f: any) => f.filename === pdfName);
-    expect(origFile).toBeTruthy();
-    expect(origFile.has_markdown).toBe(true);
+    expect(origFile).toBeFalsy();
   });
 });
 
@@ -530,7 +466,7 @@ test.describe("Journey 5: Security and Error Handling", () => {
     if (res.status === 200) {
       const body = await res.json();
       expect(body.filename).not.toContain("..");
-      expect(body.filename).toBe("passwd.txt");
+      expect(body.filename).toBe("passwd.md");
     } else {
       expect(res.status).toBe(400);
     }
@@ -643,10 +579,10 @@ test.describe.serial("Journey 6: Artifacts Panel UX", () => {
     // Both filenames visible in artifacts panel
     const panel = page.getByTestId("artifacts-panel");
     await expect(
-      panel.getByTestId("document-name").filter({ hasText: "doc-one.txt" }).first(),
+      panel.getByTestId("document-name").filter({ hasText: "doc-one.md" }).first(),
     ).toBeAttached({ timeout: 10_000 });
     await expect(
-      panel.getByTestId("document-name").filter({ hasText: "doc-two.txt" }).first(),
+      panel.getByTestId("document-name").filter({ hasText: "doc-two.md" }).first(),
     ).toBeAttached({ timeout: 10_000 });
   });
 });

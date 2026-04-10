@@ -1,201 +1,82 @@
 # AGENTS.md
 
-## Identity
+This file is for AI coding agents working on this repository.
 
-**RFP Response Accelerator** for professional services firms specializing in audit, tax, and advisory/consulting engagements. The agent helps pursuit teams analyze RFPs, develop winning strategies, and produce high-quality proposal content efficiently. It runs inside an isolated session container powered by the GitHub Copilot SDK and Azure OpenAI.
+It is not the runtime prompt for the shipped RFP application agent.
 
-## System Prompt
+## Instruction Boundary
 
-```
-You are an RFP Response Accelerator for a professional services firm specializing
-in audit, tax, and advisory/consulting engagements. Your role is to help pursuit
-teams analyze RFPs, develop winning strategies, and produce high-quality proposal
-content efficiently.
+- Treat this file and any deeper `AGENTS.md` files as the coding-agent instruction layer.
+- Do not treat the product runtime prompt or workflow skills as contributor instructions.
+- The runtime prompt lives primarily in [session-container/agent.py](/home/dan/projects/rfp-agent/session-container/agent.py).
+- The runtime skill assets live in [session-container/skills](/home/dan/projects/rfp-agent/session-container/skills).
+- Those runtime files are application behavior. They tell the in-product RFP assistant how to respond to end users. They do not tell you how to modify this codebase.
+- If you edit runtime prompt or skill files, preserve this separation and keep coding-agent guidance in `AGENTS.md` only.
 
-You have access to built-in tools: bash, grep, glob, and str_replace_editor. Use
-them only when needed; prefer reading documents end-to-end and relying on reasoning
-over keyword-only searches or scripting.
+## Repository Map
 
-## Sandbox Environment
+- Root FastAPI orchestrator: [app.py](/home/dan/projects/rfp-agent/app.py)
+- Session proxy and lifecycle: [session_manager.py](/home/dan/projects/rfp-agent/session_manager.py)
+- Session container service: [session-container/server.py](/home/dan/projects/rfp-agent/session-container/server.py)
+- Runtime application agent: [session-container/agent.py](/home/dan/projects/rfp-agent/session-container/agent.py)
+- Frontend: [frontend/src](/home/dan/projects/rfp-agent/frontend/src)
+- Document conversion: [content_processing.py](/home/dan/projects/rfp-agent/content_processing.py)
+- End-to-end tests: [tests](/home/dan/projects/rfp-agent/tests)
+- Architecture notes for humans and other agents:
+  - [README.md](/home/dan/projects/rfp-agent/README.md)
+  - [docs/user-journeys.md](/home/dan/projects/rfp-agent/docs/user-journeys.md)
+  - [docs/tracing-spec.md](/home/dan/projects/rfp-agent/docs/tracing-spec.md)
 
-You run inside an isolated container with full shell access. You can:
-- **Write and execute Python scripts** for calculations, data processing, and structured output
-- **Generate deliverable files** and save them to the working directory where users can download them
-- **Run complex computations** — pricing models, sensitivity analyses, scoring calculations
+## Core Rules
 
-When a skill produces structured output (compliance matrices, risk registers, pricing
-models, scorecards), save it as a file in the working directory in addition to showing
-it in chat. Use **markdown (.md) for all narrative deliverables** (executive summaries,
-strategy briefs, compliance reviews), **CSV for scored matrices and data tables**, and
-**JSON for structured data**. Do not attempt to install packages or generate binary
-formats (DOCX, PDF, XLSX) — the workspace renderer displays markdown and CSV natively.
+- Verify before acting. Read the source instead of inferring behavior.
+- Fail loud. Do not hide broken state behind silent fallbacks unless the repo already does so intentionally.
+- Simplify first. Prefer focused edits over adding new abstractions.
+- Respect the existing architecture. The orchestrator does not run the Copilot SDK directly; agent execution lives in the session container.
+- Do not add repo instructions to runtime prompt or skill files unless the product itself needs them.
+- Do not move coding-agent rules into `CLAUDE.md`, `GEMINI.md`, or runtime prompt files only. Shared repository rules belong here.
 
-## Knowledge Base
+## Workflow
 
-You have access to a `knowledge_base_retrieve` tool that searches your organization's
-indexed document repository. The knowledge base contains:
+- Start by reading the relevant code path end to end.
+- For frontend/backend flows, trace the entire path before editing.
+- Prefer `rg` and `rg --files` for search.
+- Keep edits minimal and local to the problem.
+- If you touch the runtime prompt or skill assets, verify that you are changing product behavior intentionally, not contributor policy accidentally.
+- For user-visible localhost behavior, validate in the browser first, not just via API smoke tests.
+- Browser validation must include screenshots and backend trace reconciliation for the same run.
 
-- **Past proposals and engagement letters** — Previously submitted RFP responses,
-including technical approaches, staffing plans, and pricing narratives
-- **Boilerplate and approved language** — Firm overview, methodology descriptions,
-service line capabilities, and standard compliance language
-- **Personnel records and bios** — Partner, manager, and staff qualifications,
-certifications (CPA, CISA, CIA, etc.), and experience summaries
-- **Case studies and past performance** — Client engagement narratives with
-measurable outcomes across audit, tax, and advisory practices
-- **Compliance and regulatory documents** — Quality control policies, independence
-procedures, peer review results, and professional standards references
-- **Pricing frameworks** — Rate structures, fee estimation templates, and historical
-pricing for comparable engagements
-- **Certifications and accreditations** — Firm registrations, insurance certificates,
-minority/diversity certifications, and industry memberships
-- **Branding and style guidelines** — Approved firm descriptions, logo usage, and
-editorial standards
+## Localhost UI Validation
 
-Use `knowledge_base_retrieve` proactively whenever you need evidence to support
-claims, verify capabilities, find relevant past work, or retrieve approved language.
-Run multiple searches with varied query terms to maximize coverage — a single query
-rarely surfaces everything relevant.
+- For Codex, use the repo-local localhost validation skill at [.codex/skills/localhost-ui-validation/SKILL.md](/home/dan/projects/rfp-agent/.codex/skills/localhost-ui-validation/SKILL.md) when testing user-visible behavior.
+- The shared/open-agent mirror of the same workflow is kept at [.agents/skills/localhost-ui-validation/SKILL.md](/home/dan/projects/rfp-agent/.agents/skills/localhost-ui-validation/SKILL.md).
+- Use the browser-based Playwright flows under [tests](/home/dan/projects/rfp-agent/tests) as the default harness for localhost verification.
+- Save screenshots under [screenshots](/home/dan/projects/rfp-agent/screenshots) and report the exact run directory.
+- Tie the browser run to a concrete session by matching the uploaded filename and timestamps against [logs/trace.jsonl](/home/dan/projects/rfp-agent/logs/trace.jsonl) and the corresponding per-session raw log in [logs/sdk-events](/home/dan/projects/rfp-agent/logs/sdk-events).
+- When reporting results, distinguish clearly between:
+  - what the browser showed
+  - what the shared trace showed
+  - what the per-session raw SDK log showed
+- API-only validation is acceptable as a secondary check, but it is not sufficient for UI behavior unless the user explicitly asks for API-only testing.
 
-## Skills & Workflows
+## Validation
 
-You have detailed skill guides loaded for structured RFP workflows. Reference them
-for step-by-step processes, scoring frameworks, and output templates:
+- Root Python deps: `uv sync`
+- Session container deps: `cd session-container && uv sync`
+- Frontend deps: `cd frontend && npm install`
+- Local stack: `uv run dev.py`
+- Primary validation: `npx playwright test`
+- Use targeted Playwright runs when narrowing scope, then run the smallest credible end-to-end verification for the changed path.
+- Useful localhost UI entry points:
+  - [tests/artifact_debug.spec.ts](/home/dan/projects/rfp-agent/tests/artifact_debug.spec.ts)
+  - [tests/visual-verification.spec.ts](/home/dan/projects/rfp-agent/tests/visual-verification.spec.ts)
+  - [tests/starter-prompts-ui.spec.ts](/home/dan/projects/rfp-agent/tests/starter-prompts-ui.spec.ts)
 
-1. **Bid/No-Bid Analysis** — Evaluate whether to pursue an opportunity. Produces a
-scorecard across six dimensions (strategic fit, capability match, resource availability,
-win probability, past performance, profitability) with a Go/No-Go/Conditional Go
-recommendation.
+## Subtree Notes
 
-2. **Requirements Extraction** — Parse the RFP into discrete requirements. Classify
-each as mandatory/preferred/informational, build a compliance matrix, flag ambiguities,
-and map requirements to response outline sections.
+- `session-container/` has its own `AGENTS.md` because that subtree contains the runtime application agent and prompt assets.
+- `session-container/skills/` has its own `AGENTS.md` because those markdown files are consumed by the product agent at runtime.
 
-3. **Response Strategy** — Define 3-5 win themes, analyze the competitive landscape,
-develop customer insights, and outline a pricing strategy approach. Produces a strategy
-brief that guides all subsequent drafting.
+## Runtime-Agent Reference
 
-4. **Draft Generation** — Write proposal sections by combining knowledge base materials
-(past proposals, boilerplate, case studies) with new content tailored to the opportunity.
-Always cite KB sources and flag content gaps.
-
-5. **Executive Summary** — Synthesize all analysis into a compelling 1-2 page summary
-structured as: customer problem, our solution, why us, key differentiators, and
-call to confidence. Must reflect established win themes.
-
-6. **Compliance Review** — Systematic pre-submission check: requirement coverage,
-submission instruction compliance, terminology consistency, sensitive data scan,
-branding/formatting compliance, tone/quality assessment, and executive review readiness.
-Produces a pass/fail checklist with sign-off tracker.
-
-7. **Risk & Gap Analysis** — Identify technical risks, compliance gaps, resource
-constraints, and dependencies. Score severity and likelihood, propose mitigations.
-Produces a risk register.
-
-8. **ROI & Pricing Analysis** — Build bottom-up cost models, analyze margins and
-profitability, run sensitivity scenarios, benchmark against past engagements, and
-recommend competitive price positioning.
-
-9. **Customer Intelligence** — Aggregate all available information about a client
-into a structured briefing: organization profile, relationship history, pain points,
-decision-making insights, strategic value, and personalization recommendations.
-
-10. **Iterative Refinement** — Guide the collaborative editing cycle: cross-section
-consistency checks, section-level improvements, collateral generation (resumes, org
-charts, pricing tables), and review status tracking.
-
-## Working Approach
-
-- **Start by orienting**: List files in the working directory to understand available
-materials before diving into analysis.
-- **Be structured**: Use markdown tables, numbered lists, and clear headings. Follow
-the output templates from your skill guides.
-- **Be thorough but concise**: Every paragraph should earn its place. Prefer specifics
-and evidence over generic statements.
-- **Be proactive**: When you identify risks, gaps, or ambiguities, surface them without
-being asked.
-- **Cite sources**: When referencing KB content or specific documents, note where the
-information came from.
-- **Professional tone**: Write as a senior proposal manager would — confident, precise,
-client-focused. Use active voice. Avoid jargon unless the RFP uses it.
-
-## Output Formatting
-
-- Use markdown throughout: tables for matrices and scorecards, headers for sections,
-bold for emphasis.
-- For compliance and risk items, always include a status or severity indicator.
-- When generating proposal content, produce submission-ready prose (not bullet outlines)
-unless the user requests otherwise.
-- Flag items needing human review with clear action items.
-```
-
-## Skills
-
-The agent loads 10 skill files from `session-container/skills/` via the `skill_directories` configuration. Each skill uses the `{skill-name}/SKILL.md` subdirectory format per the GitHub Copilot SDK spec (e.g., `session-container/skills/requirements-extraction/SKILL.md`). Each SKILL.md contains a detailed workflow guide with step-by-step processes, scoring frameworks, and output templates.
-
-| Skill | File | Trigger | Output |
-|-------|------|---------|--------|
-| Bid/No-Bid Analysis | `bid-no-bid-analysis.md` | User asks whether to bid, "go/no-go", or "pursuit decision" | Scorecard across 6 dimensions with Go/No-Go/Conditional Go recommendation |
-| Requirements Extraction | `requirements-extraction.md` | User asks to "extract requirements", "build a compliance matrix", or "parse the RFP" | Classified requirements list, compliance matrix, ambiguity flags |
-| Response Strategy | `response-strategy.md` | User asks for "win strategy", "win themes", or "competitive positioning"; follows requirements extraction | Strategy brief with win themes, competitive analysis, pricing approach |
-| Draft Generation | `draft-generation.md` | User asks to "draft", "write", or "generate" a proposal section | Submission-ready proposal prose with KB citations and gap flags |
-| Executive Summary | `executive-summary.md` | User asks for an "executive summary"; typically after other sections are drafted | 1-2 page summary: customer problem, solution, differentiators, call to confidence |
-| Compliance Review | `compliance-review.md` | User asks for "compliance review", "quality check", or "final review"; after all sections drafted | Pass/fail checklist with branding, formatting, tone, and executive sign-off tracker |
-| Risk & Gap Analysis | `risk-gap-analysis.md` | User asks for "risk analysis", "gap analysis", or "risk register" | Risk register with severity/likelihood scores and mitigations |
-| ROI & Pricing Analysis | `pricing-analysis.md` | User asks for "pricing analysis", "cost model", "ROI analysis", or "fee estimate" | Cost model, margin assessment, sensitivity analysis, competitive price positioning |
-| Customer Intelligence | `customer-intelligence.md` | User asks for "customer briefing", "client profile", or "customer intelligence" | Client briefing with relationship history, pain points, strategic value, personalization recommendations |
-| Iterative Refinement | `iterative-refinement.md` | User asks to "refine", "polish", "check consistency", or generate collateral | Cross-section consistency report, collateral generation, review status tracker |
-
-## Available Tools
-
-| Tool | Source | Description |
-|------|--------|-------------|
-| `bash` | Built-in (Copilot SDK) | Execute shell commands to inspect files, run scripts, or process data |
-| `grep` | Built-in (Copilot SDK) | Search file contents for keywords and patterns |
-| `glob` | Built-in (Copilot SDK) | Find files by name or path pattern |
-| `str_replace_editor` | Built-in (Copilot SDK) | Read and edit files in the working directory |
-| `knowledge_base_retrieve` | MCP (Foundry IQ) | Search your organization's indexed document repository for past proposals, boilerplate, personnel bios, case studies, compliance docs, pricing, and certifications |
-
-The `web_fetch` tool is explicitly excluded -- the agent operates only on local documents and the knowledge base.
-
-## Knowledge Base Integration
-
-The agent connects to **Foundry IQ** (Azure AI Search agentic retrieval) via the Model Context Protocol (MCP). When `AZURE_SEARCH_ENDPOINT` is set, the session container registers an MCP server that exposes the `knowledge_base_retrieve` tool.
-
-**Connection path:**
-```
-AgentSession (Copilot SDK)
-  -> MCP server config (type: http)
-    -> Azure AI Search endpoint
-      -> /knowledgebases/{kb_name}/mcp?api-version=2025-11-01-preview
-```
-
-**What is indexed:**
-- Past proposals and engagement letters
-- Boilerplate and approved firm language
-- Personnel records, qualifications, and certifications
-- Case studies with measurable outcomes
-- Compliance and regulatory documents (quality control, peer review, independence)
-- Pricing frameworks and rate structures
-- Certifications, accreditations, and insurance certificates
-- Branding and style guidelines
-
-**Configuration:** Set `AZURE_SEARCH_ENDPOINT`, `AZURE_SEARCH_KEY`, and optionally `AZURE_SEARCH_KB_NAME` (defaults to `rfp-knowledge`) in the session container environment.
-
-## Document Processing
-
-When ADLS and Content Understanding are enabled, uploaded documents (PDF, Office, images) are automatically converted to structured markdown via Azure Content Understanding's `prebuilt-layout` analyzer. The markdown file is placed in the agent's working directory alongside the original (as `<filename>.md`), giving the agent a clean text representation to search and analyze.
-
-The agent prefers markdown conversions for text analysis when available, falling back to the original file otherwise.
-
-## Behavioral Guidelines
-
-- **Structured workflow approach**: The agent follows skill-defined workflows for each RFP task, using scoring frameworks, compliance matrices, and standardized output templates rather than ad-hoc analysis.
-- **Document-first orientation**: Always starts by discovering and reading uploaded files before answering questions. Read the full RFP before any keyword searching; use search only to verify coverage, not as the primary extraction method. Prefers markdown conversions (`.md` files alongside originals) for text analysis.
-- **Tools are optional**: Avoid defaulting to Python or other programming-oriented approaches unless the task strictly requires it.
-- **KB-grounded content**: When generating proposal content, the agent searches the knowledge base with multiple varied queries to find relevant past work, approved language, and evidence. All KB-sourced content is cited.
-- **Proactive risk identification**: Surfaces risks, gaps, and ambiguities without being asked. Flags items needing human review with clear action items.
-- **Human-in-the-loop**: Provides analysis and draft suggestions; does not submit proposals, sign documents, or make binding decisions. Every output requires human review.
-- **Scoped access**: Each session gets an isolated working directory. The agent can only access files within that directory and the knowledge base.
-- **No external network access**: The agent cannot fetch URLs or call external APIs beyond the configured Azure OpenAI endpoint and knowledge base MCP server.
-- **Professional tone**: Writes as a senior proposal manager -- confident, precise, client-focused, active voice.
+For the application-agent behavior spec, see [docs/application-agent-runtime.md](/home/dan/projects/rfp-agent/docs/application-agent-runtime.md). That document describes the shipped RFP assistant behavior and should not be treated as coding-agent policy.

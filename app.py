@@ -8,8 +8,6 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from logging.handlers import RotatingFileHandler
 
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile
@@ -18,37 +16,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from session_manager import SessionManager
+from trace_logging import setup_trace_logging, trace_event
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Trace logging (opt-in via LOG_TRACE=true)
-# ---------------------------------------------------------------------------
-_trace_logger = logging.getLogger("trace")
-
-
-def _setup_trace_logging() -> None:
-    trace_dir = os.getenv("LOG_TRACE_DIR")
-    if os.getenv("LOG_TRACE", "").lower() != "true" or not trace_dir:
-        return
-    path = os.path.join(trace_dir, "trace.jsonl")
-    handler = RotatingFileHandler(path, maxBytes=50 * 1024 * 1024, backupCount=1)
-    handler.setFormatter(logging.Formatter("%(message)s"))
-    _trace_logger.addHandler(handler)
-    _trace_logger.setLevel(logging.INFO)
-    _trace_logger.propagate = False
-
-
-def _trace(event: str, **data) -> None:
-    if not _trace_logger.handlers:
-        return
-    record = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "component": "orchestrator",
-        "event": event,
-        "data": data,
-    }
-    _trace_logger.info(json.dumps(record, default=str))
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +26,75 @@ def _trace(event: str, **data) -> None:
 # ---------------------------------------------------------------------------
 session_manager: SessionManager | None = None
 content_processor = None  # ContentProcessor | None
+
+
+def _trace_dir() -> str | None:
+    if os.getenv("LOG_TRACE", "").lower() != "true":
+        return None
+    trace_dir = os.getenv("LOG_TRACE_DIR")
+    if not trace_dir:
+        return None
+    return os.path.abspath(trace_dir)
+
+
+def _raw_trace_dir() -> str | None:
+    if os.getenv("LOG_RAW_SDK_EVENTS", "").lower() != "true":
+        return None
+    trace_dir = os.getenv("LOG_RAW_SDK_EVENTS_DIR") or os.getenv("LOG_TRACE_DIR")
+    if not trace_dir:
+        return None
+    return os.path.abspath(trace_dir)
+
+
+def _clear_trace_log_for_new_session() -> None:
+    """Best-effort trace reset for local dev debugging.
+
+    In local development the orchestrator and session container both write to the
+    same trace file under LOG_TRACE_DIR. Truncating it on new session makes it
+    easier to isolate a single browser run while leaving production behavior alone.
+    """
+    trace_dir = _trace_dir()
+    if not trace_dir or os.getenv("POOL_MANAGEMENT_ENDPOINT", "").startswith("https://"):
+        return
+
+    path = os.path.join(trace_dir, "trace.jsonl")
+    try:
+        os.makedirs(trace_dir, exist_ok=True)
+        with open(path, "w", encoding="utf-8"):
+            pass
+    except Exception:
+        logger.warning("Failed to clear trace log for new session", exc_info=True)
+
+
+def _raw_sdk_trace_path(session_id: str) -> str | None:
+    trace_dir = _raw_trace_dir()
+    if not trace_dir:
+        return None
+    return os.path.join(trace_dir, "sdk-events", f"{session_id}.jsonl")
+
+
+def _clear_session_trace_artifacts(session_id: str) -> None:
+    if os.getenv("POOL_MANAGEMENT_ENDPOINT", "").startswith("https://"):
+        return
+
+    trace_path = _raw_sdk_trace_path(session_id)
+    if not trace_path:
+        return
+
+    try:
+        os.makedirs(os.path.dirname(trace_path), exist_ok=True)
+        with open(trace_path, "w", encoding="utf-8"):
+            pass
+    except Exception:
+        logger.warning("Failed to clear raw SDK trace file for session %s", session_id, exc_info=True)
+
+
+def _trace_paths_for_session(session_id: str) -> dict[str, str | None]:
+    base = _trace_dir()
+    return {
+        "trace_log": os.path.join(base, "trace.jsonl") if base else None,
+        "raw_sdk_trace": _raw_sdk_trace_path(session_id),
+    }
 
 
 @asynccontextmanager
@@ -75,7 +114,7 @@ async def lifespan(app: FastAPI):
     else:
         logger.info("Content processing disabled (ADLS or CU not configured)")
 
-    _setup_trace_logging()
+    setup_trace_logging()
 
     session_manager = SessionManager(content_processor)
     await session_manager.start()
@@ -122,7 +161,8 @@ async def security_headers(request, call_next):
 async def trace_requests(request, call_next):
     t0 = time.monotonic()
     response = await call_next(request)
-    _trace(
+    trace_event(
+        "orchestrator",
         "http.request",
         method=request.method,
         path=request.url.path,
@@ -146,7 +186,9 @@ class SendMessageRequest(BaseModel):
 @app.post("/sessions", status_code=201)
 async def create_session() -> dict:
     """Create a new isolated agent session."""
+    _clear_trace_log_for_new_session()
     metadata = await session_manager.create_session()
+    _clear_session_trace_artifacts(metadata["session_id"])
     return metadata
 
 
@@ -175,7 +217,8 @@ async def get_session(session_id: str) -> dict:
         await session_manager.validate_session(session_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Session not found")
-    return {"session_id": session_id, "status": "active"}
+    files = (await session_manager.list_files(session_id)).get("files", [])
+    return {"session_id": session_id, "status": "active", "files": files}
 
 
 @app.delete("/sessions/{session_id}", status_code=204)
@@ -186,6 +229,18 @@ async def delete_session(session_id: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="Session not found")
     await session_manager.delete_session(session_id)
+
+
+@app.get("/sessions/{session_id}/trace")
+async def get_session_trace(session_id: str) -> dict:
+    """Return local trace file locations for the current session."""
+    try:
+        await session_manager.validate_session(session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {
+        **_trace_paths_for_session(session_id),
+    }
 
 
 @app.get("/sessions/{session_id}/files")

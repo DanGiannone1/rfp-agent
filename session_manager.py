@@ -10,35 +10,24 @@ import json
 import logging
 import os
 import re
+from pathlib import Path
 import uuid
 from collections.abc import AsyncGenerator
 
 import httpx
+from fastapi import HTTPException
 from azure.identity.aio import DefaultAzureCredential
 from fastapi import UploadFile
 
+from trace_logging import trace_event
+from upload_policy import is_allowed_upload, normalize_markdown_filename
+
 logger = logging.getLogger(__name__)
-_trace_logger = logging.getLogger("trace")
-
-
-def _trace(event: str, **data) -> None:
-    if not _trace_logger.handlers:
-        return
-    import json as _json
-    from datetime import datetime, timezone
-    record = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "component": "orchestrator",
-        "event": event,
-        "data": data,
-    }
-    _trace_logger.info(_json.dumps(record, default=str))
 
 POOL_MANAGEMENT_ENDPOINT = os.getenv("POOL_MANAGEMENT_ENDPOINT", "")
 
 # Session IDs are created as uuid4().hex[:16] — exactly 16 lowercase hex chars
 _SESSION_ID_RE = re.compile(r"^[0-9a-f]{16}$")
-
 
 def _sse_event(data: dict) -> str:
     return f"data: {json.dumps(data)}\n\n"
@@ -113,11 +102,6 @@ class SessionManager:
             timeout=httpx.Timeout(connect=10, read=600, write=10, pool=10),
         )
         self._sessions: set[str] = set()
-        # Tracks session IDs explicitly deleted via API so validate_session
-        # doesn't rehydrate them from a generic health probe in local dev.
-        # Capped to prevent unbounded growth; oldest entries are evicted.
-        self._deleted_sessions: set[str] = set()
-        self._max_deleted_tracking = 10_000
         self._cogservices_credential: DefaultAzureCredential | None = None
         self._cogservices_token: str | None = None
         self._cogservices_expires_on: float = 0
@@ -169,27 +153,14 @@ class SessionManager:
     async def create_session(self) -> dict:
         session_id = uuid.uuid4().hex[:16]
 
-        # In local dev (http), reset the shared container so sessions don't
-        # see stale workspace files or agent context from previous sessions.
-        # In production (https / ACA), each session gets a fresh container.
-        if not POOL_MANAGEMENT_ENDPOINT.startswith("https://"):
-            try:
-                reset_url = self._pool_url("/reset", session_id)
-                resp = await self._http.post(reset_url)
-                resp.raise_for_status()
-            except Exception:
-                logger.debug("Reset not available, skipping", exc_info=True)
-
-        # Ping health to allocate (warm up) the container.
-        # Use a shorter timeout (30s) so the frontend gets a quick error
-        # instead of hanging when the session pool is exhausted.
-        url = self._pool_url("/health", session_id)
-        resp = await self._http.get(url, timeout=httpx.Timeout(connect=10, read=30, write=10, pool=10))
+        url = self._pool_url("/session", session_id)
+        resp = await self._http.post(
+            url,
+            timeout=httpx.Timeout(connect=10, read=30, write=10, pool=10),
+        )
         resp.raise_for_status()
 
         self._sessions.add(session_id)
-        self._deleted_sessions.discard(session_id)
-
         logger.info("Created session %s", session_id)
         return {
             "session_id": session_id,
@@ -198,20 +169,14 @@ class SessionManager:
 
     async def validate_session(self, session_id: str) -> None:
         """Ensure session exists, probing pool state for orchestrator restarts."""
-        if session_id in self._deleted_sessions:
-            raise KeyError(session_id)
-
-        if session_id in self._sessions:
-            return
-
-        # Reject malformed IDs before probing — in local dev the health endpoint
-        # always returns 200 regardless of identifier, so any ID would pass.
         if not _SESSION_ID_RE.match(session_id):
             raise KeyError(session_id)
 
-        url = self._pool_url("/health", session_id)
+        url = self._pool_url("/session", session_id)
         try:
             resp = await self._http.get(url)
+            if resp.status_code == 404:
+                raise KeyError(session_id)
             resp.raise_for_status()
         except Exception as exc:
             raise KeyError(session_id) from exc
@@ -220,15 +185,11 @@ class SessionManager:
     async def delete_session(self, session_id: str) -> None:
         """Delete session and best-effort reset container context."""
         self._sessions.discard(session_id)
-        self._deleted_sessions.add(session_id)
-        if len(self._deleted_sessions) > self._max_deleted_tracking:
-            # Evict roughly half to avoid doing this on every delete
-            keep = self._max_deleted_tracking // 2
-            evict = list(self._deleted_sessions)[:len(self._deleted_sessions) - keep]
-            self._deleted_sessions -= set(evict)
-        reset_url = self._pool_url("/reset", session_id)
+        reset_url = self._pool_url("/session", session_id)
         try:
-            resp = await self._http.post(reset_url)
+            resp = await self._http.delete(reset_url)
+            if resp.status_code == 404:
+                return
             resp.raise_for_status()
         except Exception:
             logger.warning("Session reset failed for %s during delete", session_id, exc_info=True)
@@ -280,50 +241,120 @@ class SessionManager:
 
     async def upload_file(self, session_id: str, upload_file: UploadFile) -> dict:
         """Proxy a file upload to the session container, then run CU processing."""
-        url = self._pool_url("/upload", session_id)
+        upload_endpoint = self._pool_url("/upload", session_id)
         max_bytes = 50 * 1024 * 1024  # 50 MB — match session container limit
         content = await upload_file.read(max_bytes + 1)
         if len(content) > max_bytes:
-            from fastapi import HTTPException
             raise HTTPException(status_code=413, detail="File too large (50 MB limit)")
-        filename = upload_file.filename or "upload"
+
+        filename = Path(upload_file.filename or "upload").name
+        if not is_allowed_upload(filename):
+            ext = Path(filename).suffix.lower() or "(none)"
+            raise HTTPException(status_code=400, detail=f"File type '{ext}' not allowed")
+
+        markdown_filename = normalize_markdown_filename(filename)
+
+        # Normalize already-markdown uploads so we keep only a single `.md` artifact.
+        # For non-markdown uploads, run document conversion and forward the markdown
+        # result back to the container. For markdown uploads, skip conversion and
+        # forward the provided content directly.
+        is_markdown_upload = filename.lower().endswith(".md")
+
         content_type = upload_file.content_type or "application/octet-stream"
+        markdown_upload_result: dict | None = None
+
+        async def forward_markdown(md_filename: str, md_bytes: bytes) -> dict:
+            """Upload the converted markdown to the session container."""
+            nonlocal markdown_upload_result
+            md_url = upload_endpoint
+            md_files = {"file": (md_filename, md_bytes, "text/markdown")}
+            md_resp = await self._http.post(md_url, files=md_files)
+            md_resp.raise_for_status()
+            markdown_upload_result = md_resp.json()
+            return markdown_upload_result
+
+        if is_markdown_upload:
+            upload_result = await forward_markdown(markdown_filename, content)
+            markdown_upload_result = upload_result
+            trace_event(
+                "orchestrator",
+                "fs.upload",
+                session_id=session_id,
+                filename=markdown_filename,
+                size=len(content),
+                status="converted",  # markdown path only
+                direct_markdown=True,
+            )
+            return {
+                **upload_result,
+                "markdown_ready": True,
+                "source_filename": filename,
+            }
+
         if not (self._content_processor and self._content_processor.enabled):
-            from fastapi import HTTPException
             raise HTTPException(
                 status_code=503,
                 detail="Document processing is not available. Azure Content Understanding and ADLS must be configured.",
             )
-        files = {"file": (filename, content, content_type)}
-        resp = await self._http.post(url, files=files)
-        resp.raise_for_status()
-        result = resp.json()
-        _trace("fs.upload", session_id=session_id, filename=filename,
-               size=len(content), status=resp.status_code)
-
-        async def forward_markdown(md_filename: str, md_bytes: bytes) -> None:
-            """Upload the converted markdown to the session container."""
-            md_url = self._pool_url("/upload", session_id)
-            md_files = {"file": (md_filename, md_bytes, "text/markdown")}
-            md_resp = await self._http.post(md_url, files=md_files)
-            md_resp.raise_for_status()
 
         proc = await self._content_processor.process_document(
             session_id=session_id,
             filename=filename,
             file_bytes=content,
             content_type=content_type,
+            markdown_filename=markdown_filename,
             forward_markdown_fn=forward_markdown,
         )
         if not proc["markdown_forwarded"]:
-            from fastapi import HTTPException
+            trace_event(
+                "orchestrator",
+                "fs.upload_failed",
+                session_id=session_id,
+                filename=markdown_filename,
+                source_filename=filename,
+                size=len(content),
+                error=proc.get("error"),
+                error_code=proc.get("error_code"),
+                diagnostic=proc.get("diagnostic"),
+                markdown_size=proc.get("markdown_size"),
+                markdown_preview=proc.get("markdown_preview"),
+                adls_original=proc.get("adls_original"),
+                adls_markdown=proc.get("adls_markdown"),
+            )
+            if proc.get("error_code") == "protected_pdf":
+                raise HTTPException(
+                    status_code=422,
+                    detail=proc.get("error") or "Protected PDF could not be converted.",
+                )
             raise HTTPException(
                 status_code=500,
                 detail=proc.get("error") or "Document conversion failed. Please try again.",
             )
 
-        result["markdown_ready"] = True
-        return result
+        trace_event(
+            "orchestrator",
+            "fs.upload",
+            session_id=session_id,
+            filename=markdown_filename,
+            size=len(content),
+            status="converted",
+            source_filename=filename,
+            adls_original=proc.get("adls_original"),
+            adls_markdown=proc.get("adls_markdown"),
+            markdown_size=proc.get("markdown_size"),
+            markdown_preview=proc.get("markdown_preview"),
+            diagnostic=proc.get("diagnostic"),
+        )
+        return {
+            "path": (markdown_upload_result or {}).get("path"),
+            "filename": markdown_filename,
+            "size": (markdown_upload_result or {}).get(
+                "size",
+                proc.get("markdown_size", len(content)),
+            ),
+            "markdown_ready": True,
+            "source_filename": filename,
+        }
 
     async def list_files(self, session_id: str) -> dict:
         """Proxy GET /files to the session container."""
@@ -332,14 +363,19 @@ class SessionManager:
         resp.raise_for_status()
         result = resp.json()
         files = result.get("files", [])
-        _trace("fs.list", session_id=session_id, file_count=len(files),
-               filenames=[f["filename"] for f in files])
+        trace_event(
+            "orchestrator",
+            "fs.list",
+            session_id=session_id,
+            file_count=len(files),
+            filenames=[f["filename"] for f in files],
+        )
         return result
 
     async def get_file_content(self, session_id: str, filename: str) -> dict:
         """Proxy GET /files/content to the session container."""
         from urllib.parse import quote
-        _trace("fs.content_request", session_id=session_id, filename=filename)
+        trace_event("orchestrator", "fs.content_request", session_id=session_id, filename=filename)
         url = self._pool_url("/files/content", session_id)
         # Append filename directly to preserve the identifier param already in the URL.
         # httpx params= replaces the entire query string, which would drop identifier.
@@ -348,10 +384,22 @@ class SessionManager:
             resp.raise_for_status()
         except Exception as exc:
             status = getattr(getattr(exc, "response", None), "status_code", None)
-            _trace("fs.content_error", session_id=session_id, filename=filename,
-                   status=status, error=str(exc))
+            trace_event(
+                "orchestrator",
+                "fs.content_error",
+                session_id=session_id,
+                filename=filename,
+                status=status,
+                error=str(exc),
+            )
             raise
         result = resp.json()
-        _trace("fs.content_response", session_id=session_id, filename=filename,
-               size=result.get("size"), mime_type=result.get("mime_type"))
+        trace_event(
+            "orchestrator",
+            "fs.content_response",
+            session_id=session_id,
+            filename=filename,
+            size=result.get("size"),
+            mime_type=result.get("mime_type"),
+        )
         return result

@@ -54,7 +54,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
       <div className={`message-body ${isUser ? "message-body-user" : "message-body-assistant"}`}>
         <div className="message-parts">
-          {segments.map((seg, idx) => {
+          {segments.map((seg) => {
             if (seg.kind === "text") {
               return (
                 <MarkdownRenderer 

@@ -20,14 +20,14 @@ Perform a systematic quality and compliance check on the draft proposal before s
 
 ### 1. Load the Requirements Matrix
 
-Read the previously generated compliance matrix (if available) or re-extract mandatory requirements from the RFP. This is the primary checklist for the review.
+Read the previously generated requirements matrix if it exists. If it does not, review the RFP and drafted files directly and build the checklist from those files instead. Do not block the review on a missing matrix.
 
-Use `bash` and `glob` to find the requirements matrix and all drafted sections in the working directory.
+Use `read_full_file` to review the requirements matrix, uploaded RFP, and any draft artifacts already present in the working directory.
 
 ### 2. Requirement Coverage Check
 
 For each mandatory requirement:
-- Search all drafted sections using `grep` to verify the requirement is addressed
+- Review all drafted sections directly to verify the requirement is addressed
 - Confirm the response is substantive (not just a passing mention)
 - Check that the response uses compliance language ("Meridian will...", "Our approach ensures...")
 - Flag any mandatory requirements with no corresponding response content
@@ -63,7 +63,7 @@ Scan for content that should not be in a proposal:
 - Proprietary client information from other engagements
 - Internal strategy notes or comments not meant for the client
 
-Use `grep` to search for common markers: "TBD", "TODO", "PLACEHOLDER", "DRAFT", "INSERT", "XXX", "???".
+Review the draft content directly for common markers such as "TBD", "TODO", "PLACEHOLDER", "DRAFT", "INSERT", "XXX", and "???".
 
 ### 6. Branding & Formatting Check
 
@@ -201,7 +201,5 @@ Save the compliance review report to the working directory as `compliance_review
 
 ## Tools to Use
 
-- **grep**: Primary tool — search for requirement keywords across all drafted sections; scan for placeholder text, sensitive data markers, and inconsistencies
-- **bash / glob**: List and read all proposal files and RFP documents
-- **str_replace_editor**: Read specific sections for detailed review
+- **read_full_file**: Primary tool — read the RFP, requirements matrix, and drafted sections directly for coverage, placeholders, and inconsistencies
 - **knowledge_base_retrieve**: Verify that specific claims in the proposal — past performance metrics, personnel qualifications, certifications, case study outcomes — are accurate and traceable to real KB records. Also check approved brand guidelines and firm language for branding compliance.

@@ -2,6 +2,10 @@
 
 This file provides foundational guidance and mandates for Gemini CLI when working with code in this repository.
 
+## Boundary With Runtime Agent
+
+The shipped RFP application agent has its own runtime prompt and skills under `session-container/agent.py` and `session-container/skills/`. Those files define product behavior for end users. Do not treat them as contributor instructions for repository work. Follow `AGENTS.md` for shared coding-agent policy.
+
 ## Core Principles
 
 These are mandatory. Verify compliance before every action.
@@ -50,6 +54,8 @@ This repository utilizes both **Gemini CLI** (terminal-based agent) and **Google
    - Use Antigravity for the "Manager View" to orchestrate multiple agents as employees across different repository domains.
 
 ## Testing
+
+Use the project localhost validation skill at `.gemini/skills/localhost-ui-validation/SKILL.md` for any user-visible localhost testing or debugging.
 
 **The primary valid form of testing is Playwright against the real frontend, behaving as a real user.**
 

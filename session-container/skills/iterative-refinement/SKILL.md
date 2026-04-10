@@ -21,13 +21,13 @@ Guide the collaborative editing cycle between the agent and human reviewers. Ens
 
 ### 1. Assess Current State
 
-Use `bash` and `glob` to inventory all files in the working directory:
+Use `read_full_file` to review whatever proposal artifacts already exist in the working directory and any files the user names explicitly:
 - Which sections are drafted?
 - Which sections are still missing or incomplete?
 - Are there reviewer comments or feedback files?
 - What attachments/collateral have been generated vs. still needed?
 
-Present a status summary to the user showing what's done, what's in progress, and what's outstanding.
+Do not assume a standard artifact pack exists. Present a status summary based only on the files that are actually present.
 
 ### 2. Cross-Section Consistency Check
 
@@ -58,7 +58,7 @@ Read all drafted sections and verify consistency across the full proposal:
 - Check that the executive summary reflects themes from the technical approach
 - Ensure the management approach reinforces capability claims
 
-Use `grep` to search for key terms, personnel names, dates, and dollar amounts across all files.
+Check key terms, personnel names, dates, and dollar amounts by reading the relevant proposal artifacts directly and comparing them side by side.
 
 ### 3. Section-Level Refinement
 
@@ -66,12 +66,12 @@ For each section the user wants to improve:
 - Read the current draft
 - Identify weaknesses: vague claims, missing evidence, poor flow, passive voice, generic language
 - Search `knowledge_base_retrieve` for additional supporting evidence, case studies, or approved language
-- Propose specific improvements with tracked changes (use `str_replace_editor`)
+- Propose specific improvements with tracked changes (use the available file-writing tools)
 - Flag items that need human decision (e.g., "Should we include the XYZ case study here?")
 
 ### 4. Collateral Generation
 
-Generate supporting documents and attachments as needed:
+Generate supporting documents and attachments as needed from the available RFP, existing drafts, and KB evidence:
 
 **Personnel materials:**
 - Key personnel resumes/bios (search KB for personnel records)
@@ -115,7 +115,7 @@ Update this tracker as the user provides feedback and approves sections.
 ### 6. Incorporate Feedback
 
 When the user provides edits or feedback:
-- Apply requested changes using `str_replace_editor`
+- Apply requested changes using the available file-writing tools
 - Verify that changes don't create inconsistencies with other sections
 - Re-check cross-references and terminology after edits
 - Confirm changes with the user before moving to the next section
@@ -171,7 +171,5 @@ Save the refinement status report to the working directory as `refinement_status
 
 ## Tools to Use
 
-- **grep**: Search across all proposal files for terminology, names, dates, amounts, and win theme keywords to verify consistency
-- **bash / glob**: Inventory all files, check word counts, identify missing sections
-- **str_replace_editor**: Read and edit specific sections to apply refinements
+- **read_full_file**: Read proposal files directly to verify consistency and refine content
 - **knowledge_base_retrieve**: Search for additional evidence, personnel records, case studies, and approved language to strengthen weak sections

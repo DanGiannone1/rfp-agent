@@ -27,6 +27,11 @@ Read the RFP and use `knowledge_base_retrieve` to understand:
 - **Relationship history**: Has Meridian worked with this client before? In what capacity?
 - **Budget signals**: Are there indications of budget constraints or willingness to invest?
 
+If KB evidence is unavailable, rely on the RFP and cautious inference only:
+- Omit customer identity, relationship history, or incumbent details unless stated in the RFP or verified through KB.
+- Use phrasing like "the RFP suggests" for inferred customer priorities.
+- Do not invent external proof points, named competitors, or past Meridian work.
+
 ### 2. Map the Competitive Landscape
 
 Assess likely competitors based on:
@@ -35,6 +40,8 @@ Assess likely competitors based on:
 - Requirements that seem tailored to a specific competitor
 - Meridian's relative strengths and weaknesses versus likely competitors
 
+When specific competitors are unknown, describe competitor archetypes or pressures only as inference. Do not present unnamed assumptions as verified facts.
+
 ### 3. Develop Win Themes (3-5)
 
 Each win theme should be:
@@ -42,6 +49,8 @@ Each win theme should be:
 - **Differentiating**: Something competitors cannot easily claim
 - **Provable**: Supported by evidence (past performance, case studies, metrics)
 - **Relevant**: Directly tied to evaluation criteria or stated customer priorities
+
+If external evidence is unavailable, use the RFP itself as the basis and avoid claims such as "industry references available", "prior engagements", or "sample contracts" unless they were actually retrieved.
 
 **Common theme categories for Meridian & Associates LLP:**
 - Deep industry expertise (audit, tax, advisory/consulting experience in client's sector)
@@ -65,7 +74,7 @@ Note: This is strategic guidance, not actual pricing. Consider:
 - Pricing model alignment (fixed fee, hourly, blended rates, value-based)
 - Investment pricing vs. market rate vs. premium positioning
 - Phased approach opportunities
-- Added-value inclusions that differentiate without adding cost
+- Added-value inclusions only when they are grounded in the RFP or verified evidence; otherwise omit them
 - Price-to-win considerations based on competitive landscape
 
 ### 6. Develop Key Messages
@@ -81,13 +90,13 @@ For each evaluator audience (technical, management, procurement), define:
 ## Response Strategy Brief
 
 **RFP:** [Title / Number]
-**Client:** [Organization]
+[Optional metadata lines only when known from the RFP or KB, for example:]
 **Submission Date:** [Date]
 **Estimated Value:** [Value]
 
 ### Customer Insights
 
-**Organization Profile:** [Brief description]
+**Organization Profile:** [Brief description grounded in the RFP; use cautious inference when needed]
 **Key Pain Points:**
 1. [Pain point and evidence from RFP]
 2. [Pain point]
@@ -95,20 +104,20 @@ For each evaluator audience (technical, management, procurement), define:
 
 **Decision Drivers:** [What evaluation criteria and RFP language reveal about priorities]
 
-**Relationship Status:** [New client / Existing relationship / Past engagement details]
+[Include Relationship Status only when verified]
 
 ### Win Themes
 
-| # | Win Theme | Customer Benefit | Supporting Evidence |
+| # | Win Theme | Customer Benefit | Basis |
 |---|---|---|---|
-| 1 | [Theme statement] | [Value to client] | [Case study, metric, or reference] |
-| 2 | [Theme statement] | [Value to client] | [Evidence] |
-| 3 | [Theme statement] | [Value to client] | [Evidence] |
-| 4 | [Theme statement] | [Value to client] | [Evidence] |
+| 1 | [Theme statement] | [Value to client] | [RFP requirement or verified KB source] |
+| 2 | [Theme statement] | [Value to client] | [Basis] |
+| 3 | [Theme statement] | [Value to client] | [Basis] |
+| 4 | [Theme statement] | [Value to client] | [Basis] |
 
 ### Competitive Positioning
 
-**Primary Competitors:** [Known or likely competitors]
+[Optional: Likely Competitor Profile (if inferred, label it as inference)]
 
 | Strategy | Details |
 |---|---|
@@ -121,16 +130,16 @@ For each evaluator audience (technical, management, procurement), define:
 
 - **Recommended Model:** [Fixed fee / hourly / blended / etc.]
 - **Positioning:** [Investment / competitive / premium]
-- **Value-Add Inclusions:** [Items to include at no extra charge]
+- **Value-Add Inclusions:** [Include only when grounded in the RFP or verified evidence; otherwise omit this line]
 - **Key Considerations:** [Risks, constraints, flexibility needed]
 
 ### Key Messages by Audience
 
-| Audience | Primary Message | Supporting Evidence |
+| Audience | Primary Message | Basis |
 |---|---|---|
-| Technical Evaluators | [Message] | [Evidence] |
-| Management / Executives | [Message] | [Evidence] |
-| Procurement / Contracts | [Message] | [Evidence] |
+| Technical Evaluators | [Message] | [RFP requirement or verified KB source] |
+| Management / Executives | [Message] | [Basis] |
+| Procurement / Contracts | [Message] | [Basis] |
 
 ### Response Approach
 
@@ -139,13 +148,15 @@ For each evaluator audience (technical, management, procurement), define:
 - **Critical Success Factors:** [What must go right to win]
 ```
 
+Do not use bracketed placeholders. Omit unknown fields entirely.
+
 ### 7. Save Output
 
 Save the strategy brief to the working directory as `response_strategy.md` so the user can download it and it appears in the artifacts panel.
 
+After saving, reply with one short completion sentence that explicitly says the response strategy brief is ready and that it includes win themes, competitive positioning, and pricing approach. If the user said not to ask follow-up questions, do not add any invitation for more changes.
+
 ## Tools to Use
 
+- **read_full_file**: Read the RFP, amendments, and any existing strategy artifacts end-to-end
 - **knowledge_base_retrieve**: Search for past proposals to similar clients, case studies, win/loss data, competitive intelligence, approved differentiators, and relationship history — search before developing win themes or competitive positioning
-- **bash / str_replace_editor**: Read RFP evaluation criteria, scope, and background sections
-- **grep**: Search for evaluation weighting, scoring methodology, incumbent references
-- **glob**: Find all RFP-related documents including amendments and Q&A

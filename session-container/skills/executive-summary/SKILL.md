@@ -16,18 +16,31 @@ Synthesize all RFP analysis, strategy, and drafted content into a compelling 1-2
 - As the final synthesis step before submission
 - Can also be drafted early as a "strawman" to align the team, then refined later
 
+## Fast Path
+
+If the workspace only contains the uploaded RFP markdown or does not yet contain prior analysis artifacts, draft the executive summary directly from the RFP.
+
+- Read the uploaded RFP source markdown once with `read_full_file`, then draft immediately.
+- If the uploaded RFP is the only visible file in the workspace, you can call `read_full_file` without a path.
+- Do not stop to generate a response strategy brief, customer intelligence briefing, bid/no-bid analysis, or other prerequisite artifacts unless the user explicitly asks for them.
+- Do not invoke `response-strategy`, `requirements-extraction`, or other skills as hidden prerequisites for this task.
+- Derive provisional win themes from the RFP itself when no prior strategy brief exists.
+- Use knowledge-base evidence when available, but do not block the draft on additional analysis work.
+
 ## Step-by-Step Process
 
 ### 1. Gather Inputs
 
-Before writing, review all available context:
+Before writing, review only the context you actually need:
+- **Uploaded RFP source file**: This is the primary input and should be read first
 - **Response strategy brief**: Win themes, competitive positioning, key messages
 - **Requirements matrix**: Scope summary, mandatory/preferred breakdown, key requirements
 - **Drafted sections**: Pull key points from technical approach, past performance, staffing, pricing
-- **RFP evaluation criteria**: Ensure the summary addresses top-weighted factors
-- **Customer pain points**: From the strategy analysis
+- **Existing generated artifacts**: Only if they already exist and are directly relevant
 
-Use `bash`, `glob`, and `str_replace_editor` to read these materials from the working directory.
+If those artifacts do not exist yet, use the uploaded RFP as the primary source and draft a strong strawman executive summary from it.
+
+Use `read_full_file` for the uploaded RFP source file and any existing generated markdown artifacts you truly need. Do not create or seek prerequisite artifacts first.
 
 ### 2. Search KB for Supporting Evidence
 
@@ -36,6 +49,8 @@ Use `knowledge_base_retrieve` to find:
 - Headline metrics (years in business, number of professionals, client count, industry rankings)
 - Most compelling case studies or client outcomes relevant to this opportunity
 - Awards, recognitions, or differentiating certifications
+
+If KB evidence is unavailable or incomplete, continue drafting from the RFP and clearly avoid inventing unsupported Meridian-specific facts, case studies, or metrics.
 
 ### 3. Structure the Executive Summary
 
@@ -53,7 +68,7 @@ Follow this proven structure (adapt headings to match RFP requirements):
 
 #### Why Meridian (2-3 paragraphs)
 - Weave in 3-5 win themes with supporting evidence
-- Reference specific past engagements with measurable outcomes
+- Reference specific past engagements with measurable outcomes only when those outcomes are verified
 - Highlight team qualifications and senior-level commitment
 - Address any known client concerns proactively
 
@@ -68,7 +83,7 @@ Follow this proven structure (adapt headings to match RFP requirements):
 
 ### 4. Save Output
 
-Save the completed executive summary to the working directory as `executive_summary.md` so the user can download it and it appears in the artifacts panel.
+Save the completed executive summary to the working directory as `executive_summary.md` using `write_file` so the user can download it and it appears in the artifacts panel.
 
 ### 5. Refine for Impact
 
@@ -76,8 +91,9 @@ Save the completed executive summary to the working directory as `executive_summ
 - **Tone**: Confident but not arrogant; client-focused, not self-congratulatory
 - **First sentence**: Must immediately engage — avoid generic openings
 - **Every paragraph**: Should answer "why should the evaluator care?"
-- **Metrics**: Include at least 2-3 quantified results or proof points
+- **Metrics**: Include quantified results or proof points only when verified through KB or other approved source material. If none are available, omit them.
 - **Consistency**: Win themes and key messages must match the rest of the proposal
+- **No placeholders**: Do not use illustrative or hypothetical proof points
 
 ## Output Format
 
@@ -96,7 +112,7 @@ Save the completed executive summary to the working directory as `executive_summ
 
 [Win theme 1 with evidence. Win theme 2 with evidence. Demonstrate relevant experience, team quality, and commitment.]
 
-[Reference specific past engagement: "In a similar engagement for [client type], Meridian [achieved specific outcome], resulting in [measurable benefit]."]
+[Reference a specific past engagement only when the engagement and outcome are verified. Otherwise omit this sentence.]
 
 ### Key Differentiators
 
@@ -112,12 +128,11 @@ Save the completed executive summary to the working directory as `executive_summ
 
 ---
 
-*Note: This executive summary reflects the win themes and strategy outlined in the response strategy brief. Key metrics cited: [list sources for verification].*
+*Note: This executive summary reflects the response strategy brief when one exists; otherwise it uses win themes inferred directly from the RFP. Include only verified metrics and cite their sources when used.*
 ```
 
 ## Tools to Use
 
-- **bash / glob**: Read all previously drafted sections, strategy briefs, and RFP documents in the working directory
-- **str_replace_editor**: Read and reference specific content from drafted sections
+- **read_full_file**: Read the uploaded RFP and any existing markdown deliverables in the working directory
+- **write_file**: Save the completed executive summary artifact to the working directory
 - **knowledge_base_retrieve**: Search for firm overview language, headline metrics, compelling case studies, branding guidelines, and approved boilerplate
-- **grep**: Search for specific metrics, client names, or win themes across drafted content
